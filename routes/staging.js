@@ -77,26 +77,30 @@ async function callReplicate(imageUrl, prompt, isFreeTrialMode) {
 
 async function createNotionRecord(clientData, commandeData, photosData) {
   try {
-    console.log('[Notion] Envoi vers Notion avec les données:', {
+    console.log('[Notion] Envoi vers Notion:', {
+      nom: clientData.nom,
       email: clientData.email,
       nombre_pieces: clientData.nombre_pieces,
       exterieurs: clientData.exterieurs,
+      photos_count: photosData.length,
     });
+
+    const photoUrl = photosData.length > 0 && photosData[0].outputUrl ? photosData[0].outputUrl : null;
 
     await notion.pages.create({
       parent: { database_id: process.env.NOTION_DATABASE_ID },
       properties: {
         "Nom du Client": { 
-          title: [{ text: { content: clientData.nom || "—" } }] 
+          title: [{ type: "text", text: { content: clientData.nom || "—" } }] 
         },
         "Email": { 
-          email: clientData.email || "" 
+          email: clientData.email || null
         },
         "Téléphone": { 
-          phone_number: clientData.telephone || "" 
+          phone_number: clientData.telephone || null
         },
         "Adresse du bien": { 
-          rich_text: [{ text: { content: clientData.adresse || "—" } }] 
+          rich_text: [{ type: "text", text: { content: clientData.adresse || "—" } }] 
         },
         "Type de bien": { 
           select: { name: clientData.type_bien || "Autre" } 
@@ -105,28 +109,27 @@ async function createNotionRecord(clientData, commandeData, photosData) {
           select: { name: clientData.nombre_pieces || "—" } 
         },
         "Extérieurs": { 
-          multi_select: (clientData.exterieurs || []).map(e => ({ name: e })) 
+          multi_select: (clientData.exterieurs && clientData.exterieurs.length > 0) 
+            ? clientData.exterieurs.map(e => ({ name: e }))
+            : []
         },
         "Type de prestation": { 
           select: { name: commandeData.type_prestation || "—" } 
         },
         "Formule": { 
-          rich_text: [{ text: { content: commandeData.formula || "—" } }] 
+          select: { name: commandeData.formula || "—" } 
         },
-        "Photos": { 
-          url: photosData[0]?.outputUrl || "" 
-        },
+        "Photos": photoUrl ? { url: photoUrl } : { url: null },
         "Statut": { 
           status: { name: "Nouveau client" } 
         },
       },
     });
-    console.log('[Notion] Record créé avec succès');
+    console.log('[Notion] ✅ Record créé avec succès');
   } catch (err) {
-    console.error('[Notion] Erreur création record:', err.message);
+    console.error('[Notion] ❌ Erreur:', err.message);
   }
 }
-
 // ─── POST /api/staging/submit ─────────────────────────────────────────────────
 router.post('/submit', async (req, res) => {
   const {
