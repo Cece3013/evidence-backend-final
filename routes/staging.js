@@ -77,17 +77,23 @@ async function callReplicate(imageUrl, prompt, isFreeTrialMode) {
 
 async function createNotionRecord(clientData, commandeData, photosData) {
   try {
+    console.log('[Notion] Envoi vers Notion avec les données:', {
+      email: clientData.email,
+      nombre_pieces: clientData.nombre_pieces,
+      exterieurs: clientData.exterieurs,
+    });
+
     await notion.pages.create({
       parent: { database_id: process.env.NOTION_DATABASE_ID },
       properties: {
         "Nom du Client": { 
           title: [{ text: { content: clientData.nom || "—" } }] 
         },
-        "E-mail": { 
+        "Email": { 
           email: clientData.email || "" 
         },
         "Téléphone": { 
-          rich_text: [{ text: { content: clientData.telephone || "—" } }] 
+          phone_number: clientData.telephone || "" 
         },
         "Adresse du bien": { 
           rich_text: [{ text: { content: clientData.adresse || "—" } }] 
@@ -108,12 +114,10 @@ async function createNotionRecord(clientData, commandeData, photosData) {
           rich_text: [{ text: { content: commandeData.formula || "—" } }] 
         },
         "Photos": { 
-          rich_text: photosData.map((p, i) => ({ 
-            text: { content: `Photo ${i+1} avant: ${p.inputUrl}\nAprès: ${p.outputUrl || "—"}` } 
-          })) 
+          url: photosData[0]?.outputUrl || "" 
         },
         "Statut": { 
-          select: { name: "En attente" } 
+          status: { name: "Nouveau client" } 
         },
       },
     });
