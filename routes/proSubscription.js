@@ -12,7 +12,6 @@ router.post('/subscribe', async (req, res) => {
   try {
     console.log('[ProSubscription] Nouvelle demande abonnement:', { companyName, offerId, email });
 
-    // 1. Créer le client Stripe
     const stripeCustomerResponse = await axios.post(
       'https://api.stripe.com/v1/customers',
       `email=${encodeURIComponent(email)}&description=${encodeURIComponent(companyName)}`,
@@ -25,9 +24,7 @@ router.post('/subscribe', async (req, res) => {
     );
 
     const customerId = stripeCustomerResponse.data.id;
-    console.log('[Stripe] Client créé:', customerId);
 
-    // 2. Créer la session de checkout pour l'abonnement
     const checkoutSessionResponse = await axios.post(
       'https://api.stripe.com/v1/checkout/sessions',
       new URLSearchParams({
@@ -36,8 +33,8 @@ router.post('/subscribe', async (req, res) => {
         line_items__0__quantity: 1,
         mode: 'subscription',
         customer: customerId,
-        success_url: 'https://evidence-homestaging.fr/pro-account?session_id={CHECKOUT_SESSION_ID}',
-        cancel_url: 'https://evidence-homestaging.fr/offers',
+        success_url: 'evidencehomestaging://pro-account?session_id={CHECKOUT_SESSION_ID}',
+        cancel_url: 'evidencehomestaging://offers',
       }),
       {
         headers: {
@@ -49,9 +46,7 @@ router.post('/subscribe', async (req, res) => {
 
     const checkoutUrl = checkoutSessionResponse.data.url;
     const sessionId = checkoutSessionResponse.data.id;
-    console.log('[Stripe] Checkout créé:', sessionId);
 
-    // 3. Envoyer les données à Notion
     const notionPayload = {
       parent: { database_id: process.env.NOTION_PRO_DATABASE_ID },
       properties: {
@@ -67,25 +62,14 @@ router.post('/subscribe', async (req, res) => {
       },
     };
 
-    await axios.post(
-      'https://api.notion.com/v1/pages',
-      notionPayload,
-      {
-        headers: {
-          'Authorization': `Bearer ${process.env.NOTION_API_KEY}`,
-          'Notion-Version': '2022-06-28',
-        },
-      }
-    );
-
-    console.log('[Notion] Abonnement PRO créé');
-
-    // 4. Répondre avec l'URL de checkout
-    res.json({
-      success: true,
-      checkoutUrl: checkoutUrl,
-      sessionId: sessionId,
+    await axios.post('https://api.notion.com/v1/pages', notionPayload, {
+      headers: {
+        'Authorization': `Bearer ${process.env.NOTION_API_KEY}`,
+        'Notion-Version': '2022-06-28',
+      },
     });
+
+    res.json({ success: true, checkoutUrl, sessionId });
 
   } catch (error) {
     console.error('[ProSubscription Error]:', error.response?.data || error.message);
@@ -94,14 +78,14 @@ router.post('/subscribe', async (req, res) => {
     });
   }
 });
+
 // ─── GET /api/pro/subscription/:sessionId ─────────────────────────────────────
 router.get('/subscription/:sessionId', async (req, res) => {
   const { sessionId } = req.params;
 
   try {
-    // Chercher dans Notion via le sessionId Stripe
     const response = await axios.post(
-      'https://api.notion.com/v1/databases/' + process.env.NOTION_PRO_DATABASE_ID + '/query',
+      `https://api.notion.com/v1/databases/${process.env.NOTION_PRO_DATABASE_ID}/query`,
       {
         filter: {
           property: 'Session Stripe',
@@ -118,12 +102,12 @@ router.get('/subscription/:sessionId', async (req, res) => {
     );
 
     const results = response.data.results;
-
     if (!results || results.length === 0) {
       return res.status(404).json({ error: 'Abonnement non trouvé' });
     }
 
     const page = results[0].properties;
+    const offerId = page['Offre']?.select?.name || '';
 
     res.json({
       companyName: page['Nom entreprise']?.title?.[0]?.plain_text || '—',
@@ -131,12 +115,14 @@ router.get('/subscription/:sessionId', async (req, res) => {
       email: page['Email']?.email || '—',
       phone: page['Téléphone']?.phone_number || '—',
       address: page['Adresse']?.rich_text?.[0]?.plain_text || '—',
-      offerId: page['Offre']?.select?.name || '—',
-      offerName: page['Offre']?.select?.name || '—',
+      offerId,
+      offerName: offerId === 'pro_starter' ? 'PRO Starter' 
+               : offerId === 'pro_business' ? 'PRO Business' 
+               : 'PRO Agency',
       subscriptionDate: page['Date souscription']?.date?.start || '—',
       status: page['Statut']?.select?.name || '—',
-      price: page['Offre']?.select?.name === 'pro_starter' ? 49 
-           : page['Offre']?.select?.name === 'pro_business' ? 99 
+      price: offerId === 'pro_starter' ? 49 
+           : offerId === 'pro_business' ? 99 
            : 199,
     });
 
@@ -145,4 +131,5 @@ router.get('/subscription/:sessionId', async (req, res) => {
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
+
 module.exports = router;
