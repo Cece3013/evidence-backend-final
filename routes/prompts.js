@@ -4,44 +4,33 @@ const negativePrompts = require('./negativePrompts');
 
 function getRoomType(roomTypeId, roomSubTypeId) {
   if (roomTypeId === 'chambre') {
-    if (roomSubTypeId === 'bebe') return 'baby_bedroom';
-    if (roomSubTypeId === 'enfant') return 'child_bedroom';
-    if (roomSubTypeId === 'ado') return 'teen_bedroom';
-    return 'adult_bedroom';
+    if (roomSubTypeId === 'bebe') return 'chambre_bebe';
+    if (roomSubTypeId === 'enfant') return 'chambre_enfant';
+    if (roomSubTypeId === 'ado') return 'chambre_ado';
+    return 'chambre_adulte';
   }
+  // Les clés correspondent exactement à roomPrompts.js
   const map = {
-    salon: 'living_room',
-    cuisine: 'kitchen',
-    salle_manger: 'dining_room',
-    bureau: 'home_office',
-    entree: 'entrance',
-    salle_bain: 'bathroom',
-    buanderie: 'laundry_room',
-    suite_parentale: 'master_suite',
-    terrasse: 'terrace',
+    salon: 'salon',
+    cuisine: 'cuisine',
+    salle_manger: 'salon', // fallback salon si pas de clé salle_manger
+    bureau: 'salon',       // fallback salon si pas de clé bureau
+    entree: 'salon',       // fallback salon si pas de clé entree
+    salle_bain: 'salle_bain',
+    buanderie: 'salon',    // fallback
+    suite_parentale: 'chambre_adulte',
+    terrasse: 'terrasse',
   };
-  return map[roomTypeId] || 'living_room';
-}
-
-function getTerraceSize(roomSize) {
-  if (roomSize === 'small') return 'terrace_small';
-  if (roomSize === 'large') return 'terrace_large';
-  return 'terrace_small';
+  return map[roomTypeId] || 'salon';
 }
 
 function buildPrompt({ roomTypeId, roomSubTypeId, roomSize = 'medium', variant = 1 }) {
-  let roomType = getRoomType(roomTypeId, roomSubTypeId);
-  
-  if (roomType === 'terrace') {
-    roomType = getTerraceSize(roomSize);
-  }
+  const roomType = getRoomType(roomTypeId, roomSubTypeId);
 
-  const roomData = roomPrompts[roomType] || roomPrompts['living_room'];
+  const roomData = roomPrompts[roomType] || roomPrompts['salon'];
   const layout = variant === 2 ? roomData.variant2 : roomData.variant1;
 
-  const prompt = `${GLOBAL_HOME_STAGING_RULES}
-
-${layout}`;
+  const prompt = `${GLOBAL_HOME_STAGING_RULES}\n\n${layout}`;
 
   const roomNegative = negativePrompts[roomType] || '';
   const negative_prompt = `${negativePrompts.global}, ${roomNegative}`;
