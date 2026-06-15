@@ -20,16 +20,21 @@ async function uploadToCloudinary(file) {
     .createHash('sha256')
     .update(`timestamp=${timestamp}${process.env.CLOUDINARY_API_SECRET}`)
     .digest('hex');
-  const res = await axios.post(
-    `https://api.cloudinary.com/v1_1/${process.env.CLOUDINARY_CLOUD_NAME}/image/upload`,
-    {
-      file,
-      timestamp,
-      api_key: process.env.CLOUDINARY_API_KEY,
-      signature,
-    }
-  );
-  return res.data.secure_url;
+  try {
+    const res = await axios.post(
+      `https://api.cloudinary.com/v1_1/${process.env.CLOUDINARY_CLOUD_NAME}/image/upload`,
+      {
+        file,
+        timestamp,
+        api_key: process.env.CLOUDINARY_API_KEY,
+        signature,
+      }
+    );
+    return res.data.secure_url;
+  } catch (err) {
+    console.error('[Cloudinary] ❌ Erreur détaillée:', err.response?.data || err.message);
+    throw err;
+  }
 }
 
 async function callReplicate(imageUrl, prompt, isFreeTrialMode) {
