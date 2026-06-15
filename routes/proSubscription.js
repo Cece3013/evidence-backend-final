@@ -94,5 +94,55 @@ router.post('/subscribe', async (req, res) => {
     });
   }
 });
+// ─── GET /api/pro/subscription/:sessionId ─────────────────────────────────────
+router.get('/subscription/:sessionId', async (req, res) => {
+  const { sessionId } = req.params;
 
+  try {
+    // Chercher dans Notion via le sessionId Stripe
+    const response = await axios.post(
+      'https://api.notion.com/v1/databases/' + process.env.NOTION_PRO_DATABASE_ID + '/query',
+      {
+        filter: {
+          property: 'Session Stripe',
+          rich_text: { equals: sessionId },
+        },
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${process.env.NOTION_API_KEY}`,
+          'Notion-Version': '2022-06-28',
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    const results = response.data.results;
+
+    if (!results || results.length === 0) {
+      return res.status(404).json({ error: 'Abonnement non trouvé' });
+    }
+
+    const page = results[0].properties;
+
+    res.json({
+      companyName: page['Nom entreprise']?.title?.[0]?.plain_text || '—',
+      siret: page['SIRET']?.rich_text?.[0]?.plain_text || '—',
+      email: page['Email']?.email || '—',
+      phone: page['Téléphone']?.phone_number || '—',
+      address: page['Adresse']?.rich_text?.[0]?.plain_text || '—',
+      offerId: page['Offre']?.select?.name || '—',
+      offerName: page['Offre']?.select?.name || '—',
+      subscriptionDate: page['Date souscription']?.date?.start || '—',
+      status: page['Statut']?.select?.name || '—',
+      price: page['Offre']?.select?.name === 'pro_starter' ? 49 
+           : page['Offre']?.select?.name === 'pro_business' ? 99 
+           : 199,
+    });
+
+  } catch (error) {
+    console.error('[ProSubscription GET Error]:', error.response?.data || error.message);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
 module.exports = router;
