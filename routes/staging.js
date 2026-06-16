@@ -220,6 +220,7 @@ async function processOrder({ photos, clientName, clientEmail, clientPhone, prop
       {
         type_prestation: isHabite ? 'Bien habité - Expert' : 'Bien vide',
         formula: formulaLabel || formulaId,
+        orderId: orderId,
       },
       processedPhotos
     );
