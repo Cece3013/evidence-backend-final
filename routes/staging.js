@@ -6,13 +6,9 @@ const { buildPrompt } = require('./prompts');
 const { Client } = require("@notionhq/client");
 const router = express.Router();
 
-// Store global pour commandes biens vides en attente de validation
 global.stagingOrders = global.stagingOrders || [];
 
-// Notion Client
-const notion = new Client({ 
-  auth: process.env.NOTION_API_KEY 
-});
+const notion = new Client({ auth: process.env.NOTION_API_KEY });
 
 async function uploadToCloudinary(file) {
   const timestamp = Math.round(Date.now() / 1000);
@@ -23,12 +19,7 @@ async function uploadToCloudinary(file) {
   try {
     const res = await axios.post(
       `https://api.cloudinary.com/v1_1/${process.env.CLOUDINARY_CLOUD_NAME}/image/upload`,
-      {
-        file,
-        timestamp,
-        api_key: process.env.CLOUDINARY_API_KEY,
-        signature,
-      }
+      { file, timestamp, api_key: process.env.CLOUDINARY_API_KEY, signature }
     );
     return res.data.secure_url;
   } catch (err) {
@@ -42,7 +33,7 @@ async function callReplicate(imageUrl, prompt, isFreeTrialMode) {
     'https://api.replicate.com/v1/models/black-forest-labs/flux-kontext-pro/predictions',
     {
       input: {
-        prompt: prompt,
+        prompt,
         input_image: imageUrl,
         output_format: 'jpg',
         output_quality: isFreeTrialMode ? 70 : 95,
@@ -95,39 +86,21 @@ async function createNotionRecord(clientData, commandeData, photosData) {
     await notion.pages.create({
       parent: { database_id: process.env.NOTION_DATABASE_ID },
       properties: {
-        "Nom du Client": { 
-          title: [{ type: "text", text: { content: clientData.nom || "—" } }] 
-        },
-        "Email": { 
-          email: clientData.email || null
-        },
-        "Téléphone": { 
-          phone_number: clientData.telephone || null
-        },
-        "Adresse du bien": { 
-          rich_text: [{ type: "text", text: { content: clientData.adresse || "—" } }] 
-        },
-        "Type de bien": { 
-          select: { name: clientData.type_bien || "Autre" } 
-        },
-        "Nombre de pièces": { 
-          select: { name: clientData.nombre_pieces || "—" } 
-        },
-        "Extérieurs": { 
-          multi_select: (clientData.exterieurs && clientData.exterieurs.length > 0) 
+        "Nom du Client": { title: [{ type: "text", text: { content: clientData.nom || "—" } }] },
+        "Email": { email: clientData.email || null },
+        "Téléphone": { phone_number: clientData.telephone || null },
+        "Adresse du bien": { rich_text: [{ type: "text", text: { content: clientData.adresse || "—" } }] },
+        "Type de bien": { select: { name: clientData.type_bien || "Autre" } },
+        "Nombre de pièces": { select: { name: clientData.nombre_pieces || "—" } },
+        "Extérieurs": {
+          multi_select: (clientData.exterieurs && clientData.exterieurs.length > 0)
             ? clientData.exterieurs.map(e => ({ name: e }))
             : []
         },
-        "Type de prestation": { 
-          select: { name: commandeData.type_prestation || "—" } 
-        },
-        "Formule": { 
-          select: { name: commandeData.formula || "—" } 
-        },
+        "Type de prestation": { select: { name: commandeData.type_prestation || "—" } },
+        "Formule": { select: { name: commandeData.formula || "—" } },
         "Photos": photoUrl ? { url: photoUrl } : { url: null },
-        "Statut": { 
-          status: { name: "Nouveau client" } 
-        },
+        "Statut": { status: { name: "Nouveau client" } },
       },
     });
     console.log('[Notion] ✅ Record créé avec succès');
@@ -135,22 +108,13 @@ async function createNotionRecord(clientData, commandeData, photosData) {
     console.error('[Notion] ❌ Erreur:', err.message);
   }
 }
+
 // ─── POST /api/staging/submit ─────────────────────────────────────────────────
 router.post('/submit', async (req, res) => {
   const {
-    photos,
-    clientName,
-    clientEmail,
-    clientPhone,
-    propertyAddress,
-    propertyType,
-    propertySize,
-    exteriorFeatures,
-    isHabite,
-    orderId,
-    formulaId,
-    formulaLabel,
-    isFreeTrialMode = false,
+    photos, clientName, clientEmail, clientPhone, propertyAddress,
+    propertyType, propertySize, exteriorFeatures, isHabite,
+    orderId, formulaId, formulaLabel, isFreeTrialMode = false,
   } = req.body;
 
   if (!photos || photos.length === 0) {
@@ -166,19 +130,9 @@ router.post('/submit', async (req, res) => {
   });
 
   processOrder({
-    photos,
-    clientName,
-    clientEmail,
-    clientPhone,
-    propertyAddress,
-    propertyType,
-    propertySize,  
-    exteriorFeatures, 
-    isHabite,
-    orderId: orderRef,
-    formulaId,
-    formulaLabel,
-    isFreeTrialMode,
+    photos, clientName, clientEmail, clientPhone, propertyAddress,
+    propertyType, propertySize, exteriorFeatures, isHabite,
+    orderId: orderRef, formulaId, formulaLabel, isFreeTrialMode,
   }).catch(err => console.error('[Staging] Erreur traitement:', err.message));
 });
 
@@ -190,7 +144,6 @@ async function processOrder({ photos, clientName, clientEmail, clientPhone, prop
   for (const photo of photos) {
     try {
       const { imageBase64, roomTypeId, roomSubTypeId, roomSize = 'medium' } = photo;
-
       const inputUrl = await uploadToCloudinary(`data:image/jpeg;base64,${imageBase64}`);
       console.log(`[Staging] Photo uploadée: ${inputUrl}`);
 
@@ -205,27 +158,19 @@ async function processOrder({ photos, clientName, clientEmail, clientPhone, prop
         console.error('[Staging] Erreur proposition:', err.message);
       }
 
-      processedPhotos.push({
-        roomTypeId,
-        roomSubTypeId,
-        inputUrl,
-        outputUrl,
-      });
+      processedPhotos.push({ roomTypeId, roomSubTypeId, inputUrl, outputUrl });
     } catch (err) {
       console.error('[Staging] Erreur traitement photo:', err.message);
     }
   }
-// 3. Envoyer vers Notion DIRECTEMENT
+
+  // 3. Envoyer vers Notion
   try {
     await createNotionRecord(
       {
-        nom: clientName,
-        email: clientEmail,
-        telephone: clientPhone,
-        adresse: propertyAddress,
-        type_bien: propertyType,
-        nombre_pieces: propertySize,
-        exterieurs: exteriorFeatures,
+        nom: clientName, email: clientEmail, telephone: clientPhone,
+        adresse: propertyAddress, type_bien: propertyType,
+        nombre_pieces: propertySize, exterieurs: exteriorFeatures,
       },
       {
         type_prestation: isHabite ? 'Bien habité - Expert' : 'Bien vide',
@@ -236,20 +181,16 @@ async function processOrder({ photos, clientName, clientEmail, clientPhone, prop
   } catch (err) {
     console.error('[Staging] Erreur Notion direct:', err.message);
   }
-  // 4. Sauvegarder la commande en mémoire
+
+  // 4. Sauvegarder en mémoire
   const order = {
-    orderId,
-    clientName,
-    clientEmail,
-    formulaId,
-    formulaLabel,
-    type: 'vide',
-    photos: processedPhotos,
-    status: 'pending_validation',
-    createdAt: new Date().toISOString(),
+    orderId, clientName, clientEmail, formulaId, formulaLabel,
+    type: 'vide', photos: processedPhotos,
+    status: 'pending_validation', createdAt: new Date().toISOString(),
   };
   global.stagingOrders.push(order);
-  // 5. Envoyer email de confirmation au client
+
+  // 5. Envoyer email de confirmation
   try {
     const photoUrl = processedPhotos[0]?.outputUrl || null;
     await axios.post('https://api.resend.com/emails', {
@@ -264,10 +205,7 @@ async function processOrder({ photos, clientName, clientEmail, clientPhone, prop
           <div style="background: #fff; border-radius: 12px; padding: 24px; margin-bottom: 16px;">
             <h2 style="color: #1a1a1a; font-size: 18px;">Bonjour ${clientName || 'cher client'},</h2>
             <p style="color: #555; line-height: 1.6;">Votre projection home staging est prête ! Notre IA a analysé votre bien et généré une visualisation professionnelle.</p>
-            ${photoUrl ? `
-            <div style="text-align: center; margin: 24px 0;">
-              <img src="${photoUrl}" style="width: 100%; border-radius: 8px;" alt="Votre projection" />
-            </div>` : ''}
+            ${photoUrl ? `<div style="text-align: center; margin: 24px 0;"><img src="${photoUrl}" style="width: 100%; border-radius: 8px;" alt="Votre projection" /></div>` : ''}
             <p style="color: #555; line-height: 1.6;">Retrouvez votre projection dans l'application Evidence Home Staging.</p>
           </div>
           <div style="background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
@@ -289,8 +227,6 @@ async function processOrder({ photos, clientName, clientEmail, clientPhone, prop
 
   console.log(`[Staging] Commande ${orderId} en attente de validation`);
 }
-  console.log(`[Staging] Commande ${orderId} en attente de validation`);
-}
 
 // ─── GET /api/staging/orders ──────────────────────────────────────────────────
 router.get('/orders', (req, res) => {
@@ -304,29 +240,6 @@ router.patch('/orders/:orderId/validate', async (req, res) => {
 
   order.status = 'validated';
   order.validatedAt = new Date().toISOString();
-
-  try {
-    await axios.post('https://api.resend.com/emails', {
-      from: 'Evidence Home Staging <noreply@evidence-homestaging.fr>',
-      to: order.clientEmail,
-      subject: 'Vos projections home staging sont prêtes !',
-      html: `
-        <h2>Bonjour ${order.clientName || 'cher client'},</h2>
-        <p>Vos projections home staging ont été validées et sont disponibles dans votre espace client.</p>
-        <p>Connectez-vous à l'application Evidence Home Staging pour les consulter et les télécharger.</p>
-        <br>
-        <p>L'équipe Evidence Home Staging</p>
-      `,
-    }, {
-      headers: {
-        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-    });
-    console.log(`[Staging] Email envoyé à ${order.clientEmail}`);
-  } catch (err) {
-    console.error('[Staging] Erreur email Resend:', err.message);
-  }
 
   res.json({ success: true, order });
 });
