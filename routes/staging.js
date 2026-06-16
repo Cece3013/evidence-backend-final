@@ -249,6 +249,46 @@ async function processOrder({ photos, clientName, clientEmail, clientPhone, prop
     createdAt: new Date().toISOString(),
   };
   global.stagingOrders.push(order);
+  // 5. Envoyer email de confirmation au client
+  try {
+    const photoUrl = processedPhotos[0]?.outputUrl || null;
+    await axios.post('https://api.resend.com/emails', {
+      from: 'Evidence Home Staging <contact@evidence-homestaging.fr>',
+      to: clientEmail,
+      subject: '✨ Votre projection home staging est prête !',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8f7f4; padding: 32px;">
+          <div style="background: #1a1a1a; padding: 24px; border-radius: 12px; text-align: center; margin-bottom: 24px;">
+            <h1 style="color: #c8a96e; margin: 0; font-size: 22px;">Evidence Home Staging</h1>
+          </div>
+          <div style="background: #fff; border-radius: 12px; padding: 24px; margin-bottom: 16px;">
+            <h2 style="color: #1a1a1a; font-size: 18px;">Bonjour ${clientName || 'cher client'},</h2>
+            <p style="color: #555; line-height: 1.6;">Votre projection home staging est prête ! Notre IA a analysé votre bien et généré une visualisation professionnelle.</p>
+            ${photoUrl ? `
+            <div style="text-align: center; margin: 24px 0;">
+              <img src="${photoUrl}" style="width: 100%; border-radius: 8px;" alt="Votre projection" />
+            </div>` : ''}
+            <p style="color: #555; line-height: 1.6;">Retrouvez votre projection dans l'application Evidence Home Staging.</p>
+          </div>
+          <div style="background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+            <p style="margin: 0; color: #888; font-size: 11px;">Référence commande : ${orderId}</p>
+            <p style="margin: 4px 0 0; color: #888; font-size: 11px;">Pour toute question : contact@evidence-homestaging.fr</p>
+          </div>
+        </div>
+      `,
+    }, {
+      headers: {
+        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    console.log(`[Staging] ✅ Email envoyé à ${clientEmail}`);
+  } catch (err) {
+    console.error('[Staging] ❌ Erreur email:', err.message);
+  }
+
+  console.log(`[Staging] Commande ${orderId} en attente de validation`);
+}
   console.log(`[Staging] Commande ${orderId} en attente de validation`);
 }
 
