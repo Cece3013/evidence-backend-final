@@ -73,6 +73,7 @@ async function callReplicate(imageUrl, prompt, isFreeTrialMode) {
 
 async function createNotionRecord(clientData, commandeData, photosData) {
   try {
+    // 1. Créer la fiche client
     console.log('[Notion] Envoi vers Notion:', {
       nom: clientData.nom,
       email: clientData.email,
@@ -81,9 +82,7 @@ async function createNotionRecord(clientData, commandeData, photosData) {
       photos_count: photosData.length,
     });
 
-    const photoUrl = photosData.length > 0 && photosData[0].outputUrl ? photosData[0].outputUrl : null;
-
-    await notion.pages.create({
+    const clientPage = await notion.pages.create({
       parent: { database_id: process.env.NOTION_DATABASE_ID },
       properties: {
         "Nom du Client": { title: [{ type: "text", text: { content: clientData.nom || "—" } }] },
@@ -99,11 +98,53 @@ async function createNotionRecord(clientData, commandeData, photosData) {
         },
         "Type de prestation": { select: { name: commandeData.type_prestation || "—" } },
         "Formule": { select: { name: commandeData.formula || "—" } },
-        "Photos": photoUrl ? { url: photoUrl } : { url: null },
         "Statut": { status: { name: "Nouveau client" } },
       },
     });
-    console.log('[Notion] ✅ Record créé avec succès');
+
+    const clientPageId = clientPage.id;
+    console.log('[Notion] ✅ Fiche client créée:', clientPageId);
+
+    // 2. Créer une entrée par photo
+    for (let i = 0; i < photosData.length; i++) {
+      const photo = photosData[i];
+      const pieceLabel = photo.roomTypeId || `Photo ${i + 1}`;
+
+      // Photo AVANT
+      if (photo.inputUrl) {
+        await notion.pages.create({
+          parent: { database_id: process.env.NOTION_PHOTOS_DATABASE_ID },
+          properties: {
+            "Titre": { title: [{ type: "text", text: { content: `${clientData.nom || '—'} — ${pieceLabel} — Avant` } }] },
+            "Client": { relation: [{ id: clientPageId }] },
+            "Type": { select: { name: "Avant" } },
+            "URL Photo": { url: photo.inputUrl },
+            "Pièce": { rich_text: [{ type: "text", text: { content: pieceLabel } }] },
+            "Statut": { status: { name: "En attente" } },
+            "Référence dossier": { rich_text: [{ type: "text", text: { content: commandeData.orderId || "—" } }] },
+          },
+        });
+      }
+
+      // Photo APRÈS (seulement si générée)
+      if (photo.outputUrl) {
+        await notion.pages.create({
+          parent: { database_id: process.env.NOTION_PHOTOS_DATABASE_ID },
+          properties: {
+            "Titre": { title: [{ type: "text", text: { content: `${clientData.nom || '—'} — ${pieceLabel} — Après` } }] },
+            "Client": { relation: [{ id: clientPageId }] },
+            "Type": { select: { name: "Après" } },
+            "URL Photo": { url: photo.outputUrl },
+            "Pièce": { rich_text: [{ type: "text", text: { content: pieceLabel } }] },
+            "Statut": { status: { name: "En attente" } },
+            "Référence dossier": { rich_text: [{ type: "text", text: { content: commandeData.orderId || "—" } }] },
+          },
+        });
+      }
+    }
+
+    console.log(`[Notion] ✅ ${photosData.length} photo(s) créées dans Photos Commandes`);
+
   } catch (err) {
     console.error('[Notion] ❌ Erreur:', err.message);
   }
