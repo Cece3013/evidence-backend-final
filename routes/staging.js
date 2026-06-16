@@ -150,12 +150,16 @@ async function processOrder({ photos, clientName, clientEmail, clientPhone, prop
       const { prompt: prompt1 } = buildPrompt({ roomTypeId, roomSubTypeId, roomSize, variant: 1 });
 
       let outputUrl = null;
-      try {
-        const replicateUrl = await callReplicate(inputUrl, prompt1, isFreeTrialMode);
-        outputUrl = await uploadToCloudinary(replicateUrl);
-        console.log(`[Staging] Proposition générée: ${outputUrl}`);
-      } catch (err) {
-        console.error('[Staging] Erreur proposition:', err.message);
+      if (!isHabite) {
+        try {
+          const replicateUrl = await callReplicate(inputUrl, prompt1, isFreeTrialMode);
+          outputUrl = await uploadToCloudinary(replicateUrl);
+          console.log(`[Staging] Proposition générée: ${outputUrl}`);
+        } catch (err) {
+          console.error('[Staging] Erreur proposition:', err.message);
+        }
+      } else {
+        console.log(`[Staging] Bien habité — pas de génération IA`);
       }
 
       processedPhotos.push({ roomTypeId, roomSubTypeId, inputUrl, outputUrl });
