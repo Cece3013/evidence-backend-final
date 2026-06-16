@@ -73,7 +73,6 @@ async function callReplicate(imageUrl, prompt, isFreeTrialMode) {
 
 async function createNotionRecord(clientData, commandeData, photosData) {
   try {
-    // 1. Créer la fiche client
     console.log('[Notion] Envoi vers Notion:', {
       nom: clientData.nom,
       email: clientData.email,
@@ -82,6 +81,7 @@ async function createNotionRecord(clientData, commandeData, photosData) {
       photos_count: photosData.length,
     });
 
+    // 1. Créer la fiche client dans "Gestion Clients"
     const clientPage = await notion.pages.create({
       parent: { database_id: process.env.NOTION_DATABASE_ID },
       properties: {
@@ -105,7 +105,7 @@ async function createNotionRecord(clientData, commandeData, photosData) {
     const clientPageId = clientPage.id;
     console.log('[Notion] ✅ Fiche client créée:', clientPageId);
 
-    // 2. Créer une entrée par photo
+    // 2. Créer une entrée par photo dans "Photos Particuliers"
     for (let i = 0; i < photosData.length; i++) {
       const photo = photosData[i];
       const pieceLabel = photo.roomTypeId || `Photo ${i + 1}`;
@@ -116,34 +116,34 @@ async function createNotionRecord(clientData, commandeData, photosData) {
           parent: { database_id: process.env.NOTION_PHOTOS_DATABASE_ID },
           properties: {
             "Titre": { title: [{ type: "text", text: { content: `${clientData.nom || '—'} — ${pieceLabel} — Avant` } }] },
-            "Client": { relation: [{ id: clientPageId }] },
+            "Nom du Client": { relation: [{ id: clientPageId }] },
             "Type": { select: { name: "Avant" } },
-            "URL Photo": { url: photo.inputUrl },
-            "Pièce": { rich_text: [{ type: "text", text: { content: pieceLabel } }] },
-            "Statut": { status: { name: "En attente" } },
-            "Référence dossier": { rich_text: [{ type: "text", text: { content: commandeData.orderId || "—" } }] },
+            "URL photo": { url: photo.inputUrl },
+            "Pièce": { select: { name: pieceLabel } },
+            "Statut": { select: { name: "En attente" } },
+            "Référence Dossier": { rich_text: [{ type: "text", text: { content: commandeData.orderId || "—" } }] },
           },
         });
       }
 
-      // Photo APRÈS (seulement si générée)
+      // Photo APRÈS (seulement si générée — bien vide uniquement)
       if (photo.outputUrl) {
         await notion.pages.create({
           parent: { database_id: process.env.NOTION_PHOTOS_DATABASE_ID },
           properties: {
             "Titre": { title: [{ type: "text", text: { content: `${clientData.nom || '—'} — ${pieceLabel} — Après` } }] },
-            "Client": { relation: [{ id: clientPageId }] },
+            "Nom du Client": { relation: [{ id: clientPageId }] },
             "Type": { select: { name: "Après" } },
-            "URL Photo": { url: photo.outputUrl },
-            "Pièce": { rich_text: [{ type: "text", text: { content: pieceLabel } }] },
-            "Statut": { status: { name: "En attente" } },
-            "Référence dossier": { rich_text: [{ type: "text", text: { content: commandeData.orderId || "—" } }] },
+            "URL photo": { url: photo.outputUrl },
+            "Pièce": { select: { name: pieceLabel } },
+            "Statut": { select: { name: "En attente" } },
+            "Référence Dossier": { rich_text: [{ type: "text", text: { content: commandeData.orderId || "—" } }] },
           },
         });
       }
     }
 
-    console.log(`[Notion] ✅ ${photosData.length} photo(s) créées dans Photos Commandes`);
+    console.log(`[Notion] ✅ ${photosData.length} photo(s) créées dans Photos Particuliers`);
 
   } catch (err) {
     console.error('[Notion] ❌ Erreur:', err.message);
@@ -231,18 +231,18 @@ async function processOrder({ photos, clientName, clientEmail, clientPhone, prop
   // 4. Sauvegarder en mémoire
   const order = {
     orderId, clientName, clientEmail, formulaId, formulaLabel,
-    type: 'vide', photos: processedPhotos,
+    type: isHabite ? 'habite' : 'vide', photos: processedPhotos,
     status: 'pending_validation', createdAt: new Date().toISOString(),
   };
   global.stagingOrders.push(order);
 
   // 5. Envoyer email de confirmation
   try {
-    const photoUrl = processedPhotos[0]?.outputUrl || null;
+    const photoUrl = processedPhotos[0]?.outputUrl || processedPhotos[0]?.inputUrl || null;
     await axios.post('https://api.resend.com/emails', {
       from: 'Evidence Home Staging <contact@evidence-homestaging.fr>',
       to: clientEmail,
-      subject: '✨ Votre projection home staging est prête !',
+      subject: isHabite ? '📋 Votre dossier home staging a bien été reçu !' : '✨ Votre projection home staging est prête !',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8f7f4; padding: 32px;">
           <div style="background: #1a1a1a; padding: 24px; border-radius: 12px; text-align: center; margin-bottom: 24px;">
@@ -250,9 +250,12 @@ async function processOrder({ photos, clientName, clientEmail, clientPhone, prop
           </div>
           <div style="background: #fff; border-radius: 12px; padding: 24px; margin-bottom: 16px;">
             <h2 style="color: #1a1a1a; font-size: 18px;">Bonjour ${clientName || 'cher client'},</h2>
-            <p style="color: #555; line-height: 1.6;">Votre projection home staging est prête ! Notre IA a analysé votre bien et généré une visualisation professionnelle.</p>
-            ${photoUrl ? `<div style="text-align: center; margin: 24px 0;"><img src="${photoUrl}" style="width: 100%; border-radius: 8px;" alt="Votre projection" /></div>` : ''}
-            <p style="color: #555; line-height: 1.6;">Retrouvez votre projection dans l'application Evidence Home Staging.</p>
+            ${isHabite
+              ? `<p style="color: #555; line-height: 1.6;">Votre dossier a bien été reçu. Notre équipe d'experts va analyser votre bien et vous envoyer votre rapport sous 48 à 72h.</p>`
+              : `<p style="color: #555; line-height: 1.6;">Votre projection home staging est prête ! Notre IA a analysé votre bien et généré une visualisation professionnelle.</p>`
+            }
+            ${photoUrl && !isHabite ? `<div style="text-align: center; margin: 24px 0;"><img src="${photoUrl}" style="width: 100%; border-radius: 8px;" alt="Votre projection" /></div>` : ''}
+            <p style="color: #555; line-height: 1.6;">Retrouvez votre ${isHabite ? 'rapport' : 'projection'} dans l'application Evidence Home Staging.</p>
           </div>
           <div style="background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
             <p style="margin: 0; color: #888; font-size: 11px;">Référence commande : ${orderId}</p>
