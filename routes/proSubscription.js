@@ -33,8 +33,8 @@ router.post('/subscribe', async (req, res) => {
         'line_items[0][quantity]': '1',
         mode: 'subscription',
         customer: customerId,
-        success_url: 'evidencehomestaging://pro-account?session_id={CHECKOUT_SESSION_ID}',
-        cancel_url: 'evidencehomestaging://offers',
+       success_url: 'https://evidence-platform-pied.vercel.app/dashboard?session_id={CHECKOUT_SESSION_ID}',
+        cancel_url: 'https://evidence-platform-pied.vercel.app/offers',
       }),
       {
         headers: {
