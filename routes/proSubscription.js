@@ -58,7 +58,7 @@ router.post('/subscribe', async (req, res) => {
         'Offre': { select: { name: offerId } },
         'Date souscription': { date: { start: subscriptionDate } },
         'Statut': { select: { name: 'En attente paiement' } },
-        'Session Stripe': { rich_text: [{ text: { content: sessionId } }] },
+        'Session stripe': { rich_text: [{ text: { content: sessionId } }] },
       },
     };
 
@@ -88,7 +88,7 @@ router.get('/subscription/:sessionId', async (req, res) => {
       `https://api.notion.com/v1/databases/${process.env.NOTION_PRO_DATABASE_ID}/query`,
       {
         filter: {
-          property: 'Session Stripe',
+          property: 'Session stripe',
           rich_text: { equals: sessionId },
         },
       },
