@@ -1,49 +1,11 @@
 const express = require('express');
 const Stripe = require('stripe');
 const axios = require('axios');
-
 const router = express.Router();
 
 const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY)
   : null;
-
-router.post('/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
-  const sig = req.headers['stripe-signature'];
-  let event;
-
-  try {
-    event = stripe.webhooks.constructEvent(
-      req.body,
-      sig,
-      process.env.STRIPE_WEBHOOK_SECRET
-    );
-  } catch (err) {
-    console.error('[Webhook] ❌ Signature invalide:', err.message);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
-  }
-
-  // Répondre immédiatement à Stripe
-  res.json({ received: true });
-
-  // Traiter l'événement
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object;
-    const sessionId = session.id;
-    console.log('[Webhook] ✅ Paiement réussi pour session:', sessionId);
-
-   try {
-      await updateNotionSubscriptionStatus(sessionId, 'Actif');
-    } catch (err) {
-      console.error('[Webhook] Erreur mise à jour Notion:', err.message);
-      console.error('[Webhook] Détails:', JSON.stringify(err.response?.data || err));
-    }
-  }
-
-  if (event.type === 'payment_intent.payment_failed') {
-    console.log('[Webhook] ❌ Paiement échoué');
-  }
-}),
 
 async function updateNotionSubscriptionStatus(sessionId, newStatus) {
   // 1. Chercher la fiche Notion PRO via le sessionId
@@ -91,5 +53,42 @@ async function updateNotionSubscriptionStatus(sessionId, newStatus) {
 
   console.log('[Webhook] ✅ Statut Notion mis à jour:', newStatus);
 }
+
+router.post('/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  let event;
+
+  try {
+    event = stripe.webhooks.constructEvent(
+      req.body,
+      sig,
+      process.env.STRIPE_WEBHOOK_SECRET
+    );
+  } catch (err) {
+    console.error('[Webhook] ❌ Signature invalide:', err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  // Répondre immédiatement à Stripe
+  res.json({ received: true });
+
+  // Traiter l'événement
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object;
+    const sessionId = session.id;
+    console.log('[Webhook] ✅ Paiement réussi pour session:', sessionId);
+
+    try {
+      await updateNotionSubscriptionStatus(sessionId, 'Actif');
+    } catch (err) {
+      console.error('[Webhook] Erreur mise à jour Notion:', err.message);
+      console.error('[Webhook] Détails:', JSON.stringify(err.response?.data || err));
+    }
+  }
+
+  if (event.type === 'payment_intent.payment_failed') {
+    console.log('[Webhook] ❌ Paiement échoué');
+  }
+});
 
 module.exports = router;
