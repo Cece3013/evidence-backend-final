@@ -102,8 +102,25 @@ async function createNotionRecord(clientData, commandeData, photosData) {
       },
     });
 
-    const clientPageId = clientPage.id;
+   const clientPageId = clientPage.id;
     console.log('[Notion] ✅ Fiche client créée:', clientPageId);
+
+    // Relire la fiche pour récupérer la Référence dossier générée par Notion
+    let referenceDossier = commandeData.orderId || "—";
+    try {
+      const fullPage = await notion.pages.retrieve({ page_id: clientPageId });
+      const refProp = fullPage.properties["Référence dossier"];
+      if (refProp?.formula?.string) {
+        referenceDossier = refProp.formula.string;
+      } else if (refProp?.rich_text?.[0]?.plain_text) {
+        referenceDossier = refProp.rich_text[0].plain_text;
+      } else if (refProp?.unique_id) {
+        referenceDossier = `${refProp.unique_id.prefix || ''}${refProp.unique_id.number}`;
+      }
+      console.log('[Notion] Référence dossier récupérée:', referenceDossier);
+    } catch (err) {
+      console.error('[Notion] Erreur lecture référence dossier:', err.message);
+    }
 
     // 2. Créer une entrée par photo dans "Photos Particuliers"
     for (let i = 0; i < photosData.length; i++) {
@@ -121,7 +138,7 @@ async function createNotionRecord(clientData, commandeData, photosData) {
             "URL photo": { url: photo.inputUrl },
             "Pièce": { select: { name: pieceLabel } },
             "Statut": { select: { name: "En attente" } },
-           "Titre": { title: [{ type: "text", text: { content: `${clientData.nom || '—'} — ${pieceLabel} — Avant — ${commandeData.orderId}` } }] },
+          "Titre": { title: [{ type: "text", text: { content: `${clientData.nom || '—'} — ${pieceLabel} — Avant — ${referenceDossier}` } }] },
           },
         });
       }
@@ -137,7 +154,7 @@ async function createNotionRecord(clientData, commandeData, photosData) {
             "URL photo": { url: photo.outputUrl },
             "Pièce": { select: { name: pieceLabel } },
             "Statut": { select: { name: "En attente" } },
-           "Titre": { title: [{ type: "text", text: { content: `${clientData.nom || '—'} — ${pieceLabel} — Avant — ${commandeData.orderId}` } }] },
+         "Titre": { title: [{ type: "text", text: { content: `${clientData.nom || '—'} — ${pieceLabel} — Après — ${referenceDossier}` } }] },
           },
         });
       }
