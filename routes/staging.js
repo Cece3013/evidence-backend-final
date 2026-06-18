@@ -109,7 +109,7 @@ async function createNotionRecord(clientData, commandeData, photosData) {
    let referenceDossier = commandeData.orderId || "—";
     try {
       const fullPage = await notion.pages.retrieve({ page_id: clientPageId });
-      const refProp = fullPage.properties["Référence dossier"];
+      const refProp = fullPage.properties["Référence Dossier"];
       console.log('[Notion] DEBUG refProp:', JSON.stringify(refProp));
       if (refProp?.unique_id) {
         const prefix = refProp.unique_id.prefix || '';
