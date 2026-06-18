@@ -43,7 +43,7 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
   if (event.type === 'payment_intent.payment_failed') {
     console.log('[Webhook] ❌ Paiement échoué');
   }
-});
+}),
 
 async function updateNotionSubscriptionStatus(sessionId, newStatus) {
   // 1. Chercher la fiche Notion PRO via le sessionId
@@ -51,7 +51,7 @@ async function updateNotionSubscriptionStatus(sessionId, newStatus) {
     `https://api.notion.com/v1/databases/${process.env.NOTION_PRO_DATABASE_ID}/query`,
     {
       filter: {
-        property: 'Session Stripe',
+        property: 'Session stripe',
         rich_text: { equals: sessionId },
       },
     },
