@@ -106,16 +106,19 @@ async function createNotionRecord(clientData, commandeData, photosData) {
     console.log('[Notion] ✅ Fiche client créée:', clientPageId);
 
     // Relire la fiche pour récupérer la Référence dossier générée par Notion
-    let referenceDossier = commandeData.orderId || "—";
+   let referenceDossier = commandeData.orderId || "—";
     try {
       const fullPage = await notion.pages.retrieve({ page_id: clientPageId });
       const refProp = fullPage.properties["Référence dossier"];
-      if (refProp?.formula?.string) {
+      console.log('[Notion] DEBUG refProp:', JSON.stringify(refProp));
+      if (refProp?.unique_id) {
+        const prefix = refProp.unique_id.prefix || '';
+        const number = refProp.unique_id.number;
+        referenceDossier = `${prefix}-${number}`;
+      } else if (refProp?.formula?.string) {
         referenceDossier = refProp.formula.string;
       } else if (refProp?.rich_text?.[0]?.plain_text) {
         referenceDossier = refProp.rich_text[0].plain_text;
-      } else if (refProp?.unique_id) {
-        referenceDossier = `${refProp.unique_id.prefix || ''}${refProp.unique_id.number}`;
       }
       console.log('[Notion] Référence dossier récupérée:', referenceDossier);
     } catch (err) {
