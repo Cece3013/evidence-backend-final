@@ -169,6 +169,9 @@ async function createNotionRecord(clientData, commandeData, photosData) {
 
   } catch (err) {
     console.error('[Notion] ❌ Erreur:', err.message);
+    console.error('[Notion] ❌ Détails:', JSON.stringify(err.body || err));
+  }
+}
   }
 }
 
