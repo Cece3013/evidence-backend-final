@@ -32,10 +32,11 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
     const sessionId = session.id;
     console.log('[Webhook] ✅ Paiement réussi pour session:', sessionId);
 
-    try {
+   try {
       await updateNotionSubscriptionStatus(sessionId, 'Actif');
     } catch (err) {
       console.error('[Webhook] Erreur mise à jour Notion:', err.message);
+      console.error('[Webhook] Détails:', JSON.stringify(err.response?.data || err));
     }
   }
 
