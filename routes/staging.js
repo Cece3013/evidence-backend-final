@@ -121,7 +121,7 @@ async function createNotionRecord(clientData, commandeData, photosData) {
             "URL photo": { url: photo.inputUrl },
             "Pièce": { select: { name: pieceLabel } },
             "Statut": { select: { name: "En attente" } },
-            "Référence Dossier": { rich_text: [{ type: "text", text: { content: commandeData.orderId || "—" } }] },
+           "Titre": { title: [{ type: "text", text: { content: `${clientData.nom || '—'} — ${pieceLabel} — Avant — ${commandeData.orderId}` } }] },
           },
         });
       }
@@ -137,7 +137,7 @@ async function createNotionRecord(clientData, commandeData, photosData) {
             "URL photo": { url: photo.outputUrl },
             "Pièce": { select: { name: pieceLabel } },
             "Statut": { select: { name: "En attente" } },
-            "Référence Dossier": { rich_text: [{ type: "text", text: { content: commandeData.orderId || "—" } }] },
+           "Titre": { title: [{ type: "text", text: { content: `${clientData.nom || '—'} — ${pieceLabel} — Avant — ${commandeData.orderId}` } }] },
           },
         });
       }
