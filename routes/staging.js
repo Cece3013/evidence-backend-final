@@ -96,9 +96,11 @@ async function createNotionRecord(clientData, commandeData, photosData) {
             ? clientData.exterieurs.map(e => ({ name: e }))
             : []
         },
-        "Type de prestation": { select: { name: commandeData.type_prestation || "—" } },
+       "Type de prestation": { select: { name: commandeData.type_prestation || "—" } },
         "Formule": { select: { name: commandeData.formula || "—" } },
         "Statut": { status: { name: "Nouveau client" } },
+        "Date de commande": { date: { start: new Date().toISOString() } },
+        "Paiement réussi": { checkbox: true },
       },
     });
 
