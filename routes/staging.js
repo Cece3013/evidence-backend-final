@@ -96,7 +96,7 @@ async function createNotionRecord(clientData, commandeData, photosData) {
             ? clientData.exterieurs.map(e => ({ name: e }))
             : []
         },
-       "Type de prestation": { select: { name: commandeData.type_prestation || "—" } },
+        "Type de prestation": { select: { name: commandeData.type_prestation || "—" } },
         "Formule": { select: { name: commandeData.formula || "—" } },
         "Statut": { status: { name: "Nouveau client" } },
         "Date de commande": { date: { start: new Date().toISOString() } },
@@ -104,11 +104,11 @@ async function createNotionRecord(clientData, commandeData, photosData) {
       },
     });
 
-   const clientPageId = clientPage.id;
+    const clientPageId = clientPage.id;
     console.log('[Notion] ✅ Fiche client créée:', clientPageId);
 
-    // Relire la fiche pour récupérer la Référence dossier générée par Notion
-   let referenceDossier = commandeData.orderId || "—";
+    // Relire la fiche pour récupérer la Référence Dossier générée par Notion
+    let referenceDossier = commandeData.orderId || "—";
     try {
       const fullPage = await notion.pages.retrieve({ page_id: clientPageId });
       const refProp = fullPage.properties["Référence Dossier"];
@@ -137,13 +137,12 @@ async function createNotionRecord(clientData, commandeData, photosData) {
         await notion.pages.create({
           parent: { database_id: process.env.NOTION_PHOTOS_DATABASE_ID },
           properties: {
-            "Titre": { title: [{ type: "text", text: { content: `${clientData.nom || '—'} — ${pieceLabel} — Avant` } }] },
+            "Titre": { title: [{ type: "text", text: { content: `${clientData.nom || '—'} — ${pieceLabel} — Avant — ${referenceDossier}` } }] },
             "Nom du Client": { relation: [{ id: clientPageId }] },
             "Type": { select: { name: "Avant" } },
             "URL photo": { url: photo.inputUrl },
             "Pièce": { select: { name: pieceLabel } },
             "Statut": { select: { name: "En attente" } },
-          "Titre": { title: [{ type: "text", text: { content: `${clientData.nom || '—'} — ${pieceLabel} — Avant — ${referenceDossier}` } }] },
           },
         });
       }
@@ -153,13 +152,12 @@ async function createNotionRecord(clientData, commandeData, photosData) {
         await notion.pages.create({
           parent: { database_id: process.env.NOTION_PHOTOS_DATABASE_ID },
           properties: {
-            "Titre": { title: [{ type: "text", text: { content: `${clientData.nom || '—'} — ${pieceLabel} — Après` } }] },
+            "Titre": { title: [{ type: "text", text: { content: `${clientData.nom || '—'} — ${pieceLabel} — Après — ${referenceDossier}` } }] },
             "Nom du Client": { relation: [{ id: clientPageId }] },
             "Type": { select: { name: "Après" } },
             "URL photo": { url: photo.outputUrl },
             "Pièce": { select: { name: pieceLabel } },
             "Statut": { select: { name: "En attente" } },
-         "Titre": { title: [{ type: "text", text: { content: `${clientData.nom || '—'} — ${pieceLabel} — Après — ${referenceDossier}` } }] },
           },
         });
       }
@@ -170,8 +168,6 @@ async function createNotionRecord(clientData, commandeData, photosData) {
   } catch (err) {
     console.error('[Notion] ❌ Erreur:', err.message);
     console.error('[Notion] ❌ Détails:', JSON.stringify(err.body || err));
-  }
-}
   }
 }
 
