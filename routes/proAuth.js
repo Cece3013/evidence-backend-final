@@ -171,4 +171,47 @@ router.get('/me', async (req, res) => {
     res.status(401).json({ error: 'Token invalide ou expiré.' });
   }
 });
+// ─── GET /api/pro/auth/invoices ────────────────────────────────────────────
+router.get('/invoices', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Token manquant.' });
+  }
+
+  const token = authHeader.split(' ')[1];
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'evidence-secret-temp');
+    const email = decoded.email;
+
+    const Stripe = require('stripe');
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+    // 1. Trouver le client Stripe par email
+    const customers = await stripe.customers.list({ email, limit: 1 });
+    if (!customers.data.length) {
+      return res.json({ invoices: [] });
+    }
+
+    const customerId = customers.data[0].id;
+
+    // 2. Récupérer ses factures
+    const invoices = await stripe.invoices.list({ customer: customerId, limit: 12 });
+
+    const formatted = invoices.data.map(inv => ({
+      id: inv.id,
+      amount: inv.amount_paid / 100,
+      date: new Date(inv.created * 1000).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }),
+      status: inv.status,
+      pdfUrl: inv.invoice_pdf,
+      number: inv.number,
+    }));
+
+    res.json({ invoices: formatted });
+
+  } catch (err) {
+    console.error('[ProAuth] Erreur /invoices:', err.message);
+    res.status(401).json({ error: 'Erreur lors de la récupération des factures.' });
+  }
+});
 module.exports = router;
