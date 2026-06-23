@@ -114,5 +114,61 @@ router.post('/verify-code', async (req, res) => {
   console.log(`[ProAuth] ✅ Connexion réussie: ${normalizedEmail}`);
   res.json({ success: true, token });
 });
+// ─── GET /api/pro/auth/me ──────────────────────────────────────────────────
+router.get('/me', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Token manquant.' });
+  }
 
+  const token = authHeader.split(' ')[1];
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'evidence-secret-temp');
+    const email = decoded.email;
+
+    const response = await axios.post(
+      `https://api.notion.com/v1/databases/${process.env.NOTION_PRO_DATABASE_ID}/query`,
+      {
+        filter: {
+          property: 'Email',
+          email: { equals: email },
+        },
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${process.env.NOTION_API_KEY}`,
+          'Notion-Version': '2022-06-28',
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    const results = response.data.results;
+    if (!results || results.length === 0) {
+      return res.status(404).json({ error: 'Abonnement non trouvé.' });
+    }
+
+    const page = results[0].properties;
+    const offerId = page['Offre']?.select?.name || '';
+
+    res.json({
+      companyName: page['Nom entreprise']?.title?.[0]?.plain_text || '—',
+      email: page['Email']?.email || email,
+      phone: page['Téléphone']?.phone_number || '—',
+      address: page['Adresse']?.rich_text?.[0]?.plain_text || '—',
+      siret: page['SIRET']?.rich_text?.[0]?.plain_text || '—',
+      offerId,
+      offerName: offerId === 'pro_starter' ? 'PRO Starter'
+               : offerId === 'pro_business' ? 'PRO Business'
+               : 'PRO Agency',
+      status: page['Statut']?.select?.name || '—',
+      subscriptionDate: page['Date souscription']?.date?.start || '—',
+    });
+
+  } catch (err) {
+    console.error('[ProAuth] Erreur /me:', err.response?.data || err.message);
+    res.status(401).json({ error: 'Token invalide ou expiré.' });
+  }
+});
 module.exports = router;
