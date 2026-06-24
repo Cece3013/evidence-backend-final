@@ -68,6 +68,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/orders/client', authRouter);
 app.use('/api/pro', proSubscriptionRouter);
 app.use('/api/pro/auth', require('./routes/proAuth'));
+app.use('/api/pro/projects', require('./routes/proProjects'));
 
 // ─── Health check ─────────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => res.json({ status: 'ok', version: '2.0.0' }));
