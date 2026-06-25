@@ -177,7 +177,7 @@ async function processProject({ subPageId, projectName, photos }) {
               "Type": { select: { name: "Après" } },
               "URL photo": { url: outputUrl },
               "Pièce": { select: { name: pieceLabel } },
-              "Statut": { select: { name: "Terminé" } },
+              "Statut": { select: { name: "En attente validation" } },
             },
           });
         }
@@ -189,11 +189,10 @@ async function processProject({ subPageId, projectName, photos }) {
     await notion.pages.update({
       page_id: projectPageId,
       properties: {
-        "Statut": { select: { name: "Livré" } },
+        "Statut": { select: { name: "En cours" } },
         "Photos livrées": { number: deliveredCount },
       },
     });
-
     console.log(`[ProProjects] ✅ Projet ${projectName} terminé`);
 
   } catch (err) {
