@@ -1,30 +1,51 @@
 const axios = require('axios');
-const { Client } = require("@notionhq/client");
 
-const notion = new Client({ auth: process.env.NOTION_API_KEY });
+const NOTION_HEADERS = {
+  'Authorization': `Bearer ${process.env.NOTION_API_KEY}`,
+  'Notion-Version': '2022-06-28',
+  'Content-Type': 'application/json',
+};
+
+async function queryDatabase(databaseId, filter) {
+  const res = await axios.post(
+    `https://api.notion.com/v1/databases/${databaseId}/query`,
+    filter ? { filter } : {},
+    { headers: NOTION_HEADERS }
+  );
+  return res.data.results;
+}
+
+async function updatePage(pageId, properties) {
+  await axios.patch(
+    `https://api.notion.com/v1/pages/${pageId}`,
+    { properties },
+    { headers: NOTION_HEADERS }
+  );
+}
+
+async function retrievePage(pageId) {
+  const res = await axios.get(
+    `https://api.notion.com/v1/pages/${pageId}`,
+    { headers: NOTION_HEADERS }
+  );
+  return res.data;
+}
 
 async function updatePhotoStatus(databaseId, photoPage) {
   if (photoPage.properties['Validé']?.checkbox === true &&
       photoPage.properties['Statut']?.select?.name !== 'Validé' &&
       photoPage.properties['Statut']?.select?.name !== 'Envoyé') {
-    await notion.pages.update({
-      page_id: photoPage.id,
-      properties: { "Statut": { select: { name: "Validé" } } },
-    });
+    await updatePage(photoPage.id, { "Statut": { select: { name: "Validé" } } });
     console.log(`[ValidationJob] Photo ${photoPage.id} → Validé`);
   }
 }
 
 async function checkProjectComplete(databaseId, relationProperty, parentPage) {
-  const photosRes = await notion.databases.query({
-    database_id: databaseId,
-    filter: {
-      property: relationProperty,
-      relation: { contains: parentPage.id },
-    },
+  const photos = await queryDatabase(databaseId, {
+    property: relationProperty,
+    relation: { contains: parentPage.id },
   });
 
-  const photos = photosRes.results;
   if (photos.length === 0) return false;
 
   return photos.every(p => p.properties['Statut']?.select?.name === 'Validé');
@@ -39,7 +60,7 @@ async function sendClientEmail(parentPage, type) {
   } else {
     const relationId = parentPage.properties['Nom entreprise']?.relation?.[0]?.id;
     if (relationId) {
-      const subPage = await notion.pages.retrieve({ page_id: relationId });
+      const subPage = await retrievePage(relationId);
       email = subPage.properties['Email']?.email;
       name = subPage.properties['Nom entreprise']?.title?.[0]?.plain_text || 'cher client';
     }
@@ -82,65 +103,45 @@ async function runValidationCheck() {
   console.log('[ValidationJob] Démarrage vérification...');
 
   try {
-    const particuliersPhotos = await notion.databases.query({
-      database_id: process.env.NOTION_PHOTOS_DATABASE_ID,
-      filter: { property: 'Validé', checkbox: { equals: true } },
+    const particuliersPhotos = await queryDatabase(process.env.NOTION_PHOTOS_DATABASE_ID, {
+      property: 'Validé', checkbox: { equals: true },
     });
-    for (const photo of particuliersPhotos.results) {
+    for (const photo of particuliersPhotos) {
       await updatePhotoStatus(process.env.NOTION_PHOTOS_DATABASE_ID, photo);
     }
 
-    const proPhotos = await notion.databases.query({
-      database_id: process.env.NOTION_PHOTOS_PRO_DATABASE_ID,
-      filter: { property: 'Validé', checkbox: { equals: true } },
+    const proPhotos = await queryDatabase(process.env.NOTION_PHOTOS_PRO_DATABASE_ID, {
+      property: 'Validé', checkbox: { equals: true },
     });
-    for (const photo of proPhotos.results) {
+    for (const photo of proPhotos) {
       await updatePhotoStatus(process.env.NOTION_PHOTOS_PRO_DATABASE_ID, photo);
     }
 
-    const clientsRes = await notion.databases.query({
-      database_id: process.env.NOTION_DATABASE_ID,
-      filter: {
-        property: 'Statut',
-        status: { does_not_equal: 'Livré' },
-      },
+    const clients = await queryDatabase(process.env.NOTION_DATABASE_ID, {
+      property: 'Statut', status: { does_not_equal: 'Livré' },
     });
 
-    for (const client of clientsRes.results) {
+    for (const client of clients) {
       const isComplete = await checkProjectComplete(
-        process.env.NOTION_PHOTOS_DATABASE_ID,
-        'Nom du Client',
-        client
+        process.env.NOTION_PHOTOS_DATABASE_ID, 'Nom du Client', client
       );
       if (isComplete) {
         await sendClientEmail(client, 'particulier');
-        await notion.pages.update({
-          page_id: client.id,
-          properties: { "Statut": { status: { name: "Livré" } } },
-        });
+        await updatePage(client.id, { "Statut": { status: { name: "Livré" } } });
       }
     }
 
-    const projectsRes = await notion.databases.query({
-      database_id: process.env.NOTION_PRO_PROJECTS_DATABASE_ID,
-      filter: {
-        property: 'Statut',
-        select: { does_not_equal: 'Livré' },
-      },
+    const projects = await queryDatabase(process.env.NOTION_PRO_PROJECTS_DATABASE_ID, {
+      property: 'Statut', select: { does_not_equal: 'Livré' },
     });
 
-    for (const project of projectsRes.results) {
+    for (const project of projects) {
       const isComplete = await checkProjectComplete(
-        process.env.NOTION_PHOTOS_PRO_DATABASE_ID,
-        'Projet',
-        project
+        process.env.NOTION_PHOTOS_PRO_DATABASE_ID, 'Projet', project
       );
       if (isComplete) {
         await sendClientEmail(project, 'pro');
-        await notion.pages.update({
-          page_id: project.id,
-          properties: { "Statut": { select: { name: "Livré" } } },
-        });
+        await updatePage(project.id, { "Statut": { select: { name: "Livré" } } });
       }
     }
 
