@@ -214,4 +214,57 @@ router.get('/invoices', async (req, res) => {
     res.status(401).json({ error: 'Erreur lors de la récupération des factures.' });
   }
 });
+// ─── GET /api/pro/auth/projects ────────────────────────────────────────────
+router.get('/projects', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Token manquant.' });
+  }
+
+  const token = authHeader.split(' ')[1];
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'evidence-secret-temp');
+    const email = decoded.email;
+
+    // 1. Trouver la fiche abonnement
+    const subRes = await axios.post(
+      `https://api.notion.com/v1/databases/${process.env.NOTION_PRO_DATABASE_ID}/query`,
+      { filter: { property: 'Email', email: { equals: email } } },
+      { headers: { 'Authorization': `Bearer ${process.env.NOTION_API_KEY}`, 'Notion-Version': '2022-06-28', 'Content-Type': 'application/json' } }
+    );
+
+    if (!subRes.data.results.length) {
+      return res.json({ projects: [] });
+    }
+
+    const subPageId = subRes.data.results[0].id;
+
+    // 2. Trouver tous les projets liés
+    const projectsRes = await axios.post(
+      `https://api.notion.com/v1/databases/${process.env.NOTION_PRO_PROJECTS_DATABASE_ID}/query`,
+      {
+        filter: { property: 'Nom entreprise', relation: { contains: subPageId } },
+        sorts: [{ property: 'Date de création', direction: 'descending' }],
+      },
+      { headers: { 'Authorization': `Bearer ${process.env.NOTION_API_KEY}`, 'Notion-Version': '2022-06-28', 'Content-Type': 'application/json' } }
+    );
+
+    const projects = projectsRes.data.results.map(p => ({
+      id: p.id,
+      name: p.properties['Nom du projet']?.title?.[0]?.plain_text || '—',
+      projectId: p.properties['ID projet']?.unique_id ? `${p.properties['ID projet'].unique_id.prefix}-${p.properties['ID projet'].unique_id.number}` : '—',
+      status: p.properties['Statut']?.select?.name || '—',
+      createdDate: p.properties['Date de création']?.date?.start || null,
+      photosReceived: p.properties['Photos reçues']?.number || 0,
+      photosDelivered: p.properties['Photos livrées']?.number || 0,
+    }));
+
+    res.json({ projects });
+
+  } catch (err) {
+    console.error('[ProAuth] Erreur /projects:', err.response?.data || err.message);
+    res.status(401).json({ error: 'Erreur lors de la récupération des projets.' });
+  }
+});
 module.exports = router;
