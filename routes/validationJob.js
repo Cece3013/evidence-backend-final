@@ -116,10 +116,9 @@ async function runValidationCheck() {
     for (const photo of proPhotos) {
       await updatePhotoStatus(process.env.NOTION_PHOTOS_PRO_DATABASE_ID, photo);
     }
-
-   const clients = await queryDatabase(process.env.NOTION_DATABASE_ID, {
-  property: 'Statut', status: { does_not_equal: 'Terminé' },
-});
+    const clients = await queryDatabase(process.env.NOTION_DATABASE_ID, {
+     property: 'Statut', select: { does_not_equal: 'Terminé' },
+    });
 
     for (const client of clients) {
       const isComplete = await checkProjectComplete(
@@ -127,7 +126,7 @@ async function runValidationCheck() {
       );
       if (isComplete) {
         await sendClientEmail(client, 'particulier');
-       await updatePage(client.id, { "Statut": { status: { name: "Terminé" } } });
+        await updatePage(client.id, { "Statut": { select: { name: "Terminé" } } });
       }
     }
 
