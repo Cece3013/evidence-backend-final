@@ -127,7 +127,7 @@ async function runValidationCheck() {
       );
       if (isComplete) {
         await sendClientEmail(client, 'particulier');
-        await updatePage(client.id, { "Statut": { status: { name: "Livré" } } });
+       await updatePage(client.id, { "Statut": { status: { name: "Terminé" } } });
       }
     }
 
@@ -141,7 +141,7 @@ async function runValidationCheck() {
       );
       if (isComplete) {
         await sendClientEmail(project, 'pro');
-        await updatePage(client.id, { "Statut": { status: { name: "Terminé" } } });
+        await updatePage(project.id, { "Statut": { select: { name: "Livré" } } });
       }
     }
 
