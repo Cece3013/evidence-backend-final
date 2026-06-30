@@ -267,4 +267,49 @@ router.get('/projects', async (req, res) => {
     res.status(401).json({ error: 'Erreur lors de la récupération des projets.' });
   }
 });
+// ─── PATCH /api/pro/auth/update ────────────────────────────────────────────
+router.patch('/update', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Token manquant.' });
+  }
+
+  const token = authHeader.split(' ')[1];
+  const { companyName, phone, address, siret } = req.body;
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'evidence-secret-temp');
+    const email = decoded.email;
+
+    const subRes = await axios.post(
+      `https://api.notion.com/v1/databases/${process.env.NOTION_PRO_DATABASE_ID}/query`,
+      { filter: { property: 'Email', email: { equals: email } } },
+      { headers: { 'Authorization': `Bearer ${process.env.NOTION_API_KEY}`, 'Notion-Version': '2022-06-28', 'Content-Type': 'application/json' } }
+    );
+
+    if (!subRes.data.results.length) {
+      return res.status(404).json({ error: 'Abonnement non trouvé.' });
+    }
+
+    const pageId = subRes.data.results[0].id;
+    const properties = {};
+
+    if (companyName) properties['Nom entreprise'] = { title: [{ text: { content: companyName } }] };
+    if (phone) properties['Téléphone'] = { phone_number: phone };
+    if (address) properties['Adresse'] = { rich_text: [{ text: { content: address } }] };
+    if (siret) properties['SIRET'] = { rich_text: [{ text: { content: siret } }] };
+
+    await axios.patch(
+      `https://api.notion.com/v1/pages/${pageId}`,
+      { properties },
+      { headers: { 'Authorization': `Bearer ${process.env.NOTION_API_KEY}`, 'Notion-Version': '2022-06-28', 'Content-Type': 'application/json' } }
+    );
+
+    res.json({ success: true });
+
+  } catch (err) {
+    console.error('[ProAuth] Erreur /update:', err.response?.data || err.message);
+    res.status(401).json({ error: 'Erreur lors de la mise à jour.' });
+  }
+});
 module.exports = router;
