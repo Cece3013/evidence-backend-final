@@ -312,4 +312,81 @@ router.patch('/update', async (req, res) => {
     res.status(401).json({ error: 'Erreur lors de la mise à jour.' });
   }
 });
+// ─── POST /api/pro/auth/change-plan ────────────────────────────────────────
+router.post('/change-plan', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Token manquant.' });
+  }
+
+  const token = authHeader.split(' ')[1];
+  const { newOfferId } = req.body;
+
+  const PRICE_IDS = {
+    pro_starter: 'price_1TjdIzBtigY0O7pljXLznLIs',
+    pro_business: 'price_1TjdJIBtigY0O7plmAViGr2c',
+    pro_agency: 'price_1TjdJbBtigY0O7plhTK1GXe4',
+  };
+
+  const newPriceId = PRICE_IDS[newOfferId];
+  if (!newPriceId) {
+    return res.status(400).json({ error: 'Offre invalide.' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'evidence-secret-temp');
+    const email = decoded.email;
+
+    // 1. Trouver le client Stripe
+    const Stripe = require('stripe');
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+    const customers = await stripe.customers.list({ email, limit: 1 });
+    if (!customers.data.length) {
+      return res.status(404).json({ error: 'Client Stripe non trouvé.' });
+    }
+
+    // 2. Trouver son abonnement actif
+    const subscriptions = await stripe.subscriptions.list({
+      customer: customers.data[0].id,
+      status: 'active',
+      limit: 1,
+    });
+
+    if (!subscriptions.data.length) {
+      return res.status(404).json({ error: 'Abonnement actif non trouvé.' });
+    }
+
+    const subscription = subscriptions.data[0];
+    const subscriptionItemId = subscription.items.data[0].id;
+
+    // 3. Changer le prix de l'abonnement
+    await stripe.subscriptions.update(subscription.id, {
+      items: [{ id: subscriptionItemId, price: newPriceId }],
+      proration_behavior: 'create_prorations',
+    });
+
+    // 4. Mettre à jour Notion
+    const subRes = await axios.post(
+      `https://api.notion.com/v1/databases/${process.env.NOTION_PRO_DATABASE_ID}/query`,
+      { filter: { property: 'Email', email: { equals: email } } },
+      { headers: { 'Authorization': `Bearer ${process.env.NOTION_API_KEY}`, 'Notion-Version': '2022-06-28', 'Content-Type': 'application/json' } }
+    );
+
+    if (subRes.data.results.length) {
+      await axios.patch(
+        `https://api.notion.com/v1/pages/${subRes.data.results[0].id}`,
+        { properties: { 'Offre': { select: { name: newOfferId } } } },
+        { headers: { 'Authorization': `Bearer ${process.env.NOTION_API_KEY}`, 'Notion-Version': '2022-06-28', 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`[ProAuth] ✅ Changement d'offre: ${email} → ${newOfferId}`);
+    res.json({ success: true });
+
+  } catch (err) {
+    console.error('[ProAuth] Erreur change-plan:', err.response?.data || err.message);
+    res.status(500).json({ error: 'Erreur lors du changement d\'offre.' });
+  }
+});
 module.exports = router;
