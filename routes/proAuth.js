@@ -530,4 +530,79 @@ router.post('/billing-portal', async (req, res) => {
     res.status(500).json({ error: "Erreur lors de l'ouverture du portail." });
   }
 });
+// ─── POST /api/pro/auth/support-request ────────────────────────────────────
+router.post('/support-request', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Token manquant.' });
+  }
+  const token = authHeader.split(' ')[1];
+  const { subject, message, companyName } = req.body;
+
+  if (!subject || !message) {
+    return res.status(400).json({ error: 'Sujet et message requis.' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'evidencesecret-temp');
+    const email = decoded.email;
+
+    // 1. Envoyer l'email via Resend
+    await axios.post('https://api.resend.com/emails', {
+      from: 'Evidence Home Staging <contact@evidence-homestaging.fr>',
+      to: 'contact@evidence-homestaging.fr',
+      reply_to: email,
+      subject: `[Support PRO] ${subject}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8f7f4; padding: 32px;">
+          <div style="background: #1a1a1a; padding: 24px; border-radius: 12px; text-align: center; margin-bottom: 24px;">
+            <h1 style="color: #c8a96e; margin: 0; font-size: 22px;">Evidence Home Staging</h1>
+          </div>
+          <div style="background: #fff; border-radius: 12px; padding: 24px;">
+            <h2 style="color: #1a1a1a; font-size: 18px;">Nouvelle demande de support</h2>
+            <p style="color: #555;"><strong>Entreprise :</strong> ${companyName || '—'}</p>
+            <p style="color: #555;"><strong>Email :</strong> ${email}</p>
+            <p style="color: #555;"><strong>Sujet :</strong> ${subject}</p>
+            <p style="color: #555; line-height: 1.6; white-space: pre-wrap;">${message}</p>
+          </div>
+        </div>
+      `,
+    }, {
+      headers: {
+        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    // 2. Créer l'entrée dans Notion
+    await axios.post(
+      'https://api.notion.com/v1/pages',
+      {
+        parent: { database_id: process.env.NOTION_SUPPORT_DATABASE_ID },
+        properties: {
+          'Nom': { title: [{ text: { content: companyName || email } }] },
+          'Email': { email: email },
+          'Entreprise': { rich_text: [{ text: { content: companyName || '' } }] },
+          'Sujet': { rich_text: [{ text: { content: subject } }] },
+          'Message': { rich_text: [{ text: { content: message } }] },
+          'Statut': { select: { name: 'Nouveau' } },
+          'Date': { date: { start: new Date().toISOString() } },
+        },
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${process.env.NOTION_API_KEY}`,
+          'Notion-Version': '2022-06-28',
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    console.log(`[ProAuth] Demande de support envoyée: ${email} — ${subject}`);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[ProAuth] Erreur support-request:', err.response?.data || err.message);
+    res.status(500).json({ error: "Erreur lors de l'envoi de la demande." });
+  }
+});
 module.exports = router;
