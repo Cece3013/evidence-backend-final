@@ -335,21 +335,10 @@ router.post('/change-plan', async (req, res) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'evidencesecret-temp');
     const email = decoded.email;
 
-        // 1. Trouver TOUS les clients Stripe avec cet email (il peut y en avoir plusieurs)
+           // 1. Trouver TOUS les clients Stripe avec cet email (il peut y en avoir plusieurs)
     const Stripe = require('stripe');
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-   const customers = await stripe.customers.list({ email: email.toLowerCase(), limit: 100 });
-const allCustomers = await stripe.customers.list({ limit: 20 });
-console.log(`[DEBUG change-plan] TOTAL clients visibles avec cette clé (sans filtre): ${allCustomers.data.length}`);
-allCustomers.data.forEach(c => {
-  console.log(`[DEBUG change-plan] -> ${c.id} — "${c.email}"`);
-});
-
-    console.log(`[DEBUG change-plan] email recherché: "${email}"`);
-    console.log(`[DEBUG change-plan] nombre de clients Stripe trouvés: ${customers.data.length}`);
-    customers.data.forEach(c => {
-      console.log(`[DEBUG change-plan] client ${c.id} — email exact: "${c.email}"`);
-    });
+    const customers = await stripe.customers.list({ email: email.toLowerCase(), limit: 100 });
 
     if (!customers.data.length) {
       return res.status(404).json({ error: 'Client Stripe non trouvé.' });
@@ -362,7 +351,6 @@ allCustomers.data.forEach(c => {
         customer: customer.id,
         limit: 10,
       });
-      console.log(`[DEBUG change-plan] client ${customer.id} — ${subs.data.length} abonnement(s), statuts: ${subs.data.map(s => s.status).join(', ') || 'aucun'}`);
       const activeSub = subs.data.find(s => s.status === 'active');
       if (activeSub) {
         subscription = activeSub;
