@@ -338,7 +338,13 @@ router.post('/change-plan', async (req, res) => {
         // 1. Trouver TOUS les clients Stripe avec cet email (il peut y en avoir plusieurs)
     const Stripe = require('stripe');
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-    const customers = await stripe.customers.list({ email, limit: 100 });
+   const customers = await stripe.customers.list({ email, limit: 100 });
+
+const allCustomers = await stripe.customers.list({ limit: 20 });
+console.log(`[DEBUG change-plan] TOTAL clients visibles avec cette clé (sans filtre): ${allCustomers.data.length}`);
+allCustomers.data.forEach(c => {
+  console.log(`[DEBUG change-plan] -> ${c.id} — "${c.email}"`);
+});
 
     console.log(`[DEBUG change-plan] email recherché: "${email}"`);
     console.log(`[DEBUG change-plan] nombre de clients Stripe trouvés: ${customers.data.length}`);
