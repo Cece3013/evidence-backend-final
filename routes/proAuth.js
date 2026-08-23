@@ -499,4 +499,35 @@ router.post('/reactivate-subscription', async (req, res) => {
     res.status(500).json({ error: 'Erreur lors de la réactivation.' });
   }
 });
+// ─── POST /api/pro/auth/billing-portal ─────────────────────────────────────
+router.post('/billing-portal', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Token manquant.' });
+  }
+  const token = authHeader.split(' ')[1];
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'evidencesecret-temp');
+    const email = decoded.email;
+
+    const Stripe = require('stripe');
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+    const { customer } = await findCustomerAndActiveSubscription(stripe, email);
+    if (!customer) {
+      return res.status(404).json({ error: 'Client Stripe non trouvé.' });
+    }
+
+    const session = await stripe.billingPortal.sessions.create({
+      customer: customer.id,
+      return_url: 'https://evidence-platform-pied.vercel.app/billing',
+    });
+
+    res.json({ url: session.url });
+  } catch (err) {
+    console.error('[ProAuth] Erreur billing-portal:', err.response?.data || err.message);
+    res.status(500).json({ error: "Erreur lors de l'ouverture du portail." });
+  }
+});
 module.exports = router;
