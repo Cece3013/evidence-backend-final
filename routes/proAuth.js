@@ -396,4 +396,92 @@ router.post('/change-plan', async (req, res) => {
     res.status(500).json({ error: "Erreur lors du changement d'offre." });
   }
 });
+// ─── Fonction utilitaire : trouver le client + abonnement actif (insensible à la casse) ──
+async function findCustomerAndActiveSubscription(stripe, email) {
+  const allCustomers = await stripe.customers.list({ limit: 100 });
+  const matchingCustomers = allCustomers.data.filter(
+    c => c.email && c.email.toLowerCase() === email.toLowerCase()
+  );
+
+  for (const customer of matchingCustomers) {
+    const subs = await stripe.subscriptions.list({
+      customer: customer.id,
+      limit: 10,
+    });
+    const activeSub = subs.data.find(s => s.status === 'active');
+    if (activeSub) {
+      return { customer, subscription: activeSub };
+    }
+  }
+  return { customer: null, subscription: null };
+}
+
+// ─── POST /api/pro/auth/cancel-subscription ────────────────────────────────
+router.post('/cancel-subscription', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Token manquant.' });
+  }
+  const token = authHeader.split(' ')[1];
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'evidencesecret-temp');
+    const email = decoded.email;
+
+    const Stripe = require('stripe');
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+    const { subscription } = await findCustomerAndActiveSubscription(stripe, email);
+    if (!subscription) {
+      return res.status(404).json({ error: 'Abonnement actif non trouvé.' });
+    }
+
+    const updated = await stripe.subscriptions.update(subscription.id, {
+      cancel_at_period_end: true,
+    });
+
+    console.log(`[ProAuth] Résiliation programmée: ${email} → fin le ${new Date(updated.current_period_end * 1000).toLocaleDateString('fr-FR')}`);
+
+    res.json({
+      success: true,
+      cancelAtPeriodEnd: true,
+      periodEnd: updated.current_period_end,
+    });
+  } catch (err) {
+    console.error('[ProAuth] Erreur cancel-subscription:', err.response?.data || err.message);
+    res.status(500).json({ error: 'Erreur lors de la résiliation.' });
+  }
+});
+
+// ─── POST /api/pro/auth/reactivate-subscription ────────────────────────────
+router.post('/reactivate-subscription', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Token manquant.' });
+  }
+  const token = authHeader.split(' ')[1];
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'evidencesecret-temp');
+    const email = decoded.email;
+
+    const Stripe = require('stripe');
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+    const { subscription } = await findCustomerAndActiveSubscription(stripe, email);
+    if (!subscription) {
+      return res.status(404).json({ error: 'Abonnement actif non trouvé.' });
+    }
+
+    await stripe.subscriptions.update(subscription.id, {
+      cancel_at_period_end: false,
+    });
+
+    console.log(`[ProAuth] Réactivation abonnement: ${email}`);
+    res.json({ success: true, cancelAtPeriodEnd: false });
+  } catch (err) {
+    console.error('[ProAuth] Erreur reactivate-subscription:', err.response?.data || err.message);
+    res.status(500).json({ error: 'Erreur lors de la réactivation.' });
+  }
+});
 module.exports = router;
