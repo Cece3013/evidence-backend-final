@@ -335,18 +335,21 @@ router.post('/change-plan', async (req, res) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'evidencesecret-temp');
     const email = decoded.email;
 
-           // 1. Trouver TOUS les clients Stripe avec cet email (il peut y en avoir plusieurs)
+            // 1. Trouver le client Stripe (comparaison insensible à la casse)
     const Stripe = require('stripe');
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-    const customers = await stripe.customers.list({ email: email.toLowerCase(), limit: 100 });
+    const allCustomers = await stripe.customers.list({ limit: 100 });
+    const matchingCustomers = allCustomers.data.filter(
+      c => c.email && c.email.toLowerCase() === email.toLowerCase()
+    );
 
-    if (!customers.data.length) {
+    if (!matchingCustomers.length) {
       return res.status(404).json({ error: 'Client Stripe non trouvé.' });
     }
 
     // 2. Parcourir chaque client jusqu'à trouver celui qui a un abonnement actif
     let subscription = null;
-    for (const customer of customers.data) {
+    for (const customer of matchingCustomers) {
       const subs = await stripe.subscriptions.list({
         customer: customer.id,
         limit: 10,
