@@ -318,7 +318,6 @@ router.post('/change-plan', async (req, res) => {
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Token manquant.' });
   }
-
   const token = authHeader.split(' ')[1];
   const { newOfferId } = req.body;
 
@@ -327,37 +326,42 @@ router.post('/change-plan', async (req, res) => {
     pro_business: 'price_1TjdJIBtigY0O7plmAViGr2c',
     pro_agency: 'price_1TjdJbBtigY0O7plhTK1GXe4',
   };
-
   const newPriceId = PRICE_IDS[newOfferId];
   if (!newPriceId) {
     return res.status(400).json({ error: 'Offre invalide.' });
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'evidence-secret-temp');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'evidencesecret-temp');
     const email = decoded.email;
 
-    // 1. Trouver le client Stripe
+    // 1. Trouver TOUS les clients Stripe avec cet email (il peut y en avoir plusieurs)
     const Stripe = require('stripe');
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+    const customers = await stripe.customers.list({ email, limit: 100 });
 
-    const customers = await stripe.customers.list({ email, limit: 1 });
     if (!customers.data.length) {
       return res.status(404).json({ error: 'Client Stripe non trouvé.' });
     }
 
-    // 2. Trouver son abonnement actif
-    const subscriptions = await stripe.subscriptions.list({
-      customer: customers.data[0].id,
-      status: 'active',
-      limit: 1,
-    });
+    // 2. Parcourir chaque client jusqu'à trouver celui qui a un abonnement actif
+    let subscription = null;
+    for (const customer of customers.data) {
+      const subs = await stripe.subscriptions.list({
+        customer: customer.id,
+        status: 'active',
+        limit: 1,
+      });
+      if (subs.data.length) {
+        subscription = subs.data[0];
+        break;
+      }
+    }
 
-    if (!subscriptions.data.length) {
+    if (!subscription) {
       return res.status(404).json({ error: 'Abonnement actif non trouvé.' });
     }
 
-    const subscription = subscriptions.data[0];
     const subscriptionItemId = subscription.items.data[0].id;
 
     // 3. Changer le prix de l'abonnement
@@ -370,23 +374,23 @@ router.post('/change-plan', async (req, res) => {
     const subRes = await axios.post(
       `https://api.notion.com/v1/databases/${process.env.NOTION_PRO_DATABASE_ID}/query`,
       { filter: { property: 'Email', email: { equals: email } } },
-      { headers: { 'Authorization': `Bearer ${process.env.NOTION_API_KEY}`, 'Notion-Version': '2022-06-28', 'Content-Type': 'application/json' } }
+      { headers: { 'Authorization': `Bearer ${process.env.NOTION_API_KEY}`,
+        'Notion-Version': '2022-06-28', 'Content-Type': 'application/json' } }
     );
-
     if (subRes.data.results.length) {
       await axios.patch(
         `https://api.notion.com/v1/pages/${subRes.data.results[0].id}`,
         { properties: { 'Offre': { select: { name: newOfferId } } } },
-        { headers: { 'Authorization': `Bearer ${process.env.NOTION_API_KEY}`, 'Notion-Version': '2022-06-28', 'Content-Type': 'application/json' } }
+        { headers: { 'Authorization': `Bearer ${process.env.NOTION_API_KEY}`,
+          'Notion-Version': '2022-06-28', 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`[ProAuth] ✅ Changement d'offre: ${email} → ${newOfferId}`);
+    console.log(`[ProAuth] Changement d'offre: ${email} → ${newOfferId}`);
     res.json({ success: true });
-
   } catch (err) {
     console.error('[ProAuth] Erreur change-plan:', err.response?.data || err.message);
-    res.status(500).json({ error: 'Erreur lors du changement d\'offre.' });
+    res.status(500).json({ error: "Erreur lors du changement d'offre." });
   }
 });
 module.exports = router;
