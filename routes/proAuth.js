@@ -152,6 +152,20 @@ router.get('/me', async (req, res) => {
     const page = results[0].properties;
     const offerId = page['Offre']?.select?.name || '';
 
+        let cancelAtPeriodEnd = false;
+    let periodEnd = null;
+    try {
+      const Stripe = require('stripe');
+      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+      const { subscription } = await findCustomerAndActiveSubscription(stripe, email);
+      if (subscription) {
+        cancelAtPeriodEnd = subscription.cancel_at_period_end;
+        periodEnd = subscription.current_period_end;
+      }
+    } catch (stripeErr) {
+      console.error('[ProAuth] Erreur lecture Stripe dans /me:', stripeErr.message);
+    }
+
     res.json({
       companyName: page['Nom entreprise']?.title?.[0]?.plain_text || '—',
       email: page['Email']?.email || email,
@@ -160,12 +174,13 @@ router.get('/me', async (req, res) => {
       siret: page['SIRET']?.rich_text?.[0]?.plain_text || '—',
       offerId,
       offerName: offerId === 'pro_starter' ? 'PRO Starter'
-               : offerId === 'pro_business' ? 'PRO Business'
-               : 'PRO Agency',
+        : offerId === 'pro_business' ? 'PRO Business'
+        : 'PRO Agency',
       status: page['Statut']?.select?.name || '—',
       subscriptionDate: page['Date souscription']?.date?.start || '—',
+      cancelAtPeriodEnd,
+      periodEnd,
     });
-
   } catch (err) {
     console.error('[ProAuth] Erreur /me:', err.response?.data || err.message);
     res.status(401).json({ error: 'Token invalide ou expiré.' });
