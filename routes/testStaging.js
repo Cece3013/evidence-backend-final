@@ -7,6 +7,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 const router = express.Router();
 
 const { buildPromptHabitesParticuliers } = require('./promptsHabitesParticuliers');
+const { buildPromptHabitesPro } = require('./promptsHabitesPro');
 
 async function uploadBufferToCloudinary(buffer, filename) {
   const timestamp = Math.round(Date.now() / 1000);
@@ -49,7 +50,7 @@ router.post('/upload', upload.single('photo'), async (req, res) => {
 
 // ─── POST /api/test-staging/habites ────────────────────────────────────────
 router.post('/habites', async (req, res) => {
-  const { imageUrl, roomType, testKey } = req.body;
+  const { imageUrl, roomType, testKey, clientType = 'particulier' } = req.body;
 
   if (testKey !== process.env.TEST_STAGING_KEY) {
     return res.status(403).json({ error: 'Accès refusé.' });
@@ -59,8 +60,9 @@ router.post('/habites', async (req, res) => {
   }
 
   try {
-    // 1. Construire le prompt (avec détection auto des micro-modules)
-    const { prompt, detectedModules } = await buildPromptHabitesParticuliers(roomType, imageUrl);
+    // 1. Construire le prompt selon le type de client
+    const builder = clientType === 'pro' ? buildPromptHabitesPro : buildPromptHabitesParticuliers;
+    const { prompt, detectedModules } = await builder(roomType, imageUrl);
 
     // 2. Télécharger la photo source
     const imageRes = await axios.get(imageUrl, { responseType: 'arraybuffer', timeout: 30000 });
@@ -95,13 +97,14 @@ router.post('/habites', async (req, res) => {
     // 4. Réuploader le résultat sur Cloudinary
     const generatedUrl = await uploadBufferToCloudinary(Buffer.from(b64, 'base64'), 'generated.jpg');
 
-    console.log(`[TestStaging] Génération OpenAI réussie — pièce: ${roomType}`);
+    console.log(`[TestStaging] Génération réussie — ${clientType} / ${roomType}`);
 
     res.json({
       success: true,
       originalUrl: imageUrl,
       generatedUrl,
       roomType,
+      clientType,
       detectedModules,
       prompt,
     });
