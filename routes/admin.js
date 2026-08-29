@@ -1,11 +1,17 @@
 // backend/routes/admin.js
 const express = require('express');
 const axios = require('axios');
+const crypto = require('crypto');
+const FormData = require('form-data');
 const router = express.Router();
-const { Resend } = require('resend');
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 const ADMIN_KEY = process.env.ADMIN_SECRET_KEY;
+
+const NOTION_HEADERS = {
+  'Authorization': `Bearer ${process.env.NOTION_API_KEY}`,
+  'Notion-Version': '2022-06-28',
+  'Content-Type': 'application/json',
+};
 
 // Middleware protection accès admin
 function requireAdmin(req, res, next) {
@@ -66,7 +72,7 @@ router.get('/', requireAdmin, (req, res) => {
 
   <div class="container">
 
-    <p class="section-title">Commandes en attente</p>
+    <p class="section-title">Commandes biens habités</p>
     <div class="card" id="orders-list">
       <div style="font-size:13px;color:#888;text-align:center;padding:16px;">Chargement...</div>
     </div>
@@ -92,7 +98,7 @@ router.get('/', requireAdmin, (req, res) => {
 
       <div class="notif">
         <div class="dot"></div>
-        Email automatique + PDF visible dans l'espace client
+        Email automatique + rapport visible sur la page de suivi du client
       </div>
 
       <div class="success" id="success-msg">PDF envoyé avec succès !</div>
@@ -105,7 +111,6 @@ router.get('/', requireAdmin, (req, res) => {
     const ADMIN_KEY = new URLSearchParams(window.location.search).get('key');
     let selectedFile = null;
 
-    // Drag & drop
     const dropZone = document.getElementById('drop-zone');
     dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag'); });
     dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag'));
@@ -142,7 +147,7 @@ router.get('/', requireAdmin, (req, res) => {
         const select = document.getElementById('client-select');
 
         if (!data.orders || data.orders.length === 0) {
-          list.innerHTML = '<div style="font-size:13px;color:#888;text-align:center;padding:16px;">Aucune commande en attente</div>';
+          list.innerHTML = '<div style="font-size:13px;color:#888;text-align:center;padding:16px;">Aucune commande</div>';
           return;
         }
 
@@ -152,22 +157,25 @@ router.get('/', requireAdmin, (req, res) => {
             <div class="avatar">\${initials}</div>
             <div class="order-info">
               <div class="order-name">\${o.clientName || 'Client'}</div>
-              <div class="order-meta">\${o.formulaLabel || ''} · \${o.roomCount || ''} pièces · reçu le \${formatDate(o.createdAt)}</div>
+              <div class="order-meta">\${o.reference} · \${o.formule || ''} · \${formatDate(o.dateCommande)}</div>
             </div>
-            <span class="badge \${o.pdfUrl ? 'badge-done' : 'badge-wait'}">\${o.pdfUrl ? 'Livré' : 'En attente'}</span>
+            <span class="badge \${o.pdfLivre ? 'badge-done' : 'badge-wait'}">\${o.pdfLivre ? 'Livré' : 'En attente'}</span>
           </div>\`;
         }).join('');
 
+        const enAttente = data.orders.filter(o => !o.pdfLivre);
         select.innerHTML = '<option value="">Sélectionnez un client...</option>' +
-          data.orders.map(o => \`<option value="\${o.orderId}">\${o.clientName || 'Client'} — \${o.formulaLabel || ''}</option>\`).join('');
+          enAttente.map(o => \`<option value="\${o.pageId}">\${o.clientName || 'Client'} — \${o.reference}</option>\`).join('');
       } catch(e) {
         console.error(e);
+        document.getElementById('orders-list').innerHTML =
+          '<div style="font-size:13px;color:#a33a3a;text-align:center;padding:16px;">Erreur de chargement</div>';
       }
     }
 
     async function sendPdf() {
-      const orderId = document.getElementById('client-select').value;
-      if (!orderId || !selectedFile) return;
+      const pageId = document.getElementById('client-select').value;
+      if (!pageId || !selectedFile) return;
 
       const btn = document.getElementById('send-btn');
       btn.disabled = true;
@@ -180,15 +188,17 @@ router.get('/', requireAdmin, (req, res) => {
           const res = await fetch('/admin/send-pdf?key=' + ADMIN_KEY, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ orderId, pdfBase64: base64, fileName: selectedFile.name })
+            body: JSON.stringify({ pageId, pdfBase64: base64, fileName: selectedFile.name })
           });
           const data = await res.json();
           if (data.success) {
             document.getElementById('success-msg').style.display = 'block';
             document.getElementById('error-msg').style.display = 'none';
+            selectedFile = null;
+            document.getElementById('file-name').textContent = '';
             loadOrders();
           } else {
-            throw new Error(data.error);
+            throw new Error(data.error || 'Erreur inconnue');
           }
         } catch(err) {
           document.getElementById('error-msg').style.display = 'block';
@@ -212,83 +222,147 @@ router.get('/', requireAdmin, (req, res) => {
 </html>`);
 });
 
-// ─── GET /admin/orders — Liste commandes biens habités ────────────────────────
-router.get('/orders', requireAdmin, (req, res) => {
-  // On importe le store orders depuis orders.js
-  // Pour l'instant on retourne depuis le module orders
-  const ordersRoute = require('./orders');
-  // On accède directement à la Map via un helper
-  res.json({ orders: global.habitedOrders || [] });
+// ─── GET /admin/orders — Commandes biens habités payées, depuis Notion ────────
+router.get('/orders', requireAdmin, async (req, res) => {
+  try {
+    const query = await axios.post(
+      `https://api.notion.com/v1/databases/${process.env.NOTION_DATABASE_ID}/query`,
+      {
+        page_size: 100,
+        sorts: [{ property: 'Date de commande', direction: 'descending' }],
+      },
+      { headers: NOTION_HEADERS }
+    );
+
+    const orders = query.data.results
+      .filter((p) => {
+        const props = p.properties;
+        const paye = props['Paiement réussi']?.checkbox === true;
+        const type = props['Type de prestation']?.select?.name || '';
+        return paye && type.toLowerCase().includes('habité');
+      })
+      .map((p) => {
+        const props = p.properties;
+        const ref = props['Référence Dossier']?.unique_id;
+        const pdfProp = props['Rapport PDF'];
+        const pdfLivre = !!(pdfProp?.url || pdfProp?.files?.length);
+
+        return {
+          pageId: p.id,
+          reference: ref ? `${ref.prefix || ''}-${ref.number}` : '—',
+          clientName: props['Nom du Client']?.title?.[0]?.plain_text || 'Client',
+          clientEmail: props['Email']?.email || null,
+          formule: props['Formule']?.select?.name || '',
+          dateCommande: props['Date de commande']?.date?.start || null,
+          pdfLivre,
+        };
+      });
+
+    res.json({ orders });
+  } catch (err) {
+    console.error('[Admin] Erreur orders:', err.response?.data || err.message);
+    res.status(500).json({ error: 'Erreur lors du chargement des commandes.' });
+  }
 });
 
 // ─── POST /admin/send-pdf ─────────────────────────────────────────────────────
 router.post('/send-pdf', requireAdmin, async (req, res) => {
-  const { orderId, pdfBase64, fileName } = req.body;
-  if (!orderId || !pdfBase64) {
-    return res.status(400).json({ error: 'orderId et pdfBase64 requis.' });
+  const { pageId, pdfBase64, fileName } = req.body;
+  if (!pageId || !pdfBase64) {
+    return res.status(400).json({ error: 'pageId et pdfBase64 requis.' });
   }
 
   try {
-    // 1. Upload PDF sur Cloudinary
+    // 1. Lire la fiche client dans Notion
+    const page = await axios.get(`https://api.notion.com/v1/pages/${pageId}`, { headers: NOTION_HEADERS });
+    const props = page.data.properties;
+    const clientName = props['Nom du Client']?.title?.[0]?.plain_text || 'Client';
+    const clientEmail = props['Email']?.email || null;
+    const ref = props['Référence Dossier']?.unique_id;
+    const reference = ref ? `${ref.prefix || ''}-${ref.number}` : 'dossier';
+
+    // 2. Upload du PDF sur Cloudinary (signé)
+    const timestamp = Math.round(Date.now() / 1000);
+    const publicId = `rapport-${reference}`;
+    const folder = 'evidence-homestaging/rapports';
+    const toSign = `folder=${folder}&public_id=${publicId}&timestamp=${timestamp}${process.env.CLOUDINARY_API_SECRET}`;
+    const signature = crypto.createHash('sha1').update(toSign).digest('hex');
+
+    const form = new FormData();
+    form.append('file', Buffer.from(pdfBase64, 'base64'), { filename: fileName || 'rapport.pdf' });
+    form.append('folder', folder);
+    form.append('public_id', publicId);
+    form.append('timestamp', timestamp);
+    form.append('api_key', process.env.CLOUDINARY_API_KEY);
+    form.append('signature', signature);
+
     const cloudRes = await axios.post(
       `https://api.cloudinary.com/v1_1/${process.env.CLOUDINARY_CLOUD_NAME}/raw/upload`,
-      {
-        file: `data:application/pdf;base64,${pdfBase64}`,
-        upload_preset: process.env.CLOUDINARY_UPLOAD_PRESET,
-        folder: 'evidence-homestaging/rapports',
-        public_id: `rapport-${orderId}`,
-      }
+      form,
+      { headers: form.getHeaders(), maxBodyLength: Infinity }
     );
+
     const pdfUrl = cloudRes.data.secure_url;
-    console.log('[Cloudinary] PDF uploadé :', pdfUrl);
+    console.log('[Admin] PDF uploadé :', pdfUrl);
 
-    // 2. Récupérer les infos de la commande
-    const order = global.habitedOrders?.find(o => o.orderId === orderId);
-    const clientEmail = order?.clientEmail || null;
-    const clientName = order?.clientName || 'Client';
+    // 3. Enregistrer le PDF dans Notion
+    await axios.patch(
+      `https://api.notion.com/v1/pages/${pageId}`,
+      {
+        properties: {
+          'Rapport PDF': {
+            files: [{ name: fileName || 'rapport.pdf', external: { url: pdfUrl } }],
+          },
+          'PDF livré': { checkbox: true },
+        },
+      },
+      { headers: NOTION_HEADERS }
+    );
+    console.log('[Admin] Notion mis à jour —', reference);
 
-    // 3. Marquer la commande comme livrée
-    if (order) {
-      order.pdfUrl = pdfUrl;
-      order.status = 'delivered';
-      order.deliveredAt = new Date().toISOString();
-    }
-
-    // 4. Envoyer email au client via Resend
+    // 4. Email au client
     if (clientEmail) {
-      await resend.emails.send({
+      const suiviUrl = `https://evidence-platform-pied.vercel.app/commande/suivi/${reference}`;
+      await axios.post('https://api.resend.com/emails', {
         from: 'Evidence Home Staging <contact@evidence-homestaging.fr>',
         to: clientEmail,
         subject: 'Votre rapport home staging est prêt !',
         html: `
-          <div style="font-family: -apple-system, sans-serif; max-width: 500px; margin: 0 auto;">
-            <div style="background: #1a1a1a; padding: 24px; text-align: center; border-radius: 12px 12px 0 0;">
-              <h1 style="color: #C8A96E; font-size: 20px; font-weight: 500; margin: 0;">Evidence Home Staging</h1>
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8f7f4; padding: 32px;">
+            <div style="background: #1a1a1a; padding: 24px; border-radius: 12px; text-align: center; margin-bottom: 24px;">
+              <h1 style="color: #c8a96e; margin: 0; font-size: 22px;">Evidence Home Staging</h1>
             </div>
-            <div style="background: #fff; padding: 32px; border: 0.5px solid #e0e0d8; border-radius: 0 0 12px 12px;">
-              <p style="font-size: 15px; color: #1a1a1a;">Bonjour ${clientName},</p>
-              <p style="font-size: 14px; color: #555; margin-top: 12px; line-height: 1.6;">
-                Votre rapport home staging personnalisé est prêt. Nos experts ont analysé votre bien et vous ont préparé des recommandations détaillées pour optimiser votre vente.
+            <div style="background: #fff; border-radius: 12px; padding: 24px;">
+              <h2 style="color: #1a1a1a; font-size: 18px;">Bonjour ${clientName},</h2>
+              <p style="color: #555; line-height: 1.6;">
+                Votre rapport home staging personnalisé est prêt. Nos experts ont analysé votre bien et préparé des recommandations détaillées pour optimiser votre vente.
               </p>
               <div style="text-align: center; margin: 28px 0;">
-                <a href="${pdfUrl}" style="background: #1a1a1a; color: #C8A96E; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 500;">
+                <a href="${pdfUrl}" style="background: #b88a44; color: #fff; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-size: 14px; display: inline-block;">
                   Télécharger mon rapport PDF
                 </a>
               </div>
-              <p style="font-size: 12px; color: #888; text-align: center;">
-                Le rapport est également disponible dans votre espace client sur l'application.
+              <p style="color: #888; font-size: 12px; text-align: center;">
+                Vous pouvez aussi le retrouver à tout moment sur votre page de suivi :<br/>
+                <a href="${suiviUrl}" style="color: #8c6b34;">${suiviUrl}</a>
               </p>
+              <p style="color: #888; font-size: 12px; margin-top: 20px;">Référence : ${reference}</p>
             </div>
           </div>
         `,
+      }, {
+        headers: {
+          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
       });
-      console.log('[Resend] Email envoyé à :', clientEmail);
+      console.log('[Admin] Email envoyé à :', clientEmail);
     }
 
     res.json({ success: true, pdfUrl });
   } catch (err) {
-    console.error('[Admin send-pdf error]', err.message);
-    res.status(500).json({ error: err.message });
+    console.error('[Admin] Erreur send-pdf:', err.response?.data || err.message);
+    res.status(500).json({ error: err.response?.data?.message || err.message });
   }
 });
 
