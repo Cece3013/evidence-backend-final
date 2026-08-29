@@ -144,7 +144,62 @@ router.get('/formulas', (req, res) => {
     })),
   });
 });
+// ─── POST /api/payments/create-checkout ──────────────────────────────────────────
+// Version web : redirige vers Stripe Checkout (page hébergée par Stripe)
+router.post('/create-checkout', async (req, res, next) => {
+  try {
+    const { formulaId, options = [], clientEmail, metadata = {} } = req.body;
+    const formula = FORMULA_PRICES[formulaId];
+    if (!formula) {
+      return res.status(400).json({ error: 'Formule inconnue.' });
+    }
 
+    const orderId = `ORD-${uuidv4().split('-')[0].toUpperCase()}`;
+
+    const lineItems = [{
+      price_data: {
+        currency: 'eur',
+        product_data: { name: `EVIDENCE Home Staging — ${formula.label}` },
+        unit_amount: formula.amount,
+      },
+      quantity: 1,
+    }];
+
+    for (const opt of options) {
+      const option = OPTION_PRICES[opt.id];
+      if (!option) continue;
+      const qty = option.multiple ? Math.max(1, parseInt(opt.quantity) || 1) : 1;
+      lineItems.push({
+        price_data: {
+          currency: 'eur',
+          product_data: { name: option.label },
+          unit_amount: option.amount,
+        },
+        quantity: qty,
+      });
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      line_items: lineItems,
+      customer_email: clientEmail || undefined,
+      success_url: `https://evidence-platform-pied.vercel.app/commande/confirmation?order=${orderId}&session={CHECKOUT_SESSION_ID}`,
+      cancel_url: 'https://evidence-platform-pied.vercel.app/commande',
+      metadata: {
+        ...metadata,
+        orderId,
+        formulaId,
+        formulaLabel: formula.label,
+      },
+    });
+
+    console.log(`[Payments] Checkout web créé — ${orderId} — ${formulaId}`);
+    res.json({ checkoutUrl: session.url, orderId });
+  } catch (err) {
+    console.error('[Payments] Erreur create-checkout:', err.response?.data || err.message);
+    next(err);
+  }
+});
 function generateInvoiceNumber() {
   const year = new Date().getFullYear();
   const seq  = String(Math.floor(Math.random() * 99999)).padStart(5, '0');
