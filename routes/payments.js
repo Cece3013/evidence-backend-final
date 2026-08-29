@@ -4,6 +4,8 @@ const Stripe = require('stripe');
 const { v4: uuidv4 } = require('uuid');
 const router = express.Router();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+const router = express.Router();
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // Montants en centimes
 const FORMULA_PRICES = {
@@ -198,6 +200,38 @@ router.post('/create-checkout', async (req, res, next) => {
   } catch (err) {
     console.error('[Payments] Erreur create-checkout:', err.response?.data || err.message);
     next(err);
+  }
+});
+// ─── POST /api/payments/upload-photo ─────────────────────────────────────────────
+// Upload d'une photo client vers Cloudinary, avant paiement
+router.post('/upload-photo', upload.single('photo'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'Aucun fichier reçu.' });
+  }
+
+  try {
+    const timestamp = Math.round(Date.now() / 1000);
+    const signature = crypto
+      .createHash('sha1')
+      .update(`timestamp=${timestamp}${process.env.CLOUDINARY_API_SECRET}`)
+      .digest('hex');
+
+    const form = new FormData();
+    form.append('file', req.file.buffer, { filename: req.file.originalname });
+    form.append('timestamp', timestamp);
+    form.append('api_key', process.env.CLOUDINARY_API_KEY);
+    form.append('signature', signature);
+
+    const cloudRes = await axios.post(
+      `https://api.cloudinary.com/v1_1/${process.env.CLOUDINARY_CLOUD_NAME}/image/upload`,
+      form,
+      { headers: form.getHeaders(), maxBodyLength: Infinity }
+    );
+
+    res.json({ url: cloudRes.data.secure_url });
+  } catch (err) {
+    console.error('[Payments] Erreur upload photo:', err.response?.data || err.message);
+    res.status(500).json({ error: "Erreur lors de l'envoi de la photo." });
   }
 });
 function generateInvoiceNumber() {
