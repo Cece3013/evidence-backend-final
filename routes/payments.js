@@ -186,6 +186,7 @@ router.post('/create-checkout', async (req, res) => {
             "URL photo": { url: photo.url },
             "Pièce": { select: { name: photo.roomType } },
             "Statut": { select: { name: 'En attente' } },
+            "Type de prestation": { select: { name: isHabite ? 'Bien habité' : 'Bien vide' } },
           },
         },
         { headers: NOTION_HEADERS }
@@ -254,6 +255,7 @@ router.post('/finalize', async (req, res) => {
 
       // 2. Email de confirmation au client
       try {
+        const suiviUrl = `https://evidence-platform-pied.vercel.app/commande/suivi/${m.referenceDossier}`;
         await axios.post('https://api.resend.com/emails', {
           from: 'Evidence Home Staging <contact@evidence-homestaging.fr>',
           to: m.clientEmail,
@@ -273,9 +275,15 @@ router.post('/finalize', async (req, res) => {
                     ? "Notre équipe analyse votre bien et vous enverra votre rapport personnalisé sous 48 à 72h."
                     : "Vos visuels sont en cours de préparation et vous seront livrés sous 12h."}
                 </p>
+                <div style="text-align: center; margin: 28px 0;">
+                  <a href="${suiviUrl}" style="background: #b88a44; color: #fff; text-decoration: none; padding: 14px 28px; border-radius: 8px; display: inline-block; font-size: 14px;">
+                    Suivre ma commande
+                  </a>
+                </div>
                 <p style="color: #888; font-size: 12px; margin-top: 24px;">
                   Référence : ${m.referenceDossier}<br/>
-                  Formule : ${m.formulaLabel || ''}
+                  Formule : ${m.formulaLabel || ''}<br/>
+                  Conservez ce lien, il vous permettra de récupérer vos fichiers.
                 </p>
               </div>
             </div>
@@ -303,6 +311,99 @@ router.post('/finalize', async (req, res) => {
   } catch (err) {
     console.error('[Payments] Erreur finalize:', err.response?.data || err.message);
     res.status(500).json({ error: 'Erreur lors de la finalisation.' });
+  }
+});
+
+// ─── GET /api/payments/suivi/:reference ──────────────────────────────────────────
+// Page de suivi client : état de la commande + fichiers livrés
+router.get('/suivi/:reference', async (req, res) => {
+  const { reference } = req.params;
+
+  try {
+    const clientQuery = await axios.post(
+      `https://api.notion.com/v1/databases/${process.env.NOTION_DATABASE_ID}/query`,
+      { page_size: 100 },
+      { headers: NOTION_HEADERS }
+    );
+
+    const clientPage = clientQuery.data.results.find((p) => {
+      const ref = p.properties["Référence Dossier"];
+      if (!ref?.unique_id) return false;
+      const built = `${ref.unique_id.prefix || ''}-${ref.unique_id.number}`;
+      return built === reference;
+    });
+
+    if (!clientPage) {
+      return res.status(404).json({ error: 'Commande introuvable.' });
+    }
+
+    const props = clientPage.properties;
+    if (props["Paiement réussi"]?.checkbox !== true) {
+      return res.status(403).json({ error: 'Commande non finalisée.' });
+    }
+
+    const typePrestation = props["Type de prestation"]?.select?.name || '';
+    const isHabite = typePrestation.toLowerCase().includes('habité');
+
+    // Photos liées à ce dossier
+    const photosQuery = await axios.post(
+      `https://api.notion.com/v1/databases/${process.env.NOTION_PHOTOS_DATABASE_ID}/query`,
+      { page_size: 100 },
+      { headers: NOTION_HEADERS }
+    );
+
+    const photos = photosQuery.data.results.filter((p) =>
+      p.properties["Nom du Client"]?.relation?.some((r) => r.id === clientPage.id)
+    );
+
+    const avant = [];
+    const apres = [];
+
+    for (const photo of photos) {
+      const pp = photo.properties;
+      const url = pp["URL photo"]?.url;
+      if (!url) continue;
+      const item = {
+        url,
+        piece: pp["Pièce"]?.select?.name || '—',
+        valide: pp["Validé"]?.checkbox === true,
+      };
+      if (pp["Type"]?.select?.name === 'Après') apres.push(item);
+      else avant.push(item);
+    }
+
+    const apresValidees = apres.filter((p) => p.valide);
+
+    // Récupération du rapport PDF (colonne "Rapport PDF", type fichier ou URL)
+    const pdfProp = props["Rapport PDF"];
+    let rapportPdf = null;
+    if (pdfProp?.url) rapportPdf = pdfProp.url;
+    else if (pdfProp?.files?.length) {
+      rapportPdf = pdfProp.files[0].file?.url || pdfProp.files[0].external?.url || null;
+    }
+
+    // Bien habité : livré quand le PDF est disponible
+    // Bien vide : livré quand toutes les photos "Après" sont validées
+    const pretALivrer = isHabite
+      ? !!rapportPdf
+      : apres.length > 0 && apresValidees.length === apres.length;
+
+    res.json({
+      reference,
+      clientName: props["Nom du Client"]?.title?.[0]?.plain_text || '',
+      formule: props["Formule"]?.select?.name || '',
+      typePrestation,
+      isHabite,
+      dateCommande: props["Date de commande"]?.date?.start || null,
+      pretALivrer,
+      photosAvant: avant.map((p) => ({ url: p.url, piece: p.piece })),
+      photosApres: pretALivrer && !isHabite ? apresValidees.map((p) => ({ url: p.url, piece: p.piece })) : [],
+      rapportPdf: pretALivrer && isHabite ? rapportPdf : null,
+      nbPhotosAttendues: avant.length,
+    });
+  } catch (err) {
+    console.error('[Payments] Erreur suivi:', err.response?.data || err.message);
+    res.status(500).json({ error: 'Erreur lors de la récupération de la commande.' });
   }
 });
 
