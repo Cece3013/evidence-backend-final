@@ -57,6 +57,8 @@ app.use('/api', apiLimiter);
 
 // ─── Routes ──────────────────────────────────────────────────────────────────────
 app.use('/api/payments', paymentsRouter);
+const clientAuthRouter = require('./routes/clientAuth');
+app.use('/api', clientAuthRouter);
 app.use('/api/orders', ordersRouter);
 app.use('/api/ai', aiRouter);
 app.use('/api/staging', stagingRouter);
