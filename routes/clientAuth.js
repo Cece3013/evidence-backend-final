@@ -187,19 +187,36 @@ router.get('/orders/client/:email', async (req, res) => {
           ph.properties['Nom du Client']?.relation?.some((r) => r.id === p.id)
         );
 
+        const mapPhoto = (ph) => ({
+          url: ph.properties['URL photo']?.url || null,
+          piece: ph.properties['Pièce']?.select?.name || '—',
+          valide: ph.properties['Validé']?.checkbox === true,
+        });
+
+        const avant = photos
+          .filter((ph) => ph.properties['Type']?.select?.name !== 'Après')
+          .map(mapPhoto)
+          .filter((ph) => ph.url);
+
         const apres = photos
           .filter((ph) => ph.properties['Type']?.select?.name === 'Après')
-          .map((ph) => ({
-            url: ph.properties['URL photo']?.url || null,
-            piece: ph.properties['Pièce']?.select?.name || '—',
-            valide: ph.properties['Validé']?.checkbox === true,
-          }))
+          .map(mapPhoto)
           .filter((ph) => ph.url);
 
         const apresValidees = apres.filter((ph) => ph.valide);
         const pretALivrer = isHabite
           ? !!pdfUrl
           : apres.length > 0 && apresValidees.length === apres.length;
+
+        // Associe chaque projection à sa photo d'origine (même pièce si possible)
+        const paires = apresValidees.map((ap, idx) => {
+          const correspondance = avant.find((av) => av.piece === ap.piece);
+          return {
+            piece: ap.piece,
+            avant: (correspondance || avant[idx])?.url || null,
+            apres: ap.url,
+          };
+        });
 
         return {
           orderId: reference,
@@ -208,7 +225,7 @@ router.get('/orders/client/:email', async (req, res) => {
           formulaLabel: props['Formule']?.select?.name || '',
           createdAt: props['Date de commande']?.date?.start || null,
           pdfUrl: isHabite && pretALivrer ? pdfUrl : null,
-          photos: !isHabite && pretALivrer ? apresValidees : [],
+          photos: !isHabite && pretALivrer ? paires : [],
           pretALivrer,
         };
       });
