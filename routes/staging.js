@@ -263,7 +263,7 @@ async function processOrder({ photos, clientName, clientEmail, clientPhone, prop
     await axios.post('https://api.resend.com/emails', {
       from: 'Evidence Home Staging <contact@evidence-homestaging.fr>',
       to: clientEmail,
-      subject: isHabite ? '📋 Votre dossier home staging a bien été reçu !' : '✨ Votre projection home staging est prête !',
+     subject: isHabite ? 'Votre dossier home staging a bien été reçu' : 'Vos photos ont bien été reçues',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8f7f4; padding: 32px;">
           <div style="background: #1a1a1a; padding: 24px; border-radius: 12px; text-align: center; margin-bottom: 24px;">
@@ -271,12 +271,12 @@ async function processOrder({ photos, clientName, clientEmail, clientPhone, prop
           </div>
           <div style="background: #fff; border-radius: 12px; padding: 24px; margin-bottom: 16px;">
             <h2 style="color: #1a1a1a; font-size: 18px;">Bonjour ${clientName || 'cher client'},</h2>
-            ${isHabite
-              ? `<p style="color: #555; line-height: 1.6;">Votre dossier a bien été reçu. Notre équipe d'experts va analyser votre bien et vous envoyer votre rapport sous 48 à 72h.</p>`
-              : `<p style="color: #555; line-height: 1.6;">Votre projection home staging est prête ! Notre IA a analysé votre bien et généré une visualisation professionnelle.</p>`
+                       ${isHabite
+              ? `<p style="color: #555; line-height: 1.6;">Votre dossier a bien été reçu. Notre équipe d'experts va analyser votre bien et vous envoyer votre rapport personnalisé sous 48 à 72h.</p>`
+              : `<p style="color: #555; line-height: 1.6;">Vos photos ont bien été réceptionnées et sont en cours de traitement.</p>
+                 <p style="color: #555; line-height: 1.6;">Chaque visuel est vérifié et optimisé par nos soins avant livraison. Vous recevrez un nouvel email dès que vos projections seront disponibles, sous 2 à 12h.</p>`
             }
-            ${photoUrl && !isHabite ? `<div style="text-align: center; margin: 24px 0;"><img src="${photoUrl}" style="width: 100%; border-radius: 8px;" alt="Votre projection" /></div>` : ''}
-            <p style="color: #555; line-height: 1.6;">Retrouvez votre ${isHabite ? 'rapport' : 'projection'} dans l'application Evidence Home Staging.</p>
+            <p style="color: #555; line-height: 1.6;">Vous retrouverez votre ${isHabite ? 'rapport' : 'projection'} dans votre espace client, sur l'application Evidence Home Staging.</p>
           </div>
           <div style="background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
             <p style="margin: 0; color: #888; font-size: 11px;">Référence commande : ${orderId}</p>
