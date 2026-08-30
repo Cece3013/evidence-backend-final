@@ -20,8 +20,17 @@ const app = express();
 // ─── Trust proxy (requis pour Railway / reverse proxy) ───────────────────────────
 app.set('trust proxy', 1);
 
+
 // ─── Security ────────────────────────────────────────────────────────────────────
-app.use(helmet());
+// La page /admin utilise du script intégré : on désactive la politique de contenu
+// uniquement pour cette route, le reste de l'API conserve la protection complète.
+app.use((req, res, next) => {
+  if (req.path.startsWith('/admin')) {
+    return helmet({ contentSecurityPolicy: false })(req, res, next);
+  }
+  return helmet()(req, res, next);
+});
+
 app.use(cors({
   origin: true,
   credentials: true,
