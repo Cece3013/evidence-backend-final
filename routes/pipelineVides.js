@@ -24,9 +24,15 @@ function versionAllegee(url) {
 
 async function callVisionJSON(prompt, imageUrls, maxTokens = 2000) {
   const content = [{ type: 'text', text: prompt }];
-   for (const url of imageUrls) {
-    content.push({ type: 'image_url', image_url: { url: versionAllegee(url) } });
+
+  const urlsValides = imageUrls.map(versionAllegee).filter(Boolean);
+  if (!urlsValides.length) {
+    throw new Error('Aucune image valide à analyser.');
   }
+  for (const url of urlsValides) {
+    content.push({ type: 'image_url', image_url: { url } });
+  }
+
   const res = await axios.post(
     'https://api.openai.com/v1/chat/completions',
     {
@@ -61,53 +67,43 @@ async function etapeB(analyseA, photoPrincipale, photosComplementaires = [], act
     .map((k) => microModules[k])
     .filter(Boolean);
 
-   const blocMicros = microTexts.length
-    ? `
+  let blocMicros = '';
+  if (microTexts.length) {
+    const entete = [
+      '',
+      '=== BESOINS COMPLEMENTAIRES VALIDES PAR LE CLIENT ===',
+      `Le client a explicitement demandé que cette pièce intègre ${microTexts.length} fonction(s) supplémentaire(s) en plus de sa fonction principale.`,
+      '',
+      'METHODE OBLIGATOIRE :',
+      'Cette pièce doit être traitée comme un espace MULTIFONCTION.',
+      "Avant de verrouiller, découper l'espace disponible en autant de zones fonctionnelles",
+      'distinctes que nécessaire, et renseigner chacune dans "usable_zones".',
+      'Ne pas se limiter à une seule zone centrale.',
+      '',
+      'Chaque zone doit recevoir son mobilier propre, et TOUT ce mobilier doit figurer',
+      'dans "primary_furniture" avec son emplacement et son orientation.',
+      'Ne pas reléguer ces meubles dans "secondary_furniture_allowed".',
+      '',
+      'Exemple de découpage attendu pour un salon avec coin repas :',
+      'zone_1 = coin salon (canapé, table basse) ;',
+      'zone_2 = coin repas (table à manger, chaises).',
+      '',
+      'Si une fonction demandée ne peut réellement pas tenir dans la pièce sans bloquer',
+      'une circulation ou une ouverture, ne pas verrouiller et expliquer précisément',
+      'le blocage dans "layout_options_considered".',
+      '',
+    ].join('\n');
 
-=== BESOINS COMPLÉMENTAIRES VALIDÉS PAR LE CLIENT ===
-Le client a explicitement demandé que cette pièce intègre ${microTexts.length} fonction(s) en plus de sa fonction principale.
+    blocMicros = entete + microTexts.join('\n\n');
+  }
 
-MÉTHODE OBLIGATOIRE :
-Cette pièce doit être traitée comme un espace MULTIFONCTION.
-Avant de verrouiller, découper l'espace disponible en autant de zones fonctionnelles
-distinctes que nécessaire, et renseigner chacune dans "usable_zones".
-Ne pas se limiter à une seule zone centrale.
-
-Chaque zone doit recevoir son mobilier propre, et TOUT ce mobilier doit figurer
-dans "primary_furniture" avec son emplacement et son orientation.
-Ne pas reléguer ces meubles dans "secondary_furniture_allowed".
-
-Exemple de découpage attendu pour un salon avec coin repas :
-zone_1 = coin salon (canapé, table basse) ;
-zone_2 = coin repas (table à manger, chaises).
-
-Si une fonction demandée ne peut réellement pas tenir dans la pièce sans bloquer
-une circulation ou une ouverture, ne pas verrouiller l'implantation et expliquer
-précisément le blocage dans "layout_options_considered".
-
-${microTexts.join('\n\n')}`
-    : '';
-
-=== BESOINS COMPLÉMENTAIRES VALIDÉS PAR LE CLIENT ===
-Le client a explicitement demandé que cette pièce intègre les fonctions ci-dessous.
-Ces besoins font partie intégrante de la commande.
-
-OBLIGATION :
-Le mobilier correspondant à chacun de ces besoins DOIT apparaître dans "primary_furniture"
-de l'implantation verrouillée, avec son emplacement, son orientation et sa taille.
-Ne pas les reléguer dans "secondary_furniture_allowed".
-
-Si l'un de ces besoins ne peut physiquement pas être satisfait dans cette pièce
-(place insuffisante, circulation bloquée), ne pas verrouiller l'implantation
-et expliquer le blocage dans "layout_options_considered".
-
-${microTexts.join('\n\n')}`
-    : '';
-
-  const prompt = `${PROMPT_B_IMPLANTATION}
-
-=== SORTIE DU PROMPT A ===
-${JSON.stringify(analyseA, null, 2)}${blocMicros}`;
+  const prompt = [
+    PROMPT_B_IMPLANTATION,
+    '',
+    '=== SORTIE DU PROMPT A ===',
+    JSON.stringify(analyseA, null, 2),
+    blocMicros,
+  ].join('\n');
 
   const images = [photoPrincipale, ...photosComplementaires];
   const implantation = await callVisionJSON(prompt, images, 3000);
@@ -127,56 +123,74 @@ async function synthetiser({ implantation, roomType, activeMicroModules = [], co
     .map((k) => microModules[k])
     .filter(Boolean);
 
-  const instructions = `Tu es un ingénieur prompt spécialisé en génération d'image immobilière.
+  const regleMicro = microTexts.length
+    ? "5. Les besoins complémentaires validés par le client doivent apparaître visiblement dans l'image générée."
+    : '';
 
-Ta mission : produire UN SEUL prompt d'exécution compact destiné au modèle gpt-image-2 (API d'édition d'image), à partir de la documentation ci-dessous.
+  const blocCommentaire = commentaireClient
+    ? [
+        '',
+        '=== DEMANDE PARTICULIERE DU CLIENT ===',
+        commentaireClient,
+        "(À intégrer si compatible avec l'implantation verrouillée.)",
+      ].join('\n')
+    : '';
 
-CONTRAINTES DE SORTIE :
-- Entre 2000 et 3000 caractères maximum. Cette limite est stricte.
-- Rédigé en français, à l'impératif, en instructions directes.
-- Structuré selon la hiérarchie suivante, dans cet ordre :
-  PRIORITÉ 1 — architecture, éléments fixes et point de vue : à préserver intégralement.
-  PRIORITÉ 2 — implantation verrouillée : reproduire exactement les meubles, emplacements et orientations décidés. Ne jamais recalculer l'implantation.
-  PRIORITÉ 3 — mobilier résiduel : appliquer les décisions KEEP / REMOVE indiquées.
-  PRIORITÉ 4 — circulations et fonctionnalité de la pièce.
-  PRIORITÉ 5 — style, matières, lumière et ambiance.
-- Nomme explicitement chaque meuble de l'implantation verrouillée avec sa position.
-- N'inclus jamais un meuble marqué "out_of_frame" dans l'image générée.
-- N'invente aucun élément absent de la documentation.
-- Termine par une ligne courte sur le rendu attendu : photoréaliste, lumière naturelle préservée, cadrage identique à la photo d'origine.
+  const blocMicros = microTexts.length
+    ? ['', '=== BESOINS COMPLEMENTAIRES VALIDES PAR LE CLIENT ===', microTexts.join('\n\n')].join('\n')
+    : '';
 
-RÈGLES IMPÉRATIVES À REPRENDRE EXPLICITEMENT :
-1. Ne jamais modifier l'architecture, les ouvertures, les murs, les sols ou les plafonds.
-2. Ne jamais déplacer le point de vue ni recadrer l'image.
-3. Ne jamais fusionner plusieurs angles de vue.
-4. Respecter strictement l'implantation verrouillée sans la réinterpréter.
-${microTexts.length ? `5. Les besoins complémentaires validés par le client (voir plus bas) doivent apparaître visiblement dans l'image générée.` : ''}
-
-Réponds UNIQUEMENT avec le texte du prompt final, sans guillemets, sans titre, sans commentaire.
-
-=== IMPLANTATION VERROUILLÉE ===
-${JSON.stringify(implantation.locked_layout, null, 2)}
-
-=== CONTRAINTES SPATIALES ===
-${JSON.stringify(implantation.spatial_constraints || {}, null, 2)}
-
-=== DÉCISIONS SUR LE MOBILIER RÉSIDUEL ===
-${JSON.stringify(implantation.residual_furniture_decisions || [], null, 2)}
-
-=== CONTRAINTES DE GÉNÉRATION ===
-${JSON.stringify(implantation.generation_constraints || {}, null, 2)}
-${commentaireClient ? `\n=== DEMANDE PARTICULIÈRE DU CLIENT ===\n${commentaireClient}\n(À intégrer si compatible avec l'implantation verrouillée.)` : ''}
-
-=== RÈGLES DE GÉNÉRATION (référence) ===
-${PROMPT_C_GENERATION}
-
-=== NOYAU BIEN VIDE (référence) ===
-${NOYAU_BIEN_VIDE}
-
-=== MODULE DE LA PIÈCE : ${roomType} (référence) ===
-${modulePiece}
-
-${microTexts.length ? '=== BESOINS COMPLÉMENTAIRES VALIDÉS PAR LE CLIENT ===\n' + microTexts.join('\n\n') : ''}`;
+  const instructions = [
+    "Tu es un ingénieur prompt spécialisé en génération d'image immobilière.",
+    '',
+    "Ta mission : produire UN SEUL prompt d'exécution compact destiné au modèle gpt-image-2 (API d'édition d'image), à partir de la documentation ci-dessous.",
+    '',
+    'CONTRAINTES DE SORTIE :',
+    '- Entre 2000 et 3000 caractères maximum. Cette limite est stricte.',
+    "- Rédigé en français, à l'impératif, en instructions directes.",
+    '- Structuré selon la hiérarchie suivante, dans cet ordre :',
+    '  PRIORITE 1 — architecture, éléments fixes et point de vue : à préserver intégralement.',
+    "  PRIORITE 2 — implantation verrouillée : reproduire exactement les meubles, emplacements et orientations décidés. Ne jamais recalculer l'implantation.",
+    '  PRIORITE 3 — mobilier résiduel : appliquer les décisions KEEP / REMOVE indiquées.',
+    '  PRIORITE 4 — circulations et fonctionnalité de la pièce.',
+    '  PRIORITE 5 — style, matières, lumière et ambiance.',
+    "- Nomme explicitement chaque meuble de l'implantation verrouillée avec sa position.",
+    '- N\'inclus jamais un meuble marqué "out_of_frame" dans l\'image générée.',
+    "- N'invente aucun élément absent de la documentation.",
+    "- Termine par une ligne courte sur le rendu attendu : photoréaliste, lumière naturelle préservée, cadrage identique à la photo d'origine.",
+    '',
+    'REGLES IMPERATIVES A REPRENDRE EXPLICITEMENT :',
+    "1. Ne jamais modifier l'architecture, les ouvertures, les murs, les sols ou les plafonds.",
+    '2. Ne jamais déplacer le point de vue ni recadrer l\'image.',
+    '3. Ne jamais fusionner plusieurs angles de vue.',
+    "4. Respecter strictement l'implantation verrouillée sans la réinterpréter.",
+    regleMicro,
+    '',
+    'Réponds UNIQUEMENT avec le texte du prompt final, sans guillemets, sans titre, sans commentaire.',
+    '',
+    '=== IMPLANTATION VERROUILLEE ===',
+    JSON.stringify(implantation.locked_layout, null, 2),
+    '',
+    '=== CONTRAINTES SPATIALES ===',
+    JSON.stringify(implantation.spatial_constraints || {}, null, 2),
+    '',
+    '=== DECISIONS SUR LE MOBILIER RESIDUEL ===',
+    JSON.stringify(implantation.residual_furniture_decisions || [], null, 2),
+    '',
+    '=== CONTRAINTES DE GENERATION ===',
+    JSON.stringify(implantation.generation_constraints || {}, null, 2),
+    blocCommentaire,
+    '',
+    '=== REGLES DE GENERATION (reference) ===',
+    PROMPT_C_GENERATION,
+    '',
+    '=== NOYAU BIEN VIDE (reference) ===',
+    NOYAU_BIEN_VIDE,
+    '',
+    `=== MODULE DE LA PIECE : ${roomType} (reference) ===`,
+    modulePiece,
+    blocMicros,
+  ].join('\n');
 
   try {
     const res = await axios.post(
