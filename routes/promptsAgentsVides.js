@@ -1,5 +1,8 @@
 // Prompts agents — Biens vides — Version Application V1
 // Chaîne : A (analyse) → B (implantation verrouillée) → C (génération)
+// Mise à jour Prompt B : référentiel spatial symbolique, contrôle de cohérence
+// obligatoire avant verrouillage, visibilité étendue à tous les éléments
+// spatiaux, densité d'aménagement. Prompts A et C inchangés.
 
 const PROMPT_A_ANALYSE = `PROMPT A — ANALYSE PHOTOS BIEN VIDE — VERSION APPLICATION V1
 MODE APPLICATION — ANALYSE AVANT GÉNÉRATION
@@ -229,7 +232,7 @@ Si le statut final est :
 • PHOTO UNIQUE VALIDÉE
 ou
 
-• ENSEMBLE MULTI-PHOTOS VALIDÉ
+• ENSEMBLE MULTI-PHOTOS VALIDÉE
 alors allow_next_step = true.
 Sinon :
 allow_next_step = false.
@@ -372,6 +375,8 @@ ANGLE, CADRAGE ET PERSPECTIVE À CONSERVER.
 La PHOTO PRINCIPALE ne doit jamais être utilisée seule pour décider de l’implantation lorsqu’une photographie
 complémentaire révèle une contrainte pertinente.
 HORS CHAMP VISUEL ≠ HORS DU LOGEMENT.
+LES PHOTOGRAPHIES COMPLÉMENTAIRES DÉTERMINENT CE QU’IL NE FAUT PAS BLOQUER.
+ELLES NE DÉTERMINENT PAS CE QU’IL FAUT MONTRER.
 ——————————————————————————————————————————
 1 — VÉRIFIER LES DONNÉES DU PROMPT A
 Lire en priorité :
@@ -413,6 +418,36 @@ Il n’est pas nécessaire de créer un modèle 3D complet.
 Il est en revanche obligatoire de comprendre suffisamment l’espace pour éviter une implantation qui fonctionnerait
 uniquement visuellement sur une photographie mais pas dans le logement réel.
 ——————————————————————————————————————————
+2 BIS — CRÉER UN RÉFÉRENTIEL SPATIAL SYMBOLIQUE
+Avant de définir les circulations, les zones interdites et l’implantation, établir un référentiel spatial symbolique de la pièce.
+Ce référentiel ne repose sur aucune mesure métrique inventée. Une photographie ne permet pas de connaître avec certitude
+qu’un mur mesure « 4,20 mètres ». Toute dimension métrique non confirmée par une donnée réelle est une fausse précision
+et doit être évitée.
+Identifier et nommer :
+• les murs exploitables, avec un identifiant stable (W1, W2, W3…) ;
+• les ouvertures — portes, fenêtres, baies —, avec un identifiant stable (O1, O2…) ;
+• les circulations principales, avec un identifiant stable (C1, C2…) ;
+• les zones interdites, avec un identifiant stable (FZ1, FZ2…) ;
+• les zones réellement utilisables, avec un identifiant stable (UZ1, UZ2…).
+Pour chaque mur, ouverture, circulation ou zone, indiquer sa relation avec les autres repères (adjacent à, en face de, entre,
+le long de).
+Exprimer ensuite la position de chaque meuble principal par rapport à ces repères, et non par une formulation relative
+vague.
+Exemples corrects :
+• « contre W2, dans sa portion centrale libre » ;
+• « entre l’angle W2/W3 et O2 » ;
+• « hors du corridor reliant O1 à la zone séjour » ;
+• « centré sur la portion libre de W1, hors du débattement de O2 ».
+Exemples à ne jamais utiliser seuls, sans repère associé :
+• « centre-gauche de la pièce » ;
+• « près de la fenêtre » ;
+• « sous le luminaire » ;
+• « au fond ».
+Si une dimension réelle est explicitement connue (donnée par l’application), elle peut être utilisée. Dans tous les autres cas,
+utiliser uniquement des rapports de position, des proportions relatives (par exemple « sur les deux tiers libres du mur ») et
+des relations entre repères.
+Ce référentiel doit être transmis dans la sortie JSON (voir section 17, champ "spatial_reference").
+——————————————————————————————————————————
 3 — IDENTIFIER LES ÉLÉMENTS NON MODIFIABLES
 Considérer comme contraintes réelles tous les éléments fixes identifiés.
 Notamment :
@@ -439,7 +474,7 @@ Ne jamais :
 un élément fixe afin de faciliter l’implantation.
 ——————————————————————————————————————————
 4 — DÉFINIR LES CIRCULATIONS OBLIGATOIRES
-Identifier les circulations nécessaires dans la pièce.
+Identifier les circulations nécessaires dans la pièce, en les rattachant à leur identifiant du référentiel spatial (section 2 BIS).
 Exemples :
 • entrée → séjour ;
 • séjour → cuisine ;
@@ -463,7 +498,8 @@ Les circulations détectées grâce aux photos complémentaires possèdent la m�
 principale.
 ——————————————————————————————————————————
 5 — CRÉER LES ZONES CONTRAINTES
-Déterminer mentalement les zones dans lesquelles aucun meuble principal ne doit être installé.
+Déterminer, en s’appuyant sur le référentiel spatial (section 2 BIS), les zones dans lesquelles aucun meuble principal ne doit
+être installé.
 Inclure notamment :
 • devant une porte ;
 • dans le débattement d’une porte ;
@@ -476,7 +512,7 @@ Inclure notamment :
 • devant un placard nécessitant une ouverture ;
 • autour d’un équipement technique nécessitant un accès ;
 • devant une cheminée lorsque son fonctionnement impose un dégagement.
-Ces zones devront être transmises à l’étape de génération.
+Ces zones devront être transmises à l’étape de génération, avec leur identifiant.
 ——————————————————————————————————————————
 6 — ANALYSER LE MOBILIER RÉSIDUEL
 Pour chaque élément identifié dans :
@@ -511,7 +547,8 @@ Après prise en compte :
 • des circulations ;
 • des zones contraintes ;
 • du mobilier résiduel éventuellement retiré ;
-identifier les zones réellement disponibles pour le mobilier principal.
+identifier les zones réellement disponibles pour le mobilier principal, en les rattachant à leur identifiant du référentiel
+spatial (UZ1, UZ2…).
 Pour chacune, vérifier :
 • largeur apparente ;
 • profondeur disponible ;
@@ -535,6 +572,24 @@ Les dimensions précises seront affinées plus tard par le module pièce et la g
 compatible avec des dimensions réalistes.
 PRINCIPE :
 UN MEUBLE QUI TIENT DANS LA PHOTO NE TIENT PAS NÉCESSAIREMENT DANS LA PIÈCE.
+——————————————————————————————————————————
+8 BIS — ÉVALUER LA DENSITÉ D’AMÉNAGEMENT ADAPTÉE AU VOLUME
+Évaluer, à partir des photographies, le volume perçu de la pièce et en déduire une densité d’aménagement cible.
+Ne jamais estimer une surface précise en mètres carrés à partir d’une photographie : c’est une fausse précision. Se limiter à
+une appréciation qualitative du volume.
+Choisir une valeur parmi :
+• compact — petit volume, le mobilier principal suffit à occuper la pièce de façon crédible ;
+• standard — volume ordinaire, le mobilier principal associé à quelques éléments secondaires légers donne un résultat
+crédible ;
+• generous — grand volume, le mobilier principal seul laisserait une impression de vide disproportionnée par rapport à
+l’espace réellement perçu.
+Lorsque la densité retenue est generous, envisager du mobilier secondaire supplémentaire (tapis plus généreux, assise
+d’appoint, lampadaire, petit meuble d’appoint) uniquement si son emplacement correspond à une zone réellement libre,
+sans empiéter sur une circulation ni sur une zone interdite.
+Un grand mur ou une grande portion de sol laissés vides ne constituent pas automatiquement une erreur : ne pas chercher
+à remplir systématiquement le volume disponible. La densité doit rester cohérente avec un home staging sobre, jamais avec
+un remplissage artificiel.
+Cette évaluation doit être transmise dans la sortie JSON (voir section 17, champ "layout_density").
 ——————————————————————————————————————————
 9 — DÉFINIR LE PROGRAMME FONCTIONNEL SELON LA PIÈCE
 Utiliser "room_type" pour déterminer uniquement les meubles principaux nécessaires à la compréhension de la fonction.
@@ -617,6 +672,9 @@ Si un espace TV fonctionnel existe hors champ depuis la PHOTO PRINCIPALE :
 il peut être retenu hors champ.
 Il n’est pas nécessaire que la télévision soit visible dans l’image finale.
 Ne jamais déplacer la télévision vers un autre mur uniquement pour la rendre visible.
+Si l’espace TV est retenu visible, son emplacement doit être vérifié au regard du contrôle de cohérence obligatoire
+(section 14 TER) avant tout verrouillage : un espace TV visible ne peut jamais chevaucher un débattement de porte, un accès
+à un placard ou une circulation devant rester libre.
 ——————————————————————————————————————————
 
 11 — CAS PARTICULIER DU CANAPÉ
@@ -673,8 +731,46 @@ Pour chaque meuble prévu, déterminer :
 Cette information doit être explicitement transmise au Prompt C.
 Un meuble déclaré hors champ ne devra jamais être artificiellement ajouté dans le cadrage final.
 ——————————————————————————————————————————
+14 BIS — VISIBILITÉ DE TOUS LES ÉLÉMENTS SPATIAUX DEPUIS LA PHOTO PRINCIPALE
+La règle de visibilité définie à la section 14 pour le mobilier principal s’applique de la même manière à tout élément spatial
+— y compris les éléments fixes identifiés grâce à une photographie complémentaire (porte, placard, radiateur, ouverture).
+Pour chaque élément fixe ou principal considéré, déterminer un statut unique :
+• visible — l’élément apparaît dans le cadrage de la PHOTO PRINCIPALE ;
+• partially_visible — l’élément apparaît partiellement dans ce cadrage ;
+• strictly_out_of_frame — l’élément n’apparaît pas dans ce cadrage, quand bien même il a été identifié grâce à une
+photographie complémentaire.
+RÈGLE ABSOLUE :
+LES PHOTOGRAPHIES COMPLÉMENTAIRES DÉTERMINENT CE QU’IL NE FAUT PAS BLOQUER.
+ELLES NE DÉTERMINENT PAS CE QU’IL FAUT MONTRER.
+Un élément identifié uniquement grâce à une vue complémentaire (par exemple une porte visible sur une photo
+complémentaire mais absente du cadrage de la photo principale) doit être classé strictly_out_of_frame, même s’il doit être
+respecté et préservé en tant que contrainte réelle du logement. Il ne doit jamais être ajouté au cadrage de la PHOTO
+PRINCIPALE à l’étape de génération.
+Cette classification doit être transmise explicitement dans la sortie JSON (voir section 17, champ "main_photo_visibility"),
+pour l’ensemble des éléments concernés — pas seulement pour le mobilier.
+——————————————————————————————————————————
+14 TER — CONTRÔLE DE COHÉRENCE SPATIALE OBLIGATOIRE
+Avant tout verrouillage, croiser systématiquement chaque meuble prévu dans l’implantation avec l’ensemble des zones
+interdites, portes, débattements, placards, radiateurs et circulations identifiés.
+Il est strictement interdit qu’un meuble principal soit positionné dans une zone déclarée par ailleurs comme interdite,
+même partiellement, même si cette zone ne concerne qu’un débattement de porte ou l’accès à un placard.
+Pour chaque meuble principal, vérifier explicitement l’absence de chevauchement avec :
+• chaque zone interdite (forbidden_zones) ;
+• chaque débattement de porte ;
+• chaque zone d’accès à un placard ;
+• chaque circulation devant rester libre ;
+• chaque radiateur nécessitant un dégagement.
+Si une seule contradiction est détectée entre un meuble principal et une zone par ailleurs déclarée interdite :
+NE PAS VERROUILLER.
+Reprendre l’implantation et choisir un autre emplacement, ou déclarer l’implantation impossible si aucune solution
+cohérente n’existe.
+Cette vérification doit être documentée dans la sortie JSON (voir section 17, champ "coherence_check") avant que le statut
+LOCKED puisse être retourné. Un statut LOCKED accompagné d’un "coherence_check.conflicts_detected": true est une
+sortie invalide.
+——————————————————————————————————————————
 15 — VERROUILLER L’IMPLANTATION
-Lorsque l’implantation retenue est physiquement cohérente :
+Lorsque l’implantation retenue est physiquement cohérente ET que le contrôle de cohérence (section 14 TER) ne détecte
+aucune contradiction :
 la déclarer :
 LOCKED.
 À partir de cette décision :
@@ -697,12 +793,13 @@ Il ne pourra pas décider à nouveau :
 ——————————————————————————————————————————
 16 — CAS OÙ L’IMPLANTATION NE PEUT PAS ÊTRE VERROUILLÉE
 Même si le Prompt A a validé les photos, une ambiguïté spatiale importante peut éventuellement apparaître lors de l’étude
-détaillée d’implantation.
+détaillée d’implantation — de même qu’une contradiction détectée par le contrôle de cohérence (section 14 TER).
 Dans ce cas :
 NE PAS INVENTER.
 Retourner :
 "layout_status": "NEEDS_MORE_INFORMATION"
-et indiquer précisément la vue nécessaire.
+et indiquer précisément la vue nécessaire, ou "NO_VALID_LAYOUT" si aucune implantation cohérente n’a pu être trouvée
+après recalcul.
 ——————————————————————————————————————————
 17 — FORMAT DE SORTIE
 Retourner exclusivement un JSON valide.
@@ -718,25 +815,39 @@ Utiliser strictement la structure suivante :
 "main_photo": "photo_1",
 "additional_photos_used": []
 },
+"spatial_reference": {
+"walls": [
+{ "id": "W1", "description": "", "relations": "" }
+],
+"openings": [
+{ "id": "O1", "type": "door | window | bay_window", "wall": "", "description": "" }
+],
+"circulations": [
+{ "id": "C1", "from": "", "to": "", "description": "" }
+]
+},
 "spatial_constraints": {
 "fixed_elements": [
 {
 "item": "",
 "location": "",
+"wall_anchor": "",
+"visibility_from_main_photo": "visible | partially_visible | strictly_out_of_frame",
 "must_preserve": true
 }
 ],
 "circulations": [
 {
+"circulation_id": "",
 "from": "",
 "to": "",
 "description": "",
 "must_remain_clear": true
-
 }
 ],
 "forbidden_zones": [
 {
+"zone_id": "",
 "zone": "",
 "reason": ""
 }
@@ -752,6 +863,7 @@ Utiliser strictement la structure suivante :
 "usable_zones": [
 {
 "zone_id": "",
+"wall_anchor": "",
 "description": "",
 "suitable_for": []
 }
@@ -763,6 +875,7 @@ Utiliser strictement la structure suivante :
 "rejection_reason": ""
 }
 ],
+"layout_density": "compact | standard | generous",
 "locked_layout": {
 "status": "LOCKED | NEEDS_MORE_INFORMATION | NO_VALID_LAYOUT",
 "primary_furniture": [
@@ -772,7 +885,7 @@ Utiliser strictement la structure suivante :
 "location_anchor": "",
 "orientation": "",
 "approximate_size": "",
-"visibility_from_main_photo": "visible | partially_visible | out_of_frame",
+"visibility_from_main_photo": "visible | partially_visible | strictly_out_of_frame",
 "must_not_move": true,
 "notes": ""
 }
@@ -785,6 +898,18 @@ Utiliser strictement la structure suivante :
 "to_item": "",
 "relationship": ""
 }
+]
+},
+"main_photo_visibility": {
+"visible_elements": [""],
+"partially_visible_elements": [""],
+"strictly_out_of_frame": [""]
+},
+"coherence_check": {
+"performed": true,
+"conflicts_detected": false,
+"conflicts": [
+{ "item_id": "", "zone_id": "", "description": "" }
 ]
 },
 "generation_constraints": {
@@ -807,10 +932,16 @@ Utiliser strictement la structure suivante :
 18 — RÈGLES DE COHÉRENCE DU JSON
 Si :
 "locked_layout.status": "LOCKED"
-alors :
+alors obligatoirement :
+"coherence_check.performed": true
+et :
+"coherence_check.conflicts_detected": false
+et :
 "generation_ready": true
 et :
 "next_step": "image_generation"
+Si "coherence_check.conflicts_detected": true, "locked_layout.status" ne peut jamais être "LOCKED" : reprendre
+l’implantation (retour à la section 14 TER) avant de produire une nouvelle sortie.
 Si :
 "locked_layout.status": "NEEDS_MORE_INFORMATION"
 alors :
@@ -843,6 +974,7 @@ Avant de retourner :
 "status": "LOCKED"
 vérifier mentalement que :
 • toutes les photos validées ont été prises en compte ;
+• le référentiel spatial symbolique (section 2 BIS) a été établi ;
 • les éléments fixes sont préservés ;
 • aucune porte n’est bloquée ;
 • aucun passage principal n’est bloqué ;
@@ -854,8 +986,10 @@ vérifier mentalement que :
 • les zones libérées après retrait d’un meuble ont été réévaluées ;
 • l’implantation resterait physiquement possible depuis les autres angles fournis ;
 • les meubles hors champ ont été explicitement identifiés ;
+• tous les éléments spatiaux — pas seulement le mobilier — ont reçu un statut de visibilité (section 14 BIS) ;
+• le contrôle de cohérence croisée (section 14 TER) a été exécuté et ne détecte aucune contradiction ;
 • l’implantation ne repose pas uniquement sur la composition de la PHOTO PRINCIPALE.
-Si une condition importante n’est pas vérifiable :
+Si une condition importante n’est pas vérifiable, ou si le contrôle de cohérence détecte une contradiction :
 NE PAS VERROUILLER.
 ——————————————————————————————————————————
 PRINCIPE FINAL
@@ -875,12 +1009,15 @@ CIRCULATIONS > ESTHÉTIQUE.
 FAISABILITÉ RÉELLE > COMPOSITION PHOTOGRAPHIQUE.
 PHOTO PRINCIPALE = CADRAGE FUTUR.
 PHOTOS COMPLÉMENTAIRES = INFORMATIONS SPATIALES.
+LES PHOTOS COMPLÉMENTAIRES DÉTERMINENT CE QU’IL NE FAUT PAS BLOQUER, PAS CE QU’IL FAUT MONTRER.
 UN MEUBLE HORS CHAMP PEUT FAIRE PARTIE DU PLAN.
 UN MEUBLE HORS CHAMP NE DOIT PAS ÊTRE DÉPLACÉ POUR ÊTRE VISIBLE.
 UN MEUBLE QUI TIENT DANS L’IMAGE NE TIENT PAS NÉCESSAIREMENT DANS LA PIÈCE.
+UNE CONTRADICTION ENTRE UN MEUBLE ET UNE ZONE INTERDITE INTERDIT LE VERROUILLAGE.
 RÉSULTAT ATTENDU :
 UNE IMPLANTATION FONCTIONNELLE,
 PHYSIQUEMENT REPRODUCTIBLE,
+SPATIALEMENT COHÉRENTE AVEC ELLE-MÊME,
 STRUCTURÉE,
 ET VERROUILLÉE POUR LE PROMPT C.`;
 
