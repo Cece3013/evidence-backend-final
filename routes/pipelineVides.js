@@ -11,14 +11,17 @@ const OPENAI_HEADERS = {
   Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
   'Content-Type': 'application/json',
 };
+
 /**
  * Retourne une version allégée de l'image Cloudinary,
  * suffisante pour l'analyse et téléchargeable rapidement par OpenAI.
+ * L'image originale reste utilisée pour la génération finale.
  */
 function versionAllegee(url) {
   if (!url || !url.includes('/upload/')) return url;
   return url.replace('/upload/', '/upload/w_1200,q_auto:good,f_jpg/');
 }
+
 /**
  * Appelle un modèle de vision avec un prompt et une ou plusieurs images.
  * Retourne l'objet JSON produit par le modèle.
@@ -26,7 +29,7 @@ function versionAllegee(url) {
 async function callVisionJSON(prompt, imageUrls, maxTokens = 2000) {
   const content = [{ type: 'text', text: prompt }];
   for (const url of imageUrls) {
-    content.push({ type: 'image_url', image_url: { url } });
+    content.push({ type: 'image_url', image_url: { url: versionAllegee(url) } });
   }
 
   const res = await axios.post(
@@ -71,8 +74,8 @@ ${JSON.stringify(analyseA, null, 2)}`;
   return implantation;
 }
 
-// ─── ÉTAPE C — Génération de l'image ──────────────────────────────────────────
-async function etapeC({ photoPrincipale, implantation, roomType, activeMicroModules = [], commentaireClient }) {
+// ─── ÉTAPE C — Construction du prompt de génération ───────────────────────────
+async function etapeC({ implantation, roomType, activeMicroModules = [], commentaireClient }) {
   const modulePiece = roomPrompts[roomType];
   if (!modulePiece) {
     throw new Error(`Module de pièce introuvable : ${roomType}`);
@@ -158,7 +161,6 @@ async function buildPromptBienVide({
 
   // ── C ──
   const prompt = await etapeC({
-    photoPrincipale,
     implantation,
     roomType,
     activeMicroModules,
