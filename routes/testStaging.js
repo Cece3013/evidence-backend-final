@@ -31,15 +31,22 @@ async function uploadBufferToCloudinary(buffer, filename) {
   return cloudRes.data.secure_url;
 }
 
-/** Envoie un prompt + une image à GPT Image 2, renvoie l'URL Cloudinary du résultat */
+/**
+ * Envoie un prompt + une image à GPT Image 2, renvoie l'URL Cloudinary du résultat.
+ * L'image est normalisée en PNG par Cloudinary pour garantir la compatibilité.
+ */
 async function genererImage(prompt, imageUrl) {
-  const imageRes = await axios.get(imageUrl, { responseType: 'arraybuffer', timeout: 30000 });
+  const imageNormalisee = imageUrl.includes('/upload/')
+    ? imageUrl.replace('/upload/', '/upload/w_1536,c_limit,f_png,fl_force_strip/')
+    : imageUrl;
+
+  const imageRes = await axios.get(imageNormalisee, { responseType: 'arraybuffer', timeout: 60000 });
   const imageBuffer = Buffer.from(imageRes.data);
 
   const form = new FormData();
   form.append('model', 'gpt-image-2');
   form.append('prompt', prompt);
-  form.append('image', imageBuffer, { filename: 'source.jpg', contentType: 'image/jpeg' });
+  form.append('image', imageBuffer, { filename: 'source.png', contentType: 'image/png' });
   form.append('quality', 'high');
   form.append('size', '1536x1024');
 
@@ -55,7 +62,7 @@ async function genererImage(prompt, imageUrl) {
 
   const b64 = openaiRes.data.data[0].b64_json;
   if (!b64) throw new Error('Aucune image générée par OpenAI.');
-  return uploadBufferToCloudinary(Buffer.from(b64, 'base64'), 'generated.jpg');
+  return uploadBufferToCloudinary(Buffer.from(b64, 'base64'), 'generated.png');
 }
 
 // ─── POST /api/test-staging/upload ─────────────────────────────────────────
@@ -113,7 +120,7 @@ router.post('/habites', async (req, res) => {
 });
 
 // ─── POST /api/test-staging/vides ──────────────────────────────────────────
-// Pipeline A → B → C
+// Pipeline A → B → synthèse → génération
 router.post('/vides', async (req, res) => {
   const {
     imageUrl,
