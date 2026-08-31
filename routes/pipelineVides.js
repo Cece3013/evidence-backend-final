@@ -61,8 +61,32 @@ async function etapeB(analyseA, photoPrincipale, photosComplementaires = [], act
     .map((k) => microModules[k])
     .filter(Boolean);
 
-  const blocMicros = microTexts.length
+   const blocMicros = microTexts.length
     ? `
+
+=== BESOINS COMPLÉMENTAIRES VALIDÉS PAR LE CLIENT ===
+Le client a explicitement demandé que cette pièce intègre ${microTexts.length} fonction(s) en plus de sa fonction principale.
+
+MÉTHODE OBLIGATOIRE :
+Cette pièce doit être traitée comme un espace MULTIFONCTION.
+Avant de verrouiller, découper l'espace disponible en autant de zones fonctionnelles
+distinctes que nécessaire, et renseigner chacune dans "usable_zones".
+Ne pas se limiter à une seule zone centrale.
+
+Chaque zone doit recevoir son mobilier propre, et TOUT ce mobilier doit figurer
+dans "primary_furniture" avec son emplacement et son orientation.
+Ne pas reléguer ces meubles dans "secondary_furniture_allowed".
+
+Exemple de découpage attendu pour un salon avec coin repas :
+zone_1 = coin salon (canapé, table basse) ;
+zone_2 = coin repas (table à manger, chaises).
+
+Si une fonction demandée ne peut réellement pas tenir dans la pièce sans bloquer
+une circulation ou une ouverture, ne pas verrouiller l'implantation et expliquer
+précisément le blocage dans "layout_options_considered".
+
+${microTexts.join('\n\n')}`
+    : '';
 
 === BESOINS COMPLÉMENTAIRES VALIDÉS PAR LE CLIENT ===
 Le client a explicitement demandé que cette pièce intègre les fonctions ci-dessous.
