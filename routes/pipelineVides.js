@@ -16,6 +16,15 @@ const OPENAI_HEADERS = {
 const MODELE_ANALYSE = process.env.OPENAI_VISION_MODEL || 'gpt-4o';
 
 /**
+ * Les modèles récents (GPT-5 et suivants) attendent 'max_completion_tokens'
+ * là où les modèles plus anciens utilisent 'max_tokens'.
+ */
+function limiteTokens(nb) {
+  const ancienModele = /^(gpt-4|gpt-3)/.test(MODELE_ANALYSE);
+  return ancienModele ? { max_tokens: nb } : { max_completion_tokens: nb };
+}
+
+/**
  * Version allégée de l'image Cloudinary pour l'analyse.
  * L'image originale reste utilisée pour la génération finale.
  */
@@ -40,7 +49,7 @@ async function callVisionJSON(prompt, imageUrls, maxTokens = 2000) {
     'https://api.openai.com/v1/chat/completions',
     {
       model: MODELE_ANALYSE,
-      max_tokens: maxTokens,
+      ...limiteTokens(maxTokens),
       response_format: { type: 'json_object' },
       messages: [{ role: 'user', content }],
     },
@@ -200,7 +209,7 @@ async function synthetiser({ implantation, roomType, activeMicroModules = [], co
       'https://api.openai.com/v1/chat/completions',
       {
         model: MODELE_ANALYSE,
-        max_tokens: 1600,
+        ...limiteTokens(1600),
         messages: [{ role: 'user', content: instructions }],
       },
       { headers: OPENAI_HEADERS, timeout: 90000 }
