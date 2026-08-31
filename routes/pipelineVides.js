@@ -17,16 +17,16 @@ const OPENAI_HEADERS = {
  * L'image originale reste utilisée pour la génération finale.
  */
 function versionAllegee(url) {
-  if (!url || !url.includes('/upload/')) return url;
+  if (typeof url !== 'string' || !url) return null;
+  if (!url.includes('/upload/')) return url;
   return url.replace('/upload/', '/upload/w_1200,q_auto:good,f_jpg/');
 }
 
 async function callVisionJSON(prompt, imageUrls, maxTokens = 2000) {
   const content = [{ type: 'text', text: prompt }];
-  for (const url of imageUrls) {
+   for (const url of imageUrls) {
     content.push({ type: 'image_url', image_url: { url: versionAllegee(url) } });
   }
-
   const res = await axios.post(
     'https://api.openai.com/v1/chat/completions',
     {
