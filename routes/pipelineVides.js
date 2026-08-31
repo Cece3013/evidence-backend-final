@@ -185,7 +185,7 @@ async function buildPromptBienVide({
   }
 
   // ── B ──
-  const implantation = await etapeB(analyseA, photoPrincipale, photosComplementaires);
+    const implantation = await etapeB(analyseA, photoPrincipale, photosComplementaires, activeMicroModules);
 
   if (implantation.locked_layout?.status !== 'LOCKED' || implantation.generation_ready !== true) {
     const demande = implantation.additional_photo_request?.request || '';
