@@ -11,7 +11,14 @@ const OPENAI_HEADERS = {
   Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
   'Content-Type': 'application/json',
 };
-
+/**
+ * Retourne une version allégée de l'image Cloudinary,
+ * suffisante pour l'analyse et téléchargeable rapidement par OpenAI.
+ */
+function versionAllegee(url) {
+  if (!url || !url.includes('/upload/')) return url;
+  return url.replace('/upload/', '/upload/w_1200,q_auto:good,f_jpg/');
+}
 /**
  * Appelle un modèle de vision avec un prompt et une ou plusieurs images.
  * Retourne l'objet JSON produit par le modèle.
