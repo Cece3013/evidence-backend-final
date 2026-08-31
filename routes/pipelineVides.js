@@ -1,5 +1,5 @@
 // backend/routes/pipelineVides.js
-// Orchestrateur Biens vides : PROMPT A → PROMPT B → PROMPT C → synthèse
+// Orchestrateur Biens vides : PROMPT A → PROMPT B → synthèse → génération
 const axios = require('axios');
 
 const { PROMPT_A_ANALYSE, PROMPT_B_IMPLANTATION, PROMPT_C_GENERATION } = require('./promptsAgentsVides');
@@ -13,8 +13,7 @@ const OPENAI_HEADERS = {
 };
 
 /**
- * Retourne une version allégée de l'image Cloudinary,
- * suffisante pour l'analyse et téléchargeable rapidement par OpenAI.
+ * Version allégée de l'image Cloudinary pour l'analyse.
  * L'image originale reste utilisée pour la génération finale.
  */
 function versionAllegee(url) {
@@ -22,10 +21,6 @@ function versionAllegee(url) {
   return url.replace('/upload/', '/upload/w_1200,q_auto:good,f_jpg/');
 }
 
-/**
- * Appelle un modèle de vision avec un prompt et une ou plusieurs images.
- * Retourne l'objet JSON produit par le modèle.
- */
 async function callVisionJSON(prompt, imageUrls, maxTokens = 2000) {
   const content = [{ type: 'text', text: prompt }];
   for (const url of imageUrls) {
@@ -61,16 +56,39 @@ async function etapeA(photoPrincipale, photosComplementaires = [], roomTypePress
 }
 
 // ─── ÉTAPE B — Décision d'implantation ────────────────────────────────────────
-async function etapeB(analyseA, photoPrincipale, photosComplementaires = []) {
+async function etapeB(analyseA, photoPrincipale, photosComplementaires = [], activeMicroModules = []) {
+  const microTexts = activeMicroModules
+    .map((k) => microModules[k])
+    .filter(Boolean);
+
+  const blocMicros = microTexts.length
+    ? `
+
+=== BESOINS COMPLÉMENTAIRES VALIDÉS PAR LE CLIENT ===
+Le client a explicitement demandé que cette pièce intègre les fonctions ci-dessous.
+Ces besoins font partie intégrante de la commande.
+
+OBLIGATION :
+Le mobilier correspondant à chacun de ces besoins DOIT apparaître dans "primary_furniture"
+de l'implantation verrouillée, avec son emplacement, son orientation et sa taille.
+Ne pas les reléguer dans "secondary_furniture_allowed".
+
+Si l'un de ces besoins ne peut physiquement pas être satisfait dans cette pièce
+(place insuffisante, circulation bloquée), ne pas verrouiller l'implantation
+et expliquer le blocage dans "layout_options_considered".
+
+${microTexts.join('\n\n')}`
+    : '';
+
   const prompt = `${PROMPT_B_IMPLANTATION}
 
 === SORTIE DU PROMPT A ===
-${JSON.stringify(analyseA, null, 2)}`;
+${JSON.stringify(analyseA, null, 2)}${blocMicros}`;
 
   const images = [photoPrincipale, ...photosComplementaires];
   const implantation = await callVisionJSON(prompt, images, 3000);
 
-  console.log(`[PipelineVides] B — verrouillage: ${implantation.locked_layout?.status} — prêt: ${implantation.generation_ready}`);
+  console.log(`[PipelineVides] B — verrouillage: ${implantation.locked_layout?.status} — prêt: ${implantation.generation_ready} — besoins: ${activeMicroModules.join(', ') || 'aucun'}`);
   return implantation;
 }
 
@@ -108,6 +126,7 @@ RÈGLES IMPÉRATIVES À REPRENDRE EXPLICITEMENT :
 2. Ne jamais déplacer le point de vue ni recadrer l'image.
 3. Ne jamais fusionner plusieurs angles de vue.
 4. Respecter strictement l'implantation verrouillée sans la réinterpréter.
+${microTexts.length ? `5. Les besoins complémentaires validés par le client (voir plus bas) doivent apparaître visiblement dans l'image générée.` : ''}
 
 Réponds UNIQUEMENT avec le texte du prompt final, sans guillemets, sans titre, sans commentaire.
 
@@ -133,7 +152,7 @@ ${NOYAU_BIEN_VIDE}
 === MODULE DE LA PIÈCE : ${roomType} (référence) ===
 ${modulePiece}
 
-${microTexts.length ? '=== MICRO-MODULES ACTIVÉS ===\n' + microTexts.join('\n\n') : ''}`;
+${microTexts.length ? '=== BESOINS COMPLÉMENTAIRES VALIDÉS PAR LE CLIENT ===\n' + microTexts.join('\n\n') : ''}`;
 
   try {
     const res = await axios.post(
@@ -156,7 +175,7 @@ ${microTexts.length ? '=== MICRO-MODULES ACTIVÉS ===\n' + microTexts.join('\n\n
 }
 
 /**
- * Exécute la chaîne complète A → B → C.
+ * Exécute la chaîne complète.
  * Retourne soit un prompt prêt à générer, soit une demande de photos complémentaires.
  */
 async function buildPromptBienVide({
@@ -185,7 +204,7 @@ async function buildPromptBienVide({
   }
 
   // ── B ──
-    const implantation = await etapeB(analyseA, photoPrincipale, photosComplementaires, activeMicroModules);
+  const implantation = await etapeB(analyseA, photoPrincipale, photosComplementaires, activeMicroModules);
 
   if (implantation.locked_layout?.status !== 'LOCKED' || implantation.generation_ready !== true) {
     const demande = implantation.additional_photo_request?.request || '';
@@ -201,7 +220,7 @@ async function buildPromptBienVide({
     };
   }
 
-  // ── C (synthèse) ──
+  // ── Synthèse ──
   const prompt = await synthetiser({
     implantation,
     roomType,
