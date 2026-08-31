@@ -49,7 +49,7 @@ async function genererImage(prompt, imageUrl) {
   form.append('image', imageBuffer, { filename: 'source.png', contentType: 'image/png' });
   form.append('quality', 'high');
     form.append('size', 'auto');
-  form.append('input_fidelity', 'high');
+
   const openaiRes = await axios.post(
     'https://api.openai.com/v1/images/edits',
     form,
