@@ -48,8 +48,8 @@ async function genererImage(prompt, imageUrl) {
   form.append('prompt', prompt);
   form.append('image', imageBuffer, { filename: 'source.png', contentType: 'image/png' });
   form.append('quality', 'high');
-  form.append('size', '1536x1024');
-
+    form.append('size', 'auto');
+  form.append('input_fidelity', 'high');
   const openaiRes = await axios.post(
     'https://api.openai.com/v1/images/edits',
     form,
