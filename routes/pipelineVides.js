@@ -1,5 +1,5 @@
 // backend/routes/pipelineVides.js
-// Orchestrateur Biens vides : PROMPT A → PROMPT B → PROMPT C
+// Orchestrateur Biens vides : PROMPT A → PROMPT B → PROMPT C → synthèse
 const axios = require('axios');
 
 const { PROMPT_A_ANALYSE, PROMPT_B_IMPLANTATION, PROMPT_C_GENERATION } = require('./promptsAgentsVides');
@@ -74,8 +74,8 @@ ${JSON.stringify(analyseA, null, 2)}`;
   return implantation;
 }
 
-// ─── ÉTAPE C — Construction du prompt de génération ───────────────────────────
-async function etapeC({ implantation, roomType, activeMicroModules = [], commentaireClient }) {
+// ─── SYNTHÈSE — Prompt d'exécution compact pour le générateur ─────────────────
+async function synthetiser({ implantation, roomType, activeMicroModules = [], commentaireClient }) {
   const modulePiece = roomPrompts[roomType];
   if (!modulePiece) {
     throw new Error(`Module de pièce introuvable : ${roomType}`);
@@ -85,32 +85,74 @@ async function etapeC({ implantation, roomType, activeMicroModules = [], comment
     .map((k) => microModules[k])
     .filter(Boolean);
 
-  const promptFinal = `${PROMPT_C_GENERATION}
+  const instructions = `Tu es un ingénieur prompt spécialisé en génération d'image immobilière.
 
-=== NOYAU_BIEN_VIDE ===
-${NOYAU_BIEN_VIDE}
+Ta mission : produire UN SEUL prompt d'exécution compact destiné au modèle gpt-image-2 (API d'édition d'image), à partir de la documentation ci-dessous.
 
-=== MODULE_PIECE ===
-${modulePiece}
+CONTRAINTES DE SORTIE :
+- Entre 2000 et 3000 caractères maximum. Cette limite est stricte.
+- Rédigé en français, à l'impératif, en instructions directes.
+- Structuré selon la hiérarchie suivante, dans cet ordre :
+  PRIORITÉ 1 — architecture, éléments fixes et point de vue : à préserver intégralement.
+  PRIORITÉ 2 — implantation verrouillée : reproduire exactement les meubles, emplacements et orientations décidés. Ne jamais recalculer l'implantation.
+  PRIORITÉ 3 — mobilier résiduel : appliquer les décisions KEEP / REMOVE indiquées.
+  PRIORITÉ 4 — circulations et fonctionnalité de la pièce.
+  PRIORITÉ 5 — style, matières, lumière et ambiance.
+- Nomme explicitement chaque meuble de l'implantation verrouillée avec sa position.
+- N'inclus jamais un meuble marqué "out_of_frame" dans l'image générée.
+- N'invente aucun élément absent de la documentation.
+- Termine par une ligne courte sur le rendu attendu : photoréaliste, lumière naturelle préservée, cadrage identique à la photo d'origine.
 
-=== ACTIVE_MICRO_MODULES ===
-${microTexts.length ? microTexts.join('\n\n') : 'Aucun micro-module activé.'}
+RÈGLES IMPÉRATIVES À REPRENDRE EXPLICITEMENT :
+1. Ne jamais modifier l'architecture, les ouvertures, les murs, les sols ou les plafonds.
+2. Ne jamais déplacer le point de vue ni recadrer l'image.
+3. Ne jamais fusionner plusieurs angles de vue.
+4. Respecter strictement l'implantation verrouillée sans la réinterpréter.
 
-=== LOCKED_LAYOUT ===
+Réponds UNIQUEMENT avec le texte du prompt final, sans guillemets, sans titre, sans commentaire.
+
+=== IMPLANTATION VERROUILLÉE ===
 ${JSON.stringify(implantation.locked_layout, null, 2)}
 
-=== SPATIAL_CONSTRAINTS ===
+=== CONTRAINTES SPATIALES ===
 ${JSON.stringify(implantation.spatial_constraints || {}, null, 2)}
 
-=== RESIDUAL_FURNITURE_DECISIONS ===
+=== DÉCISIONS SUR LE MOBILIER RÉSIDUEL ===
 ${JSON.stringify(implantation.residual_furniture_decisions || [], null, 2)}
 
-=== GENERATION_CONSTRAINTS ===
+=== CONTRAINTES DE GÉNÉRATION ===
 ${JSON.stringify(implantation.generation_constraints || {}, null, 2)}
-${commentaireClient ? `\n=== DEMANDE PARTICULIÈRE DU CLIENT ===\n${commentaireClient}\n(À respecter si compatible avec l'implantation verrouillée et les règles du noyau.)` : ''}`;
+${commentaireClient ? `\n=== DEMANDE PARTICULIÈRE DU CLIENT ===\n${commentaireClient}\n(À intégrer si compatible avec l'implantation verrouillée.)` : ''}
 
-  console.log(`[PipelineVides] C — prompt final: ${promptFinal.length} caractères`);
-  return promptFinal;
+=== RÈGLES DE GÉNÉRATION (référence) ===
+${PROMPT_C_GENERATION}
+
+=== NOYAU BIEN VIDE (référence) ===
+${NOYAU_BIEN_VIDE}
+
+=== MODULE DE LA PIÈCE : ${roomType} (référence) ===
+${modulePiece}
+
+${microTexts.length ? '=== MICRO-MODULES ACTIVÉS ===\n' + microTexts.join('\n\n') : ''}`;
+
+  try {
+    const res = await axios.post(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        model: 'gpt-4o',
+        max_tokens: 1600,
+        messages: [{ role: 'user', content: instructions }],
+      },
+      { headers: OPENAI_HEADERS, timeout: 90000 }
+    );
+
+    const prompt = res.data.choices[0].message.content.trim();
+    console.log(`[PipelineVides] Synthèse — prompt final: ${prompt.length} caractères`);
+    return prompt;
+  } catch (err) {
+    console.error('[PipelineVides] Erreur synthèse:', err.response?.data || err.message);
+    throw new Error('Impossible de préparer le prompt de génération.');
+  }
 }
 
 /**
@@ -159,8 +201,8 @@ async function buildPromptBienVide({
     };
   }
 
-  // ── C ──
-  const prompt = await etapeC({
+  // ── C (synthèse) ──
+  const prompt = await synthetiser({
     implantation,
     roomType,
     activeMicroModules,
