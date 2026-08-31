@@ -12,8 +12,9 @@ const OPENAI_HEADERS = {
   'Content-Type': 'application/json',
 };
 
-// Modèle d'analyse spatiale — configurable depuis Railway
+// Modèle d'analyse spatiale — configurable depuis Railway (OPENAI_VISION_MODEL)
 const MODELE_ANALYSE = process.env.OPENAI_VISION_MODEL || 'gpt-4o';
+
 /**
  * Version allégée de l'image Cloudinary pour l'analyse.
  * L'image originale reste utilisée pour la génération finale.
@@ -38,7 +39,7 @@ async function callVisionJSON(prompt, imageUrls, maxTokens = 2000) {
   const res = await axios.post(
     'https://api.openai.com/v1/chat/completions',
     {
-           model: MODELE_ANALYSE,
+      model: MODELE_ANALYSE,
       max_tokens: maxTokens,
       response_format: { type: 'json_object' },
       messages: [{ role: 'user', content }],
@@ -198,7 +199,7 @@ async function synthetiser({ implantation, roomType, activeMicroModules = [], co
     const res = await axios.post(
       'https://api.openai.com/v1/chat/completions',
       {
-        model: 'gpt-4o',
+        model: MODELE_ANALYSE,
         max_tokens: 1600,
         messages: [{ role: 'user', content: instructions }],
       },
