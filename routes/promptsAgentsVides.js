@@ -448,6 +448,28 @@ utiliser uniquement des rapports de position, des proportions relatives (par exe
 des relations entre repères.
 Ce référentiel doit être transmis dans la sortie JSON (voir section 17, champ "spatial_reference").
 ——————————————————————————————————————————
+2 TER — LEVER L’AMBIGUÏTÉ DES POSITIONS RELATIVES ENTRE MEUBLES
+Un mot de position relative comme « devant », « derrière », « à côté de » est ambigu tant qu’il n’est pas rattaché à un repère
+directionnel explicite. « Devant le canapé » peut désigner aussi bien le côté assise (vers lequel les occupants regardent) que le
+côté caméra (le plus proche de la PHOTO PRINCIPALE) — ces deux interprétations désignent des emplacements opposés.
+Cette ambiguïté doit être levée systématiquement pour toute paire de meubles en relation directe (par exemple canapé et
+table basse, lit et tables de chevet, table et chaises).
+Ne jamais écrire uniquement :
+• « devant le canapé » ;
+• « à côté du lit » ;
+• « derrière la table ».
+Toujours préciser le repère qui lève l’ambiguïté, par exemple :
+• « entre le canapé et W4, côté assise » ;
+• « entre le canapé et la PHOTO PRINCIPALE, côté caméra » ;
+• « le long de W2, entre PF4 et O1 ».
+Lorsque la relation fonctionnelle l’exige — une table basse doit rester accessible depuis l’assise du canapé —, la position
+doit explicitement refléter cette exigence fonctionnelle et non une simple proximité géométrique. Une table basse
+positionnée du mauvais côté d’un canapé, inaccessible depuis l’assise, est une implantation incohérente même si elle ne
+viole aucune zone interdite.
+Si une position ne peut pas être exprimée sans ambiguïté relative, et qu’aucun élément secondaire n’est réellement
+nécessaire à cet endroit, ne pas forcer un mobilier improbable dans "secondary_furniture_allowed" ; il vaut mieux laisser la
+zone vide ou suggérer un meuble d’appoint différent (une console, par exemple) plutôt qu’un meuble mal positionné.
+——————————————————————————————————————————
 3 — IDENTIFIER LES ÉLÉMENTS NON MODIFIABLES
 Considérer comme contraintes réelles tous les éléments fixes identifiés.
 Notamment :
@@ -739,6 +761,13 @@ Pour chaque élément fixe ou principal considéré, déterminer un statut uniqu
 • partially_visible — l’élément apparaît partiellement dans ce cadrage ;
 • strictly_out_of_frame — l’élément n’apparaît pas dans ce cadrage, quand bien même il a été identifié grâce à une
 photographie complémentaire.
+Le statut strictly_out_of_frame ne doit jamais être appliqué par défaut à un élément uniquement parce qu’il a été
+principalement identifié grâce à une photographie complémentaire. Avant de retenir ce statut, vérifier explicitement, à
+partir de la continuité des lignes visibles (sol, plinthes, angles de murs) entre la PHOTO PRINCIPALE et les photographies
+complémentaires, si une portion de la zone concernée tombe réellement dans le champ de vision de la PHOTO PRINCIPALE.
+Si une portion, même réduite, appartient à ce champ de vision, classer l’élément partially_visible et préciser dans les
+notes quelle portion est concernée. Réserver strictly_out_of_frame aux éléments dont on peut établir, à partir des
+informations disponibles, qu’aucune portion n’entre dans le cadrage de la PHOTO PRINCIPALE.
 RÈGLE ABSOLUE :
 LES PHOTOGRAPHIES COMPLÉMENTAIRES DÉTERMINENT CE QU’IL NE FAUT PAS BLOQUER.
 ELLES NE DÉTERMINENT PAS CE QU’IL FAUT MONTRER.
