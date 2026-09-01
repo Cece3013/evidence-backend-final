@@ -118,7 +118,10 @@ async function etapeB(analyseA, photoPrincipale, photosComplementaires = [], act
   ].join('\n');
 
   const images = [photoPrincipale, ...photosComplementaires];
-  const implantation = await callVisionJSON(prompt, images, 3000);
+  // Limite augmentée de 3000 à 6000 : le Prompt B enrichi (référentiel spatial,
+  // visibilité par élément, contrôle de cohérence) produit un JSON plus long.
+  // 3000 provoquait une troncature en cours de génération ("Unterminated string in JSON").
+  const implantation = await callVisionJSON(prompt, images, 6000);
 
   console.log(`[PipelineVides] B — verrouillage: ${implantation.locked_layout?.status} — prêt: ${implantation.generation_ready} — besoins: ${activeMicroModules.join(', ') || 'aucun'}`);
   return implantation;
