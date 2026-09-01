@@ -3,6 +3,7 @@
 const axios = require('axios');
 
 const { PROMPT_A_ANALYSE, PROMPT_B_IMPLANTATION, PROMPT_C_GENERATION } = require('./promptsAgentsVides');
+const { PROMPT_D_CONTROLE } = require('./promptsControleVides');
 const { NOYAU_BIEN_VIDE } = require('./globalRulesVides');
 const roomPrompts = require('./roomPromptsVides');
 const microModules = require('./microModulesVides');
@@ -227,6 +228,33 @@ async function synthetiser({ implantation, roomType, activeMicroModules = [], co
   }
 }
 
+// ─── CONTRÔLE — Vérification post-génération ──────────────────────────────────
+/**
+ * Compare la photo d'origine, l'image générée et l'implantation verrouillée.
+ * Appelée par la route APRÈS genererImage(), AVANT tout envoi vers
+ * Cloudinary/Notion pour validation par l'équipe.
+ */
+async function controlerGeneration({ photoPrincipale, imageGeneree, implantation }) {
+  const prompt = [
+    PROMPT_D_CONTROLE,
+    '',
+    '=== LOCKED_LAYOUT À VÉRIFIER ===',
+    JSON.stringify(implantation.locked_layout, null, 2),
+    '',
+    '=== CONTRAINTES SPATIALES À VÉRIFIER ===',
+    JSON.stringify(implantation.spatial_constraints || {}, null, 2),
+    '',
+    '=== VISIBILITÉ ATTENDUE DEPUIS LA PHOTO PRINCIPALE ===',
+    JSON.stringify(implantation.main_photo_visibility || {}, null, 2),
+  ].join('\n');
+
+  const images = [photoPrincipale, imageGeneree];
+  const controle = await callVisionJSON(prompt, images, 3000);
+
+  console.log(`[PipelineVides] Contrôle post-génération — statut: ${controle.controle_status} — next_step: ${controle.next_step}`);
+  return controle;
+}
+
 /**
  * Exécute la chaîne complète.
  * Retourne soit un prompt prêt à générer, soit une demande de photos complémentaires.
@@ -289,4 +317,4 @@ async function buildPromptBienVide({
   };
 }
 
-module.exports = { buildPromptBienVide };
+module.exports = { buildPromptBienVide, controlerGeneration };
