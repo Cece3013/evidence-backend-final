@@ -817,6 +817,22 @@ Cette cohérence doit être vérifiée dans le cadre du contrôle de cohérence 
 verrouillage. Une sortie où "coherence_check.conflicts_detected": false alors qu’une incohérence de visibilité entre
 meubles liés est présente est une sortie invalide.
 ——————————————————————————————————————————
+14 QUINQUIES — MARGE DE SÉCURITÉ VISUELLE PRÈS D’UNE ZONE INTERDITE
+Lorsque la portion visible d’un mur d’ancrage (UZ) est réduite — c’est-à-dire que ce mur est classé majoritairement ou
+entièrement strictly_out_of_frame, à l’exception d’une petite portion à l’angle avec un autre mur — et que cet angle
+touche directement une zone interdite (par exemple l’angle entre le mur d’ancrage et une baie vitrée), il ne suffit pas
+d’indiquer « en retrait de l’angle » dans location_anchor : cette formulation n’offre pas une marge suffisante dans les
+faits.
+Dans ce cas précis :
+• soit exclure ce mur pour tout meuble principal volumineux (canapé, lit, grande armoire), et choisir une autre zone
+usable même si elle est légèrement moins spacieuse ;
+• soit, si aucune autre zone n’est réaliste, exiger explicitement dans location_anchor une distance de recul mesurée en
+proportion du meuble lui-même (par exemple « à une distance d’au moins une largeur de canapé de l’angle avec la
+zone interdite »), plutôt qu’une formulation qualitative insuffisante.
+Un meuble principal ne doit jamais apparaître visuellement adossé ou immédiatement adjacent à une zone interdite dans
+la portion réellement visible de l’image, même si son ancrage global (majoritairement hors champ) semble respecter les
+zones interdites sur le papier.
+——————————————————————————————————————————
 15 — VERROUILLER L’IMPLANTATION
 Lorsque l’implantation retenue est physiquement cohérente ET que le contrôle de cohérence (section 14 TER) ne détecte
 aucune contradiction :
@@ -1039,6 +1055,8 @@ vérifier mentalement que :
 • le contrôle de cohérence croisée (section 14 TER) a été exécuté et ne détecte aucune contradiction ;
 • aucun meuble visible n’est privé de l’élément auquel il est fonctionnellement rattaché lorsque celui-ci est hors champ
 (section 14 QUATER) ;
+• aucun meuble principal volumineux n’apparaît visuellement collé à une zone interdite du fait d’une portion visible
+trop réduite de son mur d’ancrage (section 14 QUINQUIES) ;
 • l’implantation ne repose pas uniquement sur la composition de la PHOTO PRINCIPALE.
 Si une condition importante n’est pas vérifiable, ou si le contrôle de cohérence détecte une contradiction :
 NE PAS VERROUILLER.
@@ -1066,6 +1084,7 @@ UN MEUBLE HORS CHAMP NE DOIT PAS ÊTRE DÉPLACÉ POUR ÊTRE VISIBLE.
 UN MEUBLE QUI TIENT DANS L’IMAGE NE TIENT PAS NÉCESSAIREMENT DANS LA PIÈCE.
 UNE CONTRADICTION ENTRE UN MEUBLE ET UNE ZONE INTERDITE INTERDIT LE VERROUILLAGE.
 UN MEUBLE DÉPENDANT NE DOIT JAMAIS APPARAÎTRE SEUL SANS SON ANCRE FONCTIONNELLE.
+UNE PORTION VISIBLE TROP RÉDUITE D’UN MUR NE JUSTIFIE JAMAIS UN MEUBLE COLLÉ À UNE ZONE INTERDITE.
 RÉSULTAT ATTENDU :
 UNE IMPLANTATION FONCTIONNELLE,
 PHYSIQUEMENT REPRODUCTIBLE,
