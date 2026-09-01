@@ -45,13 +45,15 @@ Un meuble attendu visible mais absent de l’image est une violation.
 Pour chaque meuble dont visibility_from_main_photo vaut "strictly_out_of_frame", vérifier qu’il n’apparaît sous aucune
 forme dans l’IMAGE GÉNÉRÉE. S’il apparaît, c’est une violation, même partielle.
 ——————————————————————————————————————————
-3 — ORIENTATION ET RELATIONS FONCTIONNELLES
-Pour chaque meuble dont orientation est précisée dans locked_layout, vérifier que l’orientation observée dans l’IMAGE
-GÉNÉRÉE correspond raisonnablement à celle prévue. Exemple : un canapé dont l’orientation prévue est « face vers W3 »
-doit visuellement faire face à l’espace où se trouve la télévision, pas lui tourner le dos ni être orienté de travers.
-Pour chaque relation déclarée dans locked_layout.functional_relationships, vérifier que la relation est visuellement
-respectée dans l’IMAGE GÉNÉRÉE (le canapé fait face à la TV, la table basse est accessible depuis l’assise, les chaises
-entourent effectivement la table).
+3 — POSITION, ANCRAGE ET ORIENTATION DU MOBILIER
+Pour chaque meuble de locked_layout.primary_furniture, vérifier trois choses distinctes :
+• son ancrage mural — le meuble apparaît-il visuellement dans la zone ou le mur décrit par location_anchor, ou a-t-il
+été déplacé ailleurs dans l’image, par exemple regroupé avec d’autres meubles sans lien avec le mur d’ancrage prévu ?
+• son orientation — correspond-elle à celle indiquée (un canapé « orienté vers W4 » doit visuellement faire face à cette
+zone, pas lui tourner le dos) ?
+• ses relations fonctionnelles — les paires déclarées dans functional_relationships sont-elles respectées visuellement ?
+Un meuble bien présent et bien orienté, mais positionné sur un mur ou dans une zone différente de celle prévue dans
+location_anchor, constitue une violation au même titre qu’une mauvaise orientation.
 Une orientation clairement incohérente avec ce qui était prévu est une violation, même si le meuble concerné est bien
 présent et bien positionné en termes de zone.
 ——————————————————————————————————————————
@@ -59,6 +61,23 @@ présent et bien positionné en termes de zone.
 Vérifier qu’aucun meuble, dans l’IMAGE GÉNÉRÉE, n’obstrue visuellement une zone listée dans
 spatial_constraints.forbidden_zones — notamment l’accès à une baie vitrée, le débattement d’une porte, l’ouverture d’un
 placard, ou une circulation principale.
+——————————————————————————————————————————
+4 BIS — RÉPARTITION SPATIALE ET DENSITÉ
+Comparer la répartition du mobilier dans l’IMAGE GÉNÉRÉE avec le nombre et la diversité des usable_zones décrites dans
+le LOCKED_LAYOUT, ainsi qu’avec layout_density.
+Un défaut fréquent consiste à regrouper l’ensemble du mobilier dans une seule portion de l’image — souvent un angle ou
+un tiers de la largeur —, en laissant une portion importante du sol visiblement vide sans qu’aucune zone interdite ni
+contrainte ne le justifie. Ce n’est pas un simple choix esthétique : cela contredit l’implantation verrouillée, qui prévoyait
+des zones distinctes réparties dans la pièce.
+Vérifier que :
+• le mobilier occupe raisonnablement les différentes zones utilisables décrites (usable_zones), et non une seule zone
+condensée ;
+• l’espace laissé vide dans l’image correspond à un espace réellement laissé libre par l’implantation — circulation,
+zone interdite —, et non à un simple oubli d’occupation résultant d’un mobilier entassé ailleurs ;
+• la densité observée est cohérente avec layout_density — une pièce "generous" ne doit pas donner l’impression d’un
+mobilier entassé dans un angle alors que le reste du volume reste entièrement nu.
+Si le mobilier apparaît anormalement concentré dans une portion réduite de l’image alors que plusieurs usable_zones
+distinctes étaient prévues à des emplacements différents, c’est une violation.
 ——————————————————————————————————————————
 5 — FORMAT DE SORTIE
 Retourner exclusivement un JSON valide. Aucun texte hors JSON.
@@ -76,9 +95,13 @@ Retourner exclusivement un JSON valide. Aucun texte hors JSON.
 "required_furniture_missing": [
 { "item_id": "", "type": "", "detail": "" }
 ],
-"orientation_conflicts": [
-{ "item_id": "", "expected_orientation": "", "observed_issue": "" }
+"placement_conflicts": [
+{ "item_id": "", "conflict_type": "orientation | wall_anchor | zone_mismatch", "expected": "", "observed_issue": "" }
 ],
+"space_utilization_issue": {
+"detected": false,
+"detail": ""
+},
 "forbidden_zones_violated": [
 { "zone_id": "", "detail": "" }
 ],
@@ -87,12 +110,12 @@ Retourner exclusivement un JSON valide. Aucun texte hors JSON.
 }
 ——————————————————————————————————————————
 6 — RÈGLES DE DÉCISION POUR "next_step"
-Si aucune violation n’est détectée dans les sections 1 à 4 :
+Si aucune violation n’est détectée dans les sections 1 à 4 BIS :
 "controle_status": "VALIDE"
 "next_step": "DELIVER"
 Si une ou plusieurs violations sont détectées, mais qu’elles sont précises et qu’une nouvelle génération avec une
-instruction corrective ciblée a de bonnes chances de les corriger (élément hors champ visible, orientation incorrecte,
-meuble manquant) :
+instruction corrective ciblée a de bonnes chances de les corriger — élément hors champ visible, orientation incorrecte,
+ancrage mural déplacé, meuble manquant, répartition spatiale trop concentrée :
 "controle_status": "REJETE"
 "next_step": "REGENERATE"
 Si les violations touchent l’architecture elle-même, le cadrage, ou si elles sont multiples et structurelles au point qu’une
@@ -106,8 +129,9 @@ PRINCIPE FINAL
 NE PAS JUGER LE GOÛT.
 JUGER LA FIDÉLITÉ AU PLAN VERROUILLÉ.
 UN ÉLÉMENT HORS CHAMP RESTE HORS CHAMP.
-UN MEUBLE ATTENDU DOIT ÊTRE PRÉSENT.
+UN MEUBLE ATTENDU DOIT ÊTRE PRÉSENT, SUR LE BON MUR.
 UNE ORIENTATION PRÉVUE DOIT ÊTRE RESPECTÉE.
-UNE ZONE INTERDITE RESTE LIBRE SUR L’IMAGE COMME SUR LE PAPIER.`;
+UNE ZONE INTERDITE RESTE LIBRE SUR L’IMAGE COMME SUR LE PAPIER.
+UN MOBILIER ENTASSÉ DANS UN COIN NE REMPLACE PAS UNE RÉPARTITION EN PLUSIEURS ZONES.`;
 
 module.exports = { PROMPT_D_CONTROLE };
