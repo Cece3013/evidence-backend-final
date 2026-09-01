@@ -8,7 +8,12 @@ const router = express.Router();
 
 const { buildPromptHabitesParticuliers } = require('./promptsHabitesParticuliers');
 const { buildPromptHabitesPro } = require('./promptsHabitesPro');
-const { buildPromptBienVide } = require('./pipelineVides');
+const { buildPromptBienVide, controlerGeneration } = require('./pipelineVides');
+
+// Nombre maximal de régénérations automatiques après un contrôle rejeté avec
+// next_step = REGENERATE. Au-delà, le dossier passe en révision manuelle
+// plutôt que de boucler indéfiniment (coût et temps maîtrisés).
+const MAX_REGENERATIONS = 2;
 
 async function uploadBufferToCloudinary(buffer, filename) {
   const timestamp = Math.round(Date.now() / 1000);
@@ -63,6 +68,75 @@ async function genererImage(prompt, imageUrl) {
   const b64 = openaiRes.data.data[0].b64_json;
   if (!b64) throw new Error('Aucune image générée par OpenAI.');
   return uploadBufferToCloudinary(Buffer.from(b64, 'base64'), 'generated.png');
+}
+
+/**
+ * Construit le texte de correction à ajouter au prompt de synthèse à partir
+ * du verdict du contrôle post-génération, pour une nouvelle tentative ciblée.
+ */
+function construireCorrectionDepuisControle(controle) {
+  return [
+    '',
+    '=== CORRECTION OBLIGATOIRE SUITE AU CONTRÔLE POST-GÉNÉRATION ===',
+    "La génération précédente a été rejetée pour les raisons suivantes. Corrige-les strictement, sans modifier le reste de l'implantation ni de l'architecture :",
+    controle.issues_summary || '',
+    JSON.stringify(
+      {
+        forbidden_elements_visible: controle.forbidden_elements_visible || [],
+        out_of_frame_furniture_visible: controle.out_of_frame_furniture_visible || [],
+        required_furniture_missing: controle.required_furniture_missing || [],
+        orientation_conflicts: controle.orientation_conflicts || [],
+        forbidden_zones_violated: controle.forbidden_zones_violated || [],
+      },
+      null,
+      2
+    ),
+  ].join('\n');
+}
+
+/**
+ * Génère une image puis la fait vérifier par le contrôle post-génération.
+ * Régénère automatiquement (jusqu'à MAX_REGENERATIONS fois) si le contrôle
+ * détecte un écart corrigible. Retourne le résultat final, qu'il soit validé
+ * ou à envoyer en révision manuelle.
+ */
+async function genererEtControler({ prompt, imageUrl, implantation }) {
+  let promptCourant = prompt;
+  let generatedUrl = await genererImage(promptCourant, imageUrl);
+  let controle = await controlerGeneration({
+    photoPrincipale: imageUrl,
+    imageGeneree: generatedUrl,
+    implantation,
+  });
+
+  let tentatives = 0;
+  while (
+    controle.controle_status !== 'VALIDE' &&
+    controle.next_step === 'REGENERATE' &&
+    tentatives < MAX_REGENERATIONS
+  ) {
+    tentatives += 1;
+    console.log(`[TestStaging] Contrôle rejeté (régénération ${tentatives}/${MAX_REGENERATIONS}) — ${controle.issues_summary}`);
+
+    promptCourant = promptCourant + construireCorrectionDepuisControle(controle);
+    generatedUrl = await genererImage(promptCourant, imageUrl);
+    controle = await controlerGeneration({
+      photoPrincipale: imageUrl,
+      imageGeneree: generatedUrl,
+      implantation,
+    });
+  }
+
+  const valide = controle.controle_status === 'VALIDE';
+
+  return {
+    generatedUrl,
+    promptFinal: promptCourant,
+    controle,
+    valide,
+    manualReview: !valide,
+    tentativesRegeneration: tentatives,
+  };
 }
 
 // ─── POST /api/test-staging/upload ─────────────────────────────────────────
@@ -120,7 +194,7 @@ router.post('/habites', async (req, res) => {
 });
 
 // ─── POST /api/test-staging/vides ──────────────────────────────────────────
-// Pipeline A → B → synthèse → génération
+// Pipeline A → B → synthèse → génération → contrôle post-génération
 router.post('/vides', async (req, res) => {
   const {
     imageUrl,
@@ -162,17 +236,35 @@ router.post('/vides', async (req, res) => {
       });
     }
 
-    const generatedUrl = await genererImage(resultat.prompt, imageUrl);
+    const {
+      generatedUrl,
+      promptFinal,
+      controle,
+      valide,
+      manualReview,
+      tentativesRegeneration,
+    } = await genererEtControler({
+      prompt: resultat.prompt,
+      imageUrl,
+      implantation: resultat.implantation,
+    });
 
-    console.log(`[TestStaging] Vide généré — ${roomType}`);
+    console.log(
+      `[TestStaging] Vide généré — ${roomType} — contrôle: ${controle.controle_status} (${tentativesRegeneration} régénération(s)) — ${manualReview ? 'RÉVISION MANUELLE' : 'OK'}`
+    );
+
     res.json({
       success: true,
+      valide,
+      manualReview,
+      tentativesRegeneration,
       originalUrl: imageUrl,
       generatedUrl,
       roomType,
-      prompt: resultat.prompt,
+      prompt: promptFinal,
       analyse: resultat.analyse,
       implantation: resultat.implantation,
+      controle,
     });
   } catch (err) {
     console.error('[TestStaging] Erreur vides:', err.response?.data || err.message);
