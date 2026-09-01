@@ -797,6 +797,26 @@ Cette vérification doit être documentée dans la sortie JSON (voir section 17,
 LOCKED puisse être retourné. Un statut LOCKED accompagné d’un "coherence_check.conflicts_detected": true est une
 sortie invalide.
 ——————————————————————————————————————————
+14 QUATER — COHÉRENCE DE VISIBILITÉ ENTRE MEUBLES LIÉS
+Pour chaque relation déclarée dans "functional_relationships" (par exemple canapé / table basse, lit / tables de chevet,
+table repas / chaises), les deux meubles concernés doivent recevoir des statuts de visibilité cohérents entre eux.
+Un meuble ne doit jamais être montré seul, sans le meuble auquel il est fonctionnellement rattaché, lorsque ce dernier est
+strictement hors champ. Une table basse visible sans le canapé qu’elle dessert, des chaises visibles sans leur table, des
+tables de chevet visibles sans le lit, constituent une image incohérente pour un home staging professionnel — même en
+l’absence de toute contradiction avec une zone interdite.
+Règle de résolution :
+• si l’ancre fonctionnelle d’une zone — le meuble principal autour duquel les autres sont organisés : canapé pour un
+salon, lit pour une chambre, table pour un coin repas — est strictement hors champ, alors tout meuble qui lui est
+directement rattaché par une relation fonctionnelle doit recevoir le même statut, strictly_out_of_frame, même s’il
+aurait pu être partiellement visible pris isolément ;
+• avant de choisir une implantation (sections 12 et 13), écarter en priorité les options où l’ancre fonctionnelle d’une
+zone se retrouverait hors champ alors que d’autres éléments de la même zone resteraient visibles ; préférer une
+implantation où l’ancre reste au moins partiellement visible, ou bien où l’ensemble de la zone reste cohérent en
+restant hors champ ensemble.
+Cette cohérence doit être vérifiée dans le cadre du contrôle de cohérence obligatoire (section 14 TER) avant tout
+verrouillage. Une sortie où "coherence_check.conflicts_detected": false alors qu’une incohérence de visibilité entre
+meubles liés est présente est une sortie invalide.
+——————————————————————————————————————————
 15 — VERROUILLER L’IMPLANTATION
 Lorsque l’implantation retenue est physiquement cohérente ET que le contrôle de cohérence (section 14 TER) ne détecte
 aucune contradiction :
@@ -1017,6 +1037,8 @@ vérifier mentalement que :
 • les meubles hors champ ont été explicitement identifiés ;
 • tous les éléments spatiaux — pas seulement le mobilier — ont reçu un statut de visibilité (section 14 BIS) ;
 • le contrôle de cohérence croisée (section 14 TER) a été exécuté et ne détecte aucune contradiction ;
+• aucun meuble visible n’est privé de l’élément auquel il est fonctionnellement rattaché lorsque celui-ci est hors champ
+(section 14 QUATER) ;
 • l’implantation ne repose pas uniquement sur la composition de la PHOTO PRINCIPALE.
 Si une condition importante n’est pas vérifiable, ou si le contrôle de cohérence détecte une contradiction :
 NE PAS VERROUILLER.
@@ -1043,6 +1065,7 @@ UN MEUBLE HORS CHAMP PEUT FAIRE PARTIE DU PLAN.
 UN MEUBLE HORS CHAMP NE DOIT PAS ÊTRE DÉPLACÉ POUR ÊTRE VISIBLE.
 UN MEUBLE QUI TIENT DANS L’IMAGE NE TIENT PAS NÉCESSAIREMENT DANS LA PIÈCE.
 UNE CONTRADICTION ENTRE UN MEUBLE ET UNE ZONE INTERDITE INTERDIT LE VERROUILLAGE.
+UN MEUBLE DÉPENDANT NE DOIT JAMAIS APPARAÎTRE SEUL SANS SON ANCRE FONCTIONNELLE.
 RÉSULTAT ATTENDU :
 UNE IMPLANTATION FONCTIONNELLE,
 PHYSIQUEMENT REPRODUCTIBLE,
