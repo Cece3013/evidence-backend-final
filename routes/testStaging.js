@@ -11,9 +11,13 @@ const { buildPromptHabitesPro } = require('./promptsHabitesPro');
 const { buildPromptBienVide, controlerGeneration } = require('./pipelineVides');
 
 // Nombre maximal de régénérations automatiques après un contrôle rejeté avec
-// next_step = REGENERATE. Au-delà, le dossier passe en révision manuelle
-// plutôt que de boucler indéfiniment (coût et temps maîtrisés).
-const MAX_REGENERATIONS = 2;
+// next_step = REGENERATE. Coupé à 0 temporairement : les 2 derniers tests
+// montrent que la régénération automatique ne corrige pas le problème
+// récurrent d'ancrage mural (canapé mal placé), donc elle ne fait que
+// doubler/tripler le coût sans rien apporter tant que ce problème n'est pas
+// résolu à la source dans le Prompt B. Le contrôle continue de tourner et de
+// diagnostiquer — seule la régénération automatique est désactivée.
+const MAX_REGENERATIONS = 0;
 
 async function uploadBufferToCloudinary(buffer, filename) {
   const timestamp = Math.round(Date.now() / 1000);
