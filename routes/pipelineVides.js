@@ -71,6 +71,7 @@ async function etapeA(photoPrincipale, photosComplementaires = [], roomTypePress
   const analyse = await callVisionJSON(PROMPT_A_ANALYSE + contexte, images);
 
   console.log(`[PipelineVides] A — statut: ${analyse.analysis_status} — suite: ${analyse.allow_next_step}`);
+  console.log('[PipelineVides] A — JSON complet:', JSON.stringify(analyse));
   return analyse;
 }
 
@@ -125,6 +126,7 @@ async function etapeB(analyseA, photoPrincipale, photosComplementaires = [], act
   const implantation = await callVisionJSON(prompt, images, 6000);
 
   console.log(`[PipelineVides] B — verrouillage: ${implantation.locked_layout?.status} — prêt: ${implantation.generation_ready} — besoins: ${activeMicroModules.join(', ') || 'aucun'}`);
+  console.log('[PipelineVides] B — JSON complet:', JSON.stringify(implantation));
   return implantation;
 }
 
