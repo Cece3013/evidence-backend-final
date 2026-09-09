@@ -470,6 +470,19 @@ Si une position ne peut pas être exprimée sans ambiguïté relative, et qu’a
 nécessaire à cet endroit, ne pas forcer un mobilier improbable dans "secondary_furniture_allowed" ; il vaut mieux laisser la
 zone vide ou suggérer un meuble d’appoint différent (une console, par exemple) plutôt qu’un meuble mal positionné.
 ——————————————————————————————————————————
+2 QUATER — CONFIANCE GÉOMÉTRIQUE ET PHOTOS D’APPUI
+Pour chaque mur, ouverture ou circulation identifié dans le référentiel spatial (section 2 BIS), indiquer :
+• geometry_confidence — "high" si l’élément est clairement lisible sur la PHOTO PRINCIPALE elle-même ; "medium" si sa
+forme précise dépend surtout d’une photographie complémentaire, même si sa présence est certaine ; "low" si sa
+géométrie exacte reste incertaine malgré les photographies disponibles ;
+• evidence_photos — la liste des photos ("photo_1", "photo_2"...) qui permettent réellement d’établir cet élément.
+Cette information doit être transmise dans la sortie JSON (voir section 17, champs "geometry_confidence" et
+"evidence_photos" sur chaque mur, ouverture et circulation).
+Un mur ou une zone dont la confiance est "medium" ou "low" peut tout à fait accueillir un meuble principal, mais ce
+meuble ne doit alors jamais être classé "visible" ou "partially_visible" sans preuve suffisante — cette règle s’applique
+avec la même rigueur qu’il s’agisse d’un mur entièrement hors champ (section 14 TER BIS) ou d’un mur à la géométrie
+seulement partiellement établie.
+——————————————————————————————————————————
 3 — IDENTIFIER LES ÉLÉMENTS NON MODIFIABLES
 Considérer comme contraintes réelles tous les éléments fixes identifiés.
 Notamment :
@@ -518,6 +531,25 @@ Un meuble principal ne doit jamais :
 • empêcher l’utilisation normale d’un placard intégré.
 Les circulations détectées grâce aux photos complémentaires possèdent la même importance que celles visibles sur la photo
 principale.
+——————————————————————————————————————————
+4 BIS — QUALIFICATION FONCTIONNELLE DES CIRCULATIONS ET ZONE DE DÉGAGEMENT ASSOCIÉE
+Chaque circulation identifiée à la section 4 — qu’elle soit visible sur la PHOTO PRINCIPALE ou révélée uniquement par
+une photographie complémentaire — doit recevoir une qualification fonctionnelle explicite, et non rester une description
+vague de type « passage » ou « dégagement ».
+Attribuer à chaque circulation un "circulation_type" parmi :
+• access_night_area — accès vers une zone de chambres/espace nuit ;
+• access_kitchen — accès vers une cuisine, ouverte ou fermée ;
+• access_other_rooms — accès vers une autre pièce non qualifiée plus précisément ;
+• main_passage — circulation principale au sein de la même pièce (entrée-séjour, séjour-baie...) ;
+• closet_access — accès à un rangement intégré ;
+• terrace_access — accès à un extérieur (terrasse, balcon, jardin).
+Une circulation menant vers une autre zone du logement (chambres, cuisine fermée, autres pièces) a exactement la même
+importance qu’elle soit visible sur la PHOTO PRINCIPALE ou révélée uniquement par une photographie complémentaire —
+elle ne doit jamais être minimisée au prétexte qu’elle est moins visible ou moins bien connue.
+RÈGLE OBLIGATOIRE : toute circulation qualifiée doit générer automatiquement sa propre zone interdite associée dans
+spatial_constraints.forbidden_zones, avec "must_remain_clear": true. Il est interdit de laisser une circulation qualifiée
+sans zone de dégagement protégée correspondante — une circulation décrite sans sa forbidden_zone associée est une
+sortie incomplète.
 ——————————————————————————————————————————
 5 — CRÉER LES ZONES CONTRAINTES
 Déterminer, en s’appuyant sur le référentiel spatial (section 2 BIS), les zones dans lesquelles aucun meuble principal ne doit
@@ -612,6 +644,29 @@ Un grand mur ou une grande portion de sol laissés vides ne constituent pas auto
 à remplir systématiquement le volume disponible. La densité doit rester cohérente avec un home staging sobre, jamais avec
 un remplissage artificiel.
 Cette évaluation doit être transmise dans la sortie JSON (voir section 17, champ "layout_density").
+——————————————————————————————————————————
+8 TER — PRIORITÉ DES RELATIONS ENTRE MEUBLES SUR L’ANCRAGE MURAL
+Un ancrage mural codé (« adossé à W2 ») reste fragile à l’exécution, quels que soient la pièce et le meuble concernés — ce
+n’est pas un problème propre à un type de pièce ou à un meuble en particulier, mais au principe même de faire reposer une
+position sur un mur identifié uniquement par un code interne (voir section 2 BIS), que gpt-image-2 ne peut pas traduire de
+façon fiable en position réelle sur la photo.
+Pour toute pièce et tout ensemble de meubles en relation fonctionnelle — canapé et table basse, lit et tables de chevet,
+table repas et chaises, meuble TV et canapé —, appliquer ce principe :
+• choisir en premier l’élément dont la position dépend le plus directement d’une contrainte réelle incontournable — un
+lit contre le mur le plus éloigné de la porte, un meuble TV contre le seul mur libre après retrait du mobilier résiduel —
+et décrire sa position par rapport à l’espace disponible et aux contraintes réelles, pas nécessairement par un mur codé ;
+• positionner ensuite chaque meuble suivant en relation avec les meubles déjà définis (« la table basse entre le canapé
+et la TV, côté assise » ; « les tables de chevet de part et d’autre du lit »), plutôt que par un nouvel ancrage mural
+indépendant ;
+• un ancrage mural reste tout à fait légitime lorsque c’est la seule solution physiquement cohérente pour la pièce
+concernée — une armoire, un lit dans une pièce étroite, un meuble TV qui doit être contre un mur porteur. Ne pas
+éviter l’ancrage mural par principe : l’éviter uniquement quand une implantation en relation entre meubles est tout
+aussi cohérente et plus robuste à exécuter ;
+• dans tous les cas, qu’un meuble soit ancré à un mur ou positionné en relation avec un autre meuble, il doit rester hors
+des zones interdites et des circulations (section 5, section 14 TER).
+Ce principe s’applique à toute pièce — salon, chambre, cuisine, salle de bain — quel que soit son programme fonctionnel
+défini en section 9. La section 11 BIS en détaille une illustration pour le cas du salon, qui n’est qu’un exemple
+d’application, pas une règle distincte.
 ——————————————————————————————————————————
 9 — DÉFINIR LE PROGRAMME FONCTIONNEL SELON LA PIÈCE
 Utiliser "room_type" pour déterminer uniquement les meubles principaux nécessaires à la compréhension de la fonction.
@@ -715,6 +770,22 @@ Si une photographie complémentaire révèle que le canapé empiéterait réelle
 REJETER CET EMPLACEMENT.
 Même si le conflit n’est pas visible depuis la PHOTO PRINCIPALE.
 ——————————————————————————————————————————
+11 BIS — ILLUSTRATION DU PRINCIPE (SECTION 8 TER) POUR LE CAS DU SALON
+Dans un salon, une application typique du principe de la section 8 TER consiste à :
+• positionner le canapé selon l’espace réellement disponible dans la zone utilisable choisie plutôt que par un ancrage
+mural codé — qu’il finisse adossé à un mur ou flottant importe moins que sa cohérence avec l’espace et les
+circulations ;
+• positionner la table basse en relation avec le canapé (section 2 TER), pas avec un mur ;
+• positionner la TV en relation avec le canapé — face à lui, à une distance de vision crédible —, en décrivant
+physiquement le mur si elle doit en toucher un, sans jamais utiliser son code W.
+Ce n’est qu’une illustration : selon la forme réelle de la pièce, un canapé clairement adossé à un mur peut rester la
+meilleure solution — l’essentiel est d’appliquer le principe de la section 8 TER (relations entre meubles fiables, ancrage
+mural seulement quand il est réellement nécessaire), pas de suivre cet exemple de façon rigide.
+De la même façon, lorsqu’une table repas secondaire ne dispose pas d’un mur d’ancrage fiable, il est possible de la faire
+flotter dans une zone centrale ou dans l’espace resté libre — par exemple à l’arrière du canapé, côté zone caméra —,
+plutôt que de forcer un ancrage mural incertain. Décrire alors sa position en relation avec le canapé ou avec les
+circulations plutôt qu’avec un mur.
+——————————————————————————————————————————
 12 — ÉVALUER PLUSIEURS IMPLANTATIONS
 Lorsque plusieurs implantations réalistes existent :
 envisager plusieurs solutions avant de choisir.
@@ -789,6 +860,9 @@ Pour chaque meuble principal, vérifier explicitement l’absence de chevaucheme
 • chaque zone d’accès à un placard ;
 • chaque circulation devant rester libre ;
 • chaque radiateur nécessitant un dégagement.
+Vérifier également que chaque circulation qualifiée à la section 4 BIS possède bien sa zone interdite associée dans
+forbidden_zones. Une circulation avec un "circulation_type" renseigné mais sans forbidden_zone correspondante rend la
+sortie incomplète, au même titre qu’une contradiction meuble/zone interdite : NE PAS VERROUILLER dans ce cas.
 Si une seule contradiction est détectée entre un meuble principal et une zone par ailleurs déclarée interdite :
 NE PAS VERROUILLER.
 Reprendre l’implantation et choisir un autre emplacement, ou déclarer l’implantation impossible si aucune solution
@@ -796,6 +870,23 @@ cohérente n’existe.
 Cette vérification doit être documentée dans la sortie JSON (voir section 17, champ "coherence_check") avant que le statut
 LOCKED puisse être retourné. Un statut LOCKED accompagné d’un "coherence_check.conflicts_detected": true est une
 sortie invalide.
+——————————————————————————————————————————
+14 TER BIS — COHÉRENCE ENTRE VISIBILITÉ DU MEUBLE ET VISIBILITÉ DE SON MUR D’ANCRAGE
+Un meuble ne peut jamais être déclaré "visible" ou "partially_visible" dans main_photo_visibility s’il est ancré (via
+location_anchor ou wall_anchor) à un mur, une ouverture ou une zone elle-même classée "strictly_out_of_frame". Ce
+serait demander de montrer un meuble collé à un repère que la PHOTO PRINCIPALE ne montre pas — une contradiction que
+gpt-image-2 ne peut résoudre qu’en improvisant une position arbitraire, ce qui produit précisément les implantations
+mal exécutées qu’on cherche à éviter.
+Avant de finaliser locked_layout.primary_furniture, vérifier pour chaque meuble déclaré "visible" ou
+"partially_visible" que son mur ou sa zone d’ancrage porte le même statut de visibilité, ou un statut plus favorable
+("partially_visible" au minimum, jamais "strictly_out_of_frame").
+En cas d’incohérence, deux solutions seulement :
+• reclasser ce meuble "strictly_out_of_frame" s’il appartient réellement à une zone hors champ ; ou
+• choisir une autre zone réellement visible ou partiellement visible pour ce meuble, quitte à revenir sur le choix de zone
+fait en section 7, même si cette zone paraissait moins optimale sur le papier.
+La cohérence photographique prime sur l’optimisation théorique de l’implantation : mieux vaut un meuble bien exécuté
+dans une zone un peu moins idéale qu’un meuble bien placé sur le papier mais impossible à exécuter fidèlement parce
+qu’ancré à un mur invisible depuis la PHOTO PRINCIPALE.
 ——————————————————————————————————————————
 14 QUATER — COHÉRENCE DE VISIBILITÉ ENTRE MEUBLES LIÉS
 Pour chaque relation déclarée dans "functional_relationships" (par exemple canapé / table basse, lit / tables de chevet,
@@ -882,13 +973,13 @@ Utiliser strictement la structure suivante :
 },
 "spatial_reference": {
 "walls": [
-{ "id": "W1", "description": "", "relations": "" }
+{ "id": "W1", "description": "", "relations": "", "geometry_confidence": "high | medium | low", "evidence_photos": [] }
 ],
 "openings": [
-{ "id": "O1", "type": "door | window | bay_window", "wall": "", "description": "" }
+{ "id": "O1", "type": "door | window | bay_window", "wall": "", "description": "", "geometry_confidence": "high | medium | low", "evidence_photos": [] }
 ],
 "circulations": [
-{ "id": "C1", "from": "", "to": "", "description": "" }
+{ "id": "C1", "from": "", "to": "", "description": "", "circulation_type": "access_night_area | access_kitchen | access_other_rooms | main_passage | closet_access | terrace_access", "geometry_confidence": "high | medium | low", "evidence_photos": [] }
 ]
 },
 "spatial_constraints": {
@@ -907,6 +998,7 @@ Utiliser strictement la structure suivante :
 "from": "",
 "to": "",
 "description": "",
+"circulation_type": "access_night_area | access_kitchen | access_other_rooms | main_passage | closet_access | terrace_access",
 "must_remain_clear": true
 }
 ],
@@ -914,7 +1006,8 @@ Utiliser strictement la structure suivante :
 {
 "zone_id": "",
 "zone": "",
-"reason": ""
+"reason": "",
+"source_circulation_id": ""
 }
 ]
 },
@@ -1053,6 +1146,8 @@ vérifier mentalement que :
 • les meubles hors champ ont été explicitement identifiés ;
 • tous les éléments spatiaux — pas seulement le mobilier — ont reçu un statut de visibilité (section 14 BIS) ;
 • le contrôle de cohérence croisée (section 14 TER) a été exécuté et ne détecte aucune contradiction ;
+• aucun meuble n’est déclaré visible ou partiellement visible tout en étant ancré à un mur ou une zone strictement hors
+champ (section 14 TER BIS) ;
 • aucun meuble visible n’est privé de l’élément auquel il est fonctionnellement rattaché lorsque celui-ci est hors champ
 (section 14 QUATER) ;
 • aucun meuble principal volumineux n’apparaît visuellement collé à une zone interdite du fait d’une portion visible
@@ -1083,6 +1178,7 @@ UN MEUBLE HORS CHAMP PEUT FAIRE PARTIE DU PLAN.
 UN MEUBLE HORS CHAMP NE DOIT PAS ÊTRE DÉPLACÉ POUR ÊTRE VISIBLE.
 UN MEUBLE QUI TIENT DANS L’IMAGE NE TIENT PAS NÉCESSAIREMENT DANS LA PIÈCE.
 UNE CONTRADICTION ENTRE UN MEUBLE ET UNE ZONE INTERDITE INTERDIT LE VERROUILLAGE.
+UN MEUBLE VISIBLE NE PEUT JAMAIS ÊTRE ANCRÉ À UN MUR QUE LA PHOTO PRINCIPALE NE MONTRE PAS.
 UN MEUBLE DÉPENDANT NE DOIT JAMAIS APPARAÎTRE SEUL SANS SON ANCRE FONCTIONNELLE.
 UNE PORTION VISIBLE TROP RÉDUITE D’UN MUR NE JUSTIFIE JAMAIS UN MEUBLE COLLÉ À UNE ZONE INTERDITE.
 RÉSULTAT ATTENDU :
