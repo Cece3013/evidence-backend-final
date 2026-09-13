@@ -368,14 +368,61 @@ async function synthetiser({ implantation, roomType, activeMicroModules = [], co
  * Appelée par la route APRÈS genererImage(), AVANT tout envoi vers
  * Cloudinary/Notion pour validation par l'équipe.
  */
+// ─── RÉSOLUTION DES CODES EN DESCRIPTIONS PHYSIQUES — pour le contrôle ────────
+/**
+ * Transforme le mobilier principal en une structure où chaque code interne
+ * (support_anchor, floor_zone, orientation_target) est accompagné de sa
+ * description physique concrète, résolue ici en code — pas laissée à la
+ * charge du modèle de vision. Le Prompt D doit juger sur ces descriptions,
+ * les identifiants ne restant que des métadonnées de traçabilité. Corrige le
+ * faux positif constaté : le contrôle confondait des murs en raisonnant sur
+ * les codes bruts (W2/W3) sans repasser par leur description.
+ */
+function resoudreDescriptionsPourControle(implantation) {
+  const murs = (implantation.spatial_reference && implantation.spatial_reference.walls) || [];
+  const zones = implantation.usable_zones || [];
+  const meubles = (implantation.locked_layout && implantation.locked_layout.primary_furniture) || [];
+
+  const mapMurs = {};
+  murs.forEach((w) => { mapMurs[w.id] = w.description; });
+  const mapZones = {};
+  zones.forEach((z) => { mapZones[z.zone_id] = z.description; });
+  const mapMeubles = {};
+  meubles.forEach((m) => { mapMeubles[m.item_id] = m.type; });
+
+  return meubles.map((m) => ({
+    item_id: m.item_id,
+    type: m.type,
+    wall_anchor_id: m.support_anchor,
+    wall_anchor_description:
+      m.support_anchor && m.support_anchor !== 'NONE'
+        ? mapMurs[m.support_anchor] || 'Description du mur introuvable — ne pas déduire du seul identifiant.'
+        : 'Meuble flottant, non adossé à un mur : ne doit pas être recherché contre une paroi précise.',
+    floor_zone_id: m.floor_zone,
+    floor_zone_description: mapZones[m.floor_zone] || null,
+    orientation_target_id: m.orientation_target,
+    orientation_target_type:
+      m.orientation_target && m.orientation_target !== 'NONE'
+        ? mapMeubles[m.orientation_target] || mapMurs[m.orientation_target] || null
+        : null,
+    expected_relationship: m.orientation,
+    location_anchor_description: m.location_anchor,
+    visibility_from_main_photo: m.visibility_from_main_photo,
+    notes: m.notes,
+  }));
+}
+
 async function controlerGeneration({ photoPrincipale, imageGeneree, implantation }) {
   const prompt = [
     PROMPT_D_CONTROLE,
     '',
-    '=== LOCKED_LAYOUT À VÉRIFIER ===',
+    '=== MOBILIER PRINCIPAL À VÉRIFIER (descriptions physiques déjà résolues — juger sur ces descriptions, pas sur les seuls identifiants) ===',
+    JSON.stringify(resoudreDescriptionsPourControle(implantation), null, 2),
+    '',
+    '=== LOCKED_LAYOUT COMPLET (référence, traçabilité) ===',
     JSON.stringify(implantation.locked_layout, null, 2),
     '',
-    '=== CONTRAINTES SPATIALES À VÉRIFIER ===',
+    '=== CONTRAINTES SPATIALES À VÉRIFIER (s\'appuyer sur les champs "zone"/"reason" en texte, pas sur zone_id seul) ===',
     JSON.stringify(implantation.spatial_constraints || {}, null, 2),
     '',
     '=== VISIBILITÉ ATTENDUE DEPUIS LA PHOTO PRINCIPALE ===',
