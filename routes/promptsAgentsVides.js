@@ -167,30 +167,55 @@ Exemples de mobilier résiduel :
 • autre meuble mobile.
 ——————————————————————————————————————————
 7 — ÉVALUER LA COMPRÉHENSION SPATIALE GLOBALE
-Déterminer si les photographies permettent une compréhension suffisamment fiable de la pièce pour qu’une implantation
-puisse être décidée à l’étape suivante.
+PRINCIPE CENTRAL DE SUFFISANCE :
+Une photo unique est suffisante dès qu’elle permet une implantation raisonnable et sûre dans les zones réellement
+comprises, même si certaines parties de la pièce restent hors champ.
+La question à se poser n’est PAS « est-ce que je comprends la pièce dans son intégralité, les quatre murs compris ? »,
+mais : « est-ce que je dispose d’assez d’informations pour proposer une implantation crédible sans inventer, et sans
+risquer de bloquer un élément important resté invisible ? » Ces deux questions appellent des réponses très différentes, et
+c’est la seconde qui doit guider la décision.
+Une zone hors champ n’est pas en elle-même un motif de refus. Elle doit simplement être considérée comme non
+exploitable, à traiter avec prudence par l’étape suivante — pas comme une raison de bloquer l’ensemble du processus.
+Une information inconnue ne doit pas empêcher automatiquement la suite du pipeline ; elle doit d’abord empêcher
+l’utilisation de la zone inconnue.
 L’analyse doit répondre implicitement à ces questions :
-• comprend-on suffisamment les volumes ?
-• comprend-on suffisamment les principales circulations ?
-• comprend-on suffisamment les murs disponibles ?
-• comprend-on suffisamment les ouvertures et passages ?
-• comprend-on suffisamment les contraintes importantes ?
-• existe-t-il une ambiguïté majeure qui empêcherait une implantation fiable ?
-Ne pas chercher encore à choisir l’implantation.
-Il s’agit uniquement de savoir si une future implantation paraît déterminable de manière sérieuse.
+• la pièce et sa fonction sont-elles identifiables ?
+• les proportions générales sont-elles suffisamment lisibles ?
+• au moins une implantation crédible peut-elle être envisagée à partir des seules zones visibles ?
+• les principaux éléments fixes visibles sont-ils identifiés ?
+• l’aménagement peut-il être réalisé sans avoir à supposer la géométrie d’une zone hors champ qui serait critique pour
+cette implantation ?
+Ne pas chercher encore à choisir l’implantation. Il s’agit uniquement de savoir si une implantation raisonnable et sûre
+paraît déterminable à partir de ce qui est réellement visible.
 ——————————————————————————————————————————
 8 — DÉTERMINER LE STATUT D’ANALYSE
 Choisir obligatoirement un seul statut final parmi les suivants :
 A — PHOTO UNIQUE VALIDÉE
 À utiliser si :
 • une seule photo a été fournie ;
-• cette photo paraît suffisamment informative ;
-• aucune ambiguïté majeure ne bloque la future implantation.
+• la pièce et sa fonction sont identifiables, avec des proportions générales suffisamment lisibles ;
+• au moins une implantation crédible peut être envisagée à partir des zones visibles ;
+• l’implantation peut être réalisée sans devoir supposer la géométrie d’une zone hors champ critique pour elle.
+NE JAMAIS EXIGER PAR DÉFAUT, pour valider une photo unique :
+• le mur opposé au point de prise de vue ;
+• les deux murs latéraux sur toute leur longueur ;
+• la porte d’entrée ou d’accès ;
+• les quatre angles de la pièce.
+Ces éléments ne doivent être exigés que si l’information qu’ils apportent est réellement nécessaire à la décision
+d’implantation — jamais par principe ou par prudence générale.
+Pièces simples (chambre standard, chambre enfant/ado, petit salon, salle de bain, entrée simple) : une seule photo bien
+composée doit pouvoir être validée dans la majorité des cas.
+Pièces complexes (salon/salle à manger, grand volume ouvert, salon avec cuisine, géométrie irrégulière) : des vues
+complémentaires sont davantage susceptibles d’être nécessaires, mais uniquement si elles conditionnent réellement le
+choix de l’implantation — pas systématiquement.
 B — PHOTO UNIQUE INSUFFISANTE
-À utiliser si :
-• une seule photo a été fournie ;
-• la compréhension de la pièce est insuffisante ;
-• une ou plusieurs photos complémentaires sont nécessaires.
+À utiliser uniquement si l’information absente empêche réellement une implantation sûre, par exemple :
+• aucun mur adapté au meuble principal n’est suffisamment visible ;
+• plusieurs implantations incompatibles sont envisageables et le choix dépend d’une zone hors champ ;
+• une porte, un passage ou une circulation potentiellement critique se trouve précisément dans la zone où le mobilier
+principal devrait être implanté ;
+• la taille ou la géométrie de la pièce est trop ambiguë pour conserver des proportions réalistes ;
+• une pièce complexe à plusieurs fonctions ne peut pas être correctement organisée à partir du seul angle fourni.
 C — ENSEMBLE MULTI-PHOTOS VALIDÉ
 À utiliser si :
 • plusieurs photos de la même pièce ont été fournies ;
@@ -210,19 +235,21 @@ E — PHOTOS NON COHÉRENTES OU NON EXPLOITABLES
 • ou la qualité empêche une analyse sérieuse.
 ——————————————————————————————————————————
 9 — SI DES PHOTOS COMPLÉMENTAIRES SONT NÉCESSAIRES
-Si le statut final nécessite une ou plusieurs photos complémentaires, indiquer précisément ce qu’il manque.
-La demande doit être concrète et exploitable par l’application.
-Exemples :
-• photo montrant le mur opposé ;
-• photo montrant simultanément l’angle du canapé envisagé et la porte d’entrée ;
-• photo montrant la continuité entre la baie vitrée et le mur latéral ;
-• photo montrant l’accès aux autres pièces ;
-• photo plus large montrant les deux côtés de la fenêtre ;
-• photo prise depuis l’angle opposé ;
-• photo en grand angle ;
-• photo permettant de voir les circulations principales.
-Ne jamais demander une photo « supplémentaire » de manière vague.
-Toujours préciser CE QU’ELLE DOIT MONTRER.
+Si le statut final nécessite une ou plusieurs photos complémentaires, ne demander une photo que pour résoudre une
+question précise qui conditionne réellement l’implantation — jamais pour compléter la compréhension générale de la
+pièce par prudence.
+Exemple à éviter : « fournir les deux murs latéraux sur toute leur longueur, le mur opposé et la porte d’accès. »
+Exemple correct : « ajoutez une photo du mur situé à droite afin de vérifier s’il peut accueillir le meuble TV. »
+La demande doit être concrète, ciblée sur une décision précise, et exploitable par l’application. Exemples de formulations
+correctement ciblées :
+• photo montrant le mur opposé, uniquement si le mobilier principal ne peut être placé nulle part ailleurs de manière
+crédible ;
+• photo montrant simultanément l’angle du canapé envisagé et la porte d’entrée, si un conflit est suspecté à cet endroit
+précis ;
+• photo montrant la continuité entre la baie vitrée et le mur latéral, si cette continuité conditionne l’implantation ;
+• photo montrant l’accès aux autres pièces, uniquement si le mobilier principal risque de s’y trouver.
+Ne jamais demander une photo « supplémentaire » de manière vague. Toujours préciser CE QU’ELLE DOIT MONTRER et
+POURQUOI cette information conditionne la décision d’implantation.
 ——————————————————————————————————————————
 10 — PRÉPARER LA SUITE DU PIPELINE
 Le résultat doit permettre à l’application de décider :
