@@ -76,7 +76,7 @@ async function etapeA(photoPrincipale, photosComplementaires = [], roomTypePress
 }
 
 // ─── ÉTAPE B — Décision d'implantation ────────────────────────────────────────
-async function etapeB(analyseA, photoPrincipale, photosComplementaires = [], activeMicroModules = []) {
+async function etapeB(analyseA, photoPrincipale, photosComplementaires = [], activeMicroModules = [], correctionValidateur = '') {
   const microTexts = activeMicroModules
     .map((k) => microModules[k])
     .filter(Boolean);
@@ -111,12 +111,23 @@ async function etapeB(analyseA, photoPrincipale, photosComplementaires = [], act
     blocMicros = entete + microTexts.join('\n\n');
   }
 
+  const blocCorrection = correctionValidateur
+    ? [
+        '',
+        '=== CORRECTION OBLIGATOIRE — VALIDATEUR DE COHÉRENCE GÉOMÉTRIQUE ===',
+        'Ta précédente proposition a été rejetée AVANT verrouillage par un contrôle automatique déterministe (pas une simple relecture). Corrige strictement les points suivants, sans changer le reste de ton analyse si elle était par ailleurs cohérente :',
+        correctionValidateur,
+        '',
+      ].join('\n')
+    : '';
+
   const prompt = [
     PROMPT_B_IMPLANTATION,
     '',
     '=== SORTIE DU PROMPT A ===',
     JSON.stringify(analyseA, null, 2),
     blocMicros,
+    blocCorrection,
   ].join('\n');
 
   const images = [photoPrincipale, ...photosComplementaires];
@@ -128,6 +139,117 @@ async function etapeB(analyseA, photoPrincipale, photosComplementaires = [], act
   console.log(`[PipelineVides] B — verrouillage: ${implantation.locked_layout?.status} — prêt: ${implantation.generation_ready} — besoins: ${activeMicroModules.join(', ') || 'aucun'}`);
   console.log('[PipelineVides] B — JSON complet:', JSON.stringify(implantation));
   return implantation;
+}
+
+// ─── VALIDATEUR DÉTERMINISTE — Cohérence géométrique du LOCKED_LAYOUT ─────────
+/**
+ * Contrôle en code, pas en prompt : s'exécute après etapeB(), avant toute
+ * synthèse ou génération. Ne dépend d'aucune bonne volonté du modèle de
+ * langage — vérifie mécaniquement les incohérences structurelles qui ont causé
+ * l'inversion canapé/TV constatée sur 8/8 générations (PF1 et PF3 tous deux
+ * ancrés sur W1 tout en étant déclarés "face à face").
+ * Retourne { valide, erreurs } — erreurs est un tableau de messages précis,
+ * exploitables tels quels comme correction à renvoyer à B.
+ */
+function validerCoherenceGeometrique(implantation) {
+  const erreurs = [];
+  const layout = implantation.locked_layout || {};
+  const meubles = layout.primary_furniture || [];
+  const relations = layout.functional_relationships || [];
+  const murs = (implantation.spatial_reference && implantation.spatial_reference.walls) || [];
+  const zonesUtilisables = (implantation.usable_zones || []).map((z) => z.zone_id);
+
+  const mapMurs = {};
+  murs.forEach((w) => { mapMurs[w.id] = w; });
+  const mapMeubles = {};
+  meubles.forEach((m) => { mapMeubles[m.item_id] = m; });
+  const idsMeubles = meubles.map((m) => m.item_id);
+
+  // 1 — Intégrité référentielle : chaque champ structuré doit pointer vers
+  // quelque chose qui existe réellement ailleurs dans le même JSON.
+  meubles.forEach((m) => {
+    if (m.floor_zone && !zonesUtilisables.includes(m.floor_zone)) {
+      erreurs.push(
+        `${m.item_id} : floor_zone "${m.floor_zone}" ne correspond à aucune zone déclarée dans usable_zones.`
+      );
+    }
+    if (m.support_anchor && m.support_anchor !== 'NONE' && !mapMurs[m.support_anchor]) {
+      erreurs.push(
+        `${m.item_id} : support_anchor "${m.support_anchor}" ne correspond à aucun mur déclaré dans spatial_reference.walls.`
+      );
+    }
+    if (
+      m.orientation_target &&
+      m.orientation_target !== 'NONE' &&
+      !idsMeubles.includes(m.orientation_target) &&
+      !mapMurs[m.orientation_target]
+    ) {
+      erreurs.push(
+        `${m.item_id} : orientation_target "${m.orientation_target}" ne correspond à aucun meuble ni mur connu.`
+      );
+    }
+  });
+
+  // 2 — Règle face_to_face : jamais le même support_anchor ; si deux murs
+  // différents, ils doivent être mutuellement déclarés opposés.
+  relations
+    .filter((r) => r.relationship_type === 'face_to_face')
+    .forEach((r) => {
+      const a = mapMeubles[r.from_item];
+      const b = mapMeubles[r.to_item];
+      if (!a || !b) {
+        erreurs.push(
+          `Relation face_to_face entre "${r.from_item}" et "${r.to_item}" : au moins un des deux meubles est introuvable dans primary_furniture.`
+        );
+        return;
+      }
+      const ancrageA = a.support_anchor;
+      const ancrageB = b.support_anchor;
+      if (ancrageA && ancrageB && ancrageA !== 'NONE' && ancrageB !== 'NONE') {
+        if (ancrageA === ancrageB) {
+          erreurs.push(
+            `${a.item_id} et ${b.item_id} sont déclarés "face_to_face" mais partagent le même support_anchor ("${ancrageA}") — deux meubles sur le même mur sont côte à côte, jamais face à face. L'un des deux doit changer de mur ou devenir flottant ("support_anchor": "NONE").`
+          );
+        } else {
+          const murA = mapMurs[ancrageA];
+          const murB = mapMurs[ancrageB];
+          const compatible =
+            (murA && murA.opposite_wall_id === ancrageB) || (murB && murB.opposite_wall_id === ancrageA);
+          if (!compatible) {
+            erreurs.push(
+              `${a.item_id} (mur ${ancrageA}) et ${b.item_id} (mur ${ancrageB}) sont déclarés "face_to_face" mais ces deux murs ne sont pas mutuellement déclarés opposés (opposite_wall_id). Renseigner cette compatibilité si elle est réelle, sinon rendre l'un des deux meubles flottant ("support_anchor": "NONE").`
+            );
+          }
+        }
+      }
+      if (a.orientation_target && a.orientation_target !== 'NONE' && a.orientation_target !== b.item_id) {
+        erreurs.push(
+          `${a.item_id} : orientation_target devrait valoir "${b.item_id}" (relation face_to_face déclarée), mais vaut "${a.orientation_target}".`
+        );
+      }
+      if (b.orientation_target && b.orientation_target !== 'NONE' && b.orientation_target !== a.item_id) {
+        erreurs.push(
+          `${b.item_id} : orientation_target devrait valoir "${a.item_id}" (relation face_to_face déclarée), mais vaut "${b.orientation_target}".`
+        );
+      }
+    });
+
+  // 3 — Enveloppe repas : une table et les chaises qui l'entourent
+  // ("surrounds") doivent partager la même floor_zone — un ensemble
+  // table/chaises réparti sur deux zones différentes n'est pas cohérent.
+  relations
+    .filter((r) => r.relationship_type === 'surrounds')
+    .forEach((r) => {
+      const item1 = mapMeubles[r.from_item];
+      const item2 = mapMeubles[r.to_item];
+      if (item1 && item2 && item1.floor_zone && item2.floor_zone && item1.floor_zone !== item2.floor_zone) {
+        erreurs.push(
+          `${item1.item_id} et ${item2.item_id} sont liés par "surrounds" mais n'ont pas la même floor_zone ("${item1.floor_zone}" vs "${item2.floor_zone}") — l'ensemble doit rester dans une seule zone cohérente.`
+        );
+      }
+    });
+
+  return { valide: erreurs.length === 0, erreurs };
 }
 
 // ─── SYNTHÈSE — Prompt d'exécution compact pour le générateur ─────────────────
@@ -300,7 +422,7 @@ async function buildPromptBienVide({
   }
 
   // ── B ──
-  const implantation = await etapeB(analyseA, photoPrincipale, photosComplementaires, activeMicroModules);
+  let implantation = await etapeB(analyseA, photoPrincipale, photosComplementaires, activeMicroModules);
 
   if (implantation.locked_layout?.status !== 'LOCKED' || implantation.generation_ready !== true) {
     const demande = implantation.additional_photo_request?.request || '';
@@ -314,6 +436,51 @@ async function buildPromptBienVide({
       analyse: analyseA,
       implantation,
     };
+  }
+
+  // ── Validateur déterministe de cohérence géométrique (code, pas prompt) ──
+  // S'exécute AVANT toute synthèse/génération. Si le LOCKED_LAYOUT contient
+  // une incohérence structurelle (ex. deux meubles "face_to_face" sur le même
+  // mur), on ne l'envoie jamais à GPT Image : on redemande une seule fois à B
+  // de corriger, avec le détail exact du problème. Si ça échoue encore,
+  // l'implantation est bloquée plutôt que transmise contradictoire.
+  let controleGeometrique = validerCoherenceGeometrique(implantation);
+  if (!controleGeometrique.valide) {
+    console.log(`[PipelineVides] Validateur géométrique — échec, recalcul de B demandé:`, controleGeometrique.erreurs);
+    implantation = await etapeB(
+      analyseA,
+      photoPrincipale,
+      photosComplementaires,
+      activeMicroModules,
+      controleGeometrique.erreurs.join('\n')
+    );
+
+    if (implantation.locked_layout?.status !== 'LOCKED' || implantation.generation_ready !== true) {
+      const demande = implantation.additional_photo_request?.request || '';
+      return {
+        status: implantation.locked_layout?.status === 'NEEDS_MORE_INFORMATION'
+          ? 'PHOTOS_INSUFFISANTES'
+          : 'IMPLANTATION_IMPOSSIBLE',
+        etape: 'B',
+        raison: implantation.locked_layout?.status,
+        demandes: demande ? [demande] : [],
+        analyse: analyseA,
+        implantation,
+      };
+    }
+
+    controleGeometrique = validerCoherenceGeometrique(implantation);
+    if (!controleGeometrique.valide) {
+      console.log(`[PipelineVides] Validateur géométrique — échec persistant après recalcul, blocage:`, controleGeometrique.erreurs);
+      return {
+        status: 'INCOHERENCE_GEOMETRIQUE',
+        etape: 'B',
+        raison: 'Le LOCKED_LAYOUT reste géométriquement incohérent après une tentative de recalcul.',
+        demandes: controleGeometrique.erreurs,
+        analyse: analyseA,
+        implantation,
+      };
+    }
   }
 
   // ── Synthèse ──
