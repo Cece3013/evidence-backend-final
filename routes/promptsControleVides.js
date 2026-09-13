@@ -35,6 +35,11 @@ Vérifier que :
 • aucun mur, aucune ouverture, aucun plafond, aucun sol n’a été modifié, déplacé ou recréé ;
 • aucun élément architectural n’a été ajouté qui ne serait pas déjà visible sur la PHOTO PRINCIPALE ou explicitement
 listé comme "visible" ou "partially_visible" dans main_photo_visibility.
+IMPORTANT : la suppression d’un mobilier résiduel explicitement marqué "REMOVE" dans residual_furniture_decisions
+n’est JAMAIS une violation d’architecture, même si elle change visuellement une portion du mur — par exemple un pan de
+mur nu remplaçant un meuble supprimé. C’est le comportement attendu et correct. Ne signaler une violation d’architecture
+que pour un véritable élément structurel : mur, ouverture, plafond, sol, ou élément fixe explicitement listé avec
+must_preserve: true dans spatial_constraints.fixed_elements et qui aurait disparu, été déplacé ou modifié.
 Si un élément listé "strictly_out_of_frame" dans main_photo_visibility apparaît pourtant, visible ou partiellement visible,
 dans l’IMAGE GÉNÉRÉE — qu’il s’agisse d’un meuble ou d’un élément fixe comme une porte — c’est une violation.
 ——————————————————————————————————————————
@@ -46,21 +51,39 @@ Pour chaque meuble dont visibility_from_main_photo vaut "strictly_out_of_frame",
 forme dans l’IMAGE GÉNÉRÉE. S’il apparaît, c’est une violation, même partielle.
 ——————————————————————————————————————————
 3 — POSITION, ANCRAGE ET ORIENTATION DU MOBILIER
-Pour chaque meuble de locked_layout.primary_furniture, vérifier trois choses distinctes :
-• son ancrage mural — le meuble apparaît-il visuellement dans la zone ou le mur décrit par location_anchor, ou a-t-il
-été déplacé ailleurs dans l’image, par exemple regroupé avec d’autres meubles sans lien avec le mur d’ancrage prévu ?
-• son orientation — correspond-elle à celle indiquée (un canapé « orienté vers W4 » doit visuellement faire face à cette
-zone, pas lui tourner le dos) ?
-• ses relations fonctionnelles — les paires déclarées dans functional_relationships sont-elles respectées visuellement ?
-Un meuble bien présent et bien orienté, mais positionné sur un mur ou dans une zone différente de celle prévue dans
-location_anchor, constitue une violation au même titre qu’une mauvaise orientation.
-Une orientation clairement incohérente avec ce qui était prévu est une violation, même si le meuble concerné est bien
-présent et bien positionné en termes de zone.
+RÈGLE DE RAISONNEMENT OBLIGATOIRE — LES CODES NE SONT JAMAIS UNE PREUVE VISUELLE :
+Les identifiants internes (W1, W2, FZ1, UZ2, PF1...) servent uniquement à relier les données entre elles pour la
+traçabilité. Ils ne décrivent rien de visible par eux-mêmes et ne doivent JAMAIS être utilisés comme preuve pour juger
+une position dans l’IMAGE GÉNÉRÉE. Raisonner à partir d’un code brut (« W2 est ici, donc le lit est mal placé ») est
+strictement interdit et produit des faux positifs.
+Pour chaque meuble à contrôler, suivre cet ordre, dans cet ordre :
+1. Identifier l’élément réel dans l’IMAGE GÉNÉRÉE (le lit, le canapé...).
+2. Identifier le mur, l’ouverture ou la zone concerné à partir de sa DESCRIPTION PHYSIQUE fournie
+(wall_anchor_description, floor_zone_description) — jamais à partir du seul identifiant.
+3. Vérifier visuellement la relation attendue (expected_relationship, orientation_target) telle que décrite en langage
+concret : quels éléments fixes voisins, quel élément reste dégagé, quel meuble fait face à quel autre.
+4. Seulement à cette étape, rattacher la conclusion à l’identifiant interne correspondant (PF1, W3...) pour la structurer
+dans la sortie JSON.
+Exemple de raisonnement correct : « Le lit est bien contre le mur droit, la fenêtre est à sa gauche, le radiateur reste
+dégagé → cela correspond à la description fournie pour son mur d’ancrage → conforme. »
+Exemple de raisonnement interdit : « support_anchor attendu = W3, meuble détecté près d’un mur non identifié comme
+W3 → non conforme. » — ce raisonnement seul ne prouve rien sans être passé par la description physique.
+Pour chaque meuble, vérifier trois choses distinctes, toujours via leur description physique :
+• son ancrage — le meuble apparaît-il visuellement au mur/à la zone décrits par wall_anchor_description ou
+floor_zone_description, ou a-t-il été déplacé ailleurs dans l’image ?
+• son orientation — correspond-elle à la relation attendue décrite (un canapé dont la relation attendue est « fait face à
+l’espace TV » doit visuellement faire face à cette zone, pas lui tourner le dos) ?
+• ses relations fonctionnelles — les relations décrites en expected_relationship sont-elles respectées visuellement ?
+Un meuble bien présent et bien orienté, mais positionné à un endroit différent de sa description physique attendue,
+constitue une violation au même titre qu’une mauvaise orientation. Mais l’inverse est tout aussi vrai : si la description
+physique est respectée dans l’image, ce n’est PAS une violation, même si un doute existe sur la correspondance exacte
+avec l’identifiant interne — la description physique prime toujours sur l’identifiant.
 ——————————————————————————————————————————
 4 — ZONES INTERDITES ET CIRCULATIONS
 Vérifier qu’aucun meuble, dans l’IMAGE GÉNÉRÉE, n’obstrue visuellement une zone listée dans
 spatial_constraints.forbidden_zones — notamment l’accès à une baie vitrée, le débattement d’une porte, l’ouverture d’un
-placard, ou une circulation principale.
+placard, ou une circulation principale. Comme pour le mobilier (section 3), s’appuyer sur la description textuelle de
+chaque zone ("zone", "reason") pour la localiser visuellement — jamais sur le seul identifiant zone_id.
 ——————————————————————————————————————————
 4 BIS — RÉPARTITION SPATIALE ET DENSITÉ
 Comparer la répartition du mobilier dans l’IMAGE GÉNÉRÉE avec le nombre et la diversité des usable_zones décrites dans
