@@ -106,9 +106,9 @@ function construireCorrectionDepuisControle(controle) {
  * détecte un écart corrigible. Retourne le résultat final, qu'il soit validé
  * ou à envoyer en révision manuelle.
  */
-async function genererEtControler({ prompt, imageUrl, implantation }) {
+async function genererEtControler({ prompt, imageUrl, implantation, model = 'gpt-image-2.5-sunburst' }) {
   let promptCourant = prompt;
-  let generatedUrl = await genererImage(promptCourant, imageUrl);
+  let generatedUrl = await genererImage(promptCourant, imageUrl, model);
   let controle = await controlerGeneration({
     photoPrincipale: imageUrl,
     imageGeneree: generatedUrl,
@@ -125,7 +125,7 @@ async function genererEtControler({ prompt, imageUrl, implantation }) {
     console.log(`[TestStaging] Contrôle rejeté (régénération ${tentatives}/${MAX_REGENERATIONS}) — ${controle.issues_summary}`);
 
     promptCourant = promptCourant + construireCorrectionDepuisControle(controle);
-    generatedUrl = await genererImage(promptCourant, imageUrl);
+    generatedUrl = await genererImage(promptCourant, imageUrl, model);
     controle = await controlerGeneration({
       photoPrincipale: imageUrl,
       imageGeneree: generatedUrl,
