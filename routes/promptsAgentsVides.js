@@ -753,6 +753,27 @@ Si l’espace TV est retenu visible, son emplacement doit être vérifié au reg
 (section 14 TER) avant tout verrouillage : un espace TV visible ne peut jamais chevaucher un débattement de porte, un accès
 à un placard ou une circulation devant rester libre.
 ——————————————————————————————————————————
+10 BIS — DÉCISION CONJOINTE DU COUPLE TV ↔ CANAPÉ
+Le canapé et l’espace TV ne doivent jamais être décidés comme deux positions indépendantes choisies séparément. Ils
+forment un couple fonctionnel unique, à construire dans cet ordre :
+1. Choisir d’abord le meilleur mur ou support pour l’espace TV, compatible avec les contraintes réelles (radiateur,
+placard, circulations, zones interdites). Renseigner son "support_anchor" avec l’identifiant du mur retenu.
+2. Construire l’axe de vision à partir de ce support : la direction perpendiculaire au mur TV, vers l’intérieur de la pièce.
+3. Positionner le canapé réellement sur cet axe, en face de la TV — adossé à un mur si un mur cohérent avec cet axe
+existe (voir la règle de compatibilité ci-dessous), sinon flottant ("support_anchor": "NONE") si aucun mur adapté
+n’est disponible sur cet axe.
+RÈGLE DE COMPATIBILITÉ DES MURS POUR UNE RELATION "face_to_face" :
+Deux meubles reliés par une relation "face_to_face" (voir functional_relationships, "relationship_type") ne peuvent
+JAMAIS partager le même "support_anchor" — deux meubles sur le même mur sont côte à côte, jamais face à face.
+S’ils sont tous les deux adossés à un mur ("support_anchor" différent de "NONE" pour les deux), ces deux murs doivent
+être mutuellement désignés comme "opposite_wall_id" l’un de l’autre dans le référentiel spatial (section 2 BIS). Si cette
+compatibilité n’est pas établie, l’un des deux meubles du couple doit être flottant ("support_anchor": "NONE") plutôt que
+laissé sur un mur incompatible.
+"orientation_target" du canapé doit contenir l’item_id de l’espace TV, et réciproquement — la relation doit être
+symétrique et déclarée avec "relationship_type": "face_to_face" dans functional_relationships.
+Cette procédure remplace toute décision où canapé et TV seraient choisis chacun de leur côté puis simplement déclarés
+"face à face" a posteriori dans les notes, sans vérification de compatibilité réelle entre leurs ancrages.
+——————————————————————————————————————————
 
 11 — CAS PARTICULIER DU CANAPÉ
 Pour chaque emplacement potentiel du canapé, vérifier :
@@ -973,7 +994,7 @@ Utiliser strictement la structure suivante :
 },
 "spatial_reference": {
 "walls": [
-{ "id": "W1", "description": "", "relations": "", "geometry_confidence": "high | medium | low", "evidence_photos": [] }
+{ "id": "W1", "description": "", "relations": "", "opposite_wall_id": "W_ ou null si aucun mur n'est franchement en vis-à-vis", "geometry_confidence": "high | medium | low", "evidence_photos": [] }
 ],
 "openings": [
 { "id": "O1", "type": "door | window | bay_window", "wall": "", "description": "", "geometry_confidence": "high | medium | low", "evidence_photos": [] }
@@ -1040,7 +1061,10 @@ Utiliser strictement la structure suivante :
 {
 "item_id": "",
 "type": "",
-"location_anchor": "",
+"floor_zone": "identifiant UZ dans lequel le meuble se trouve au sol",
+"support_anchor": "identifiant W du mur contre lequel le meuble est adossé, ou \"NONE\" s'il est flottant",
+"orientation_target": "item_id d'un autre meuble vers lequel l'assise/la façade est orientée, ou identifiant W d'un mur, ou \"NONE\"",
+"location_anchor": "description physique lisible, dérivée de floor_zone/support_anchor, jamais leur seule source de vérité",
 "orientation": "",
 "approximate_size": "",
 "visibility_from_main_photo": "visible | partially_visible | strictly_out_of_frame",
@@ -1054,6 +1078,7 @@ Utiliser strictement la structure suivante :
 {
 "from_item": "",
 "to_item": "",
+"relationship_type": "face_to_face | serves | surrounds | other",
 "relationship": ""
 }
 ]
