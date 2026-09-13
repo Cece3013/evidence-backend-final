@@ -1,567 +1,319 @@
-"use client";
+const express = require('express');
+const axios = require('axios');
+const crypto = require('crypto');
+const multer = require('multer');
+const FormData = require('form-data');
+const upload = multer({ storage: multer.memoryStorage() });
+const router = express.Router();
 
-import { useState } from "react";
+const { buildPromptHabitesParticuliers } = require('./promptsHabitesParticuliers');
+const { buildPromptHabitesPro } = require('./promptsHabitesPro');
+const { buildPromptBienVide, controlerGeneration } = require('./pipelineVides');
 
-const API_URL = "https://poetic-youthfulness-production-fecb.up.railway.app";
+// Nombre maximal de régénérations automatiques après un contrôle rejeté avec
+// next_step = REGENERATE. Coupé à 0 temporairement : les 2 derniers tests
+// montrent que la régénération automatique ne corrige pas le problème
+// récurrent d'ancrage mural (canapé mal placé), donc elle ne fait que
+// doubler/tripler le coût sans rien apporter tant que ce problème n'est pas
+// résolu à la source dans le Prompt B. Le contrôle continue de tourner et de
+// diagnostiquer — seule la régénération automatique est désactivée.
+const MAX_REGENERATIONS = 0;
 
-const ROOM_TYPES_VIDE = [
-  { id: "salon", label: "Salon" },
-  { id: "salon_salle_a_manger", label: "Salon / Salle à manger" },
-  { id: "cuisine", label: "Cuisine" },
-  { id: "salle_bain", label: "Salle de bain" },
-  { id: "chambre_parentale", label: "Chambre parentale" },
-  { id: "chambre_enfant", label: "Chambre enfant" },
-  { id: "chambre_ado", label: "Chambre ado" },
-  { id: "entree", label: "Entrée" },
-  { id: "balcon_terrasse", label: "Balcon / Terrasse" },
-  { id: "jardin", label: "Jardin" },
-];
+async function uploadBufferToCloudinary(buffer, filename) {
+  const timestamp = Math.round(Date.now() / 1000);
+  const signature = crypto
+    .createHash('sha1')
+    .update(`timestamp=${timestamp}${process.env.CLOUDINARY_API_SECRET}`)
+    .digest('hex');
 
-const ROOM_TYPES_HABITE = [
-  { id: "salon", label: "Salon" },
-  { id: "salon_salle_a_manger", label: "Salon / Salle à manger" },
-  { id: "cuisine", label: "Cuisine" },
-  { id: "coin_repas", label: "Coin repas" },
-  { id: "salle_bain", label: "Salle de bain" },
-  { id: "chambre_parentale", label: "Chambre parentale" },
-  { id: "chambre_enfant", label: "Chambre enfant" },
-  { id: "chambre_ado", label: "Chambre ado" },
-  { id: "bureau", label: "Bureau" },
-  { id: "entree", label: "Entrée (PRO)" },
-  { id: "balcon_terrasse", label: "Balcon / Terrasse" },
-  { id: "jardin", label: "Jardin (PRO)" },
-];
+  const form = new FormData();
+  form.append('file', buffer, { filename: filename || 'image.jpg' });
+  form.append('timestamp', timestamp);
+  form.append('api_key', process.env.CLOUDINARY_API_KEY);
+  form.append('signature', signature);
 
-const MICRO_MODULES = [
-  { id: "coin_repas", label: "Coin repas" },
-  { id: "espace_bureau", label: "Espace bureau" },
-  { id: "coin_lecture", label: "Coin lecture" },
-  { id: "habillage_irregularite", label: "Habillage d'une irrégularité" },
-];
-
-export default function TestStagingPage() {
-  const [testKey, setTestKey] = useState("");
-  const [mode, setMode] = useState<"vide" | "habite">("vide");
-  const [clientType, setClientType] = useState("particulier");
-  const [imageUrl, setImageUrl] = useState("");
-  const [vuesComp, setVuesComp] = useState<string[]>([]);
-  const [roomType, setRoomType] = useState("salon");
-  const [micros, setMicros] = useState<string[]>([]);
-  const [commentaire, setCommentaire] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [uploading, setUploading] = useState("");
-  const [result, setResult] = useState<any>(null);
-  const [error, setError] = useState("");
-  const [comparaison, setComparaison] = useState<any[]>([]);
-  const [comparaisonEnCours, setComparaisonEnCours] = useState(false);
-
-  const PLAN_COMPARAISON = [
-    { model: "gpt-image-2", count: 3 },
-    { model: "gpt-image-2.5-flare", count: 3 },
-    { model: "gpt-image-2.5-sunburst", count: 2 },
-  ];
-
-  const lancerComparaisonModeles = async () => {
-    if (!result?.success || !result?.prompt || !result?.implantation) return;
-    setComparaisonEnCours(true);
-    setComparaison([]);
-
-    for (const { model, count } of PLAN_COMPARAISON) {
-      for (let i = 1; i <= count; i++) {
-        try {
-          const res = await fetch(API_URL + "/api/test-staging/comparer-un-modele", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              imageUrl: result.originalUrl,
-              prompt: result.prompt,
-              implantation: result.implantation,
-              model,
-              testKey,
-            }),
-          });
-          const data = await res.json();
-          setComparaison((prev) => [
-            ...prev,
-            res.ok
-              ? { model, tentative: i, ...data }
-              : { model, tentative: i, error: data.error || "Erreur" },
-          ]);
-        } catch (err) {
-          setComparaison((prev) => [...prev, { model, tentative: i, error: "Erreur réseau" }]);
-        }
-      }
-    }
-
-    setComparaisonEnCours(false);
-  };
-
-  const roomList = mode === "vide" ? ROOM_TYPES_VIDE : ROOM_TYPES_HABITE;
-
-  const uploadFile = async (file: File): Promise<string | null> => {
-    const formData = new FormData();
-    formData.append("photo", file);
-    formData.append("testKey", testKey);
-    const res = await fetch(API_URL + "/api/test-staging/upload", {
-      method: "POST",
-      body: formData,
-    });
-    const data = await res.json();
-    if (!res.ok || !data.url) {
-      setError(data.error || "Erreur lors de l'envoi de la photo.");
-      return null;
-    }
-    return data.url;
-  };
-
-  const handleMainPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!testKey.trim()) return setError("Renseignez d'abord la clé de test.");
-    setUploading("principale");
-    setError("");
-    setResult(null);
-    const url = await uploadFile(file);
-    if (url) setImageUrl(url);
-    setUploading("");
-  };
-
-  const handleVueComp = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!testKey.trim()) return setError("Renseignez d'abord la clé de test.");
-    if (vuesComp.length >= 2) return setError("Maximum 2 vues complémentaires.");
-    setUploading("complementaire");
-    setError("");
-    const url = await uploadFile(file);
-    if (url) setVuesComp((prev) => [...prev, url]);
-    setUploading("");
-    e.target.value = "";
-  };
-
-  const toggleMicro = (id: string) => {
-    setMicros((prev) => (prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id]));
-  };
-
-  const handleGenerate = async () => {
-    if (!imageUrl.trim()) return setError("Choisissez d'abord une photo principale.");
-    setLoading(true);
-    setError("");
-    setResult(null);
-
-    const endpoint = mode === "vide" ? "/api/test-staging/vides" : "/api/test-staging/habites";
-    const body = mode === "vide"
-      ? {
-          imageUrl,
-          photosComplementaires: vuesComp,
-          roomType,
-          testKey,
-          activeMicroModules: micros,
-          commentaireClient: commentaire,
-        }
-      : { imageUrl, roomType, testKey, clientType };
-
-    try {
-      const res = await fetch(API_URL + endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error + (data.detail ? " — " + JSON.stringify(data.detail) : ""));
-      } else {
-        setResult(data);
-      }
-    } catch (err) {
-      console.error(err);
-      setError("Erreur réseau.");
-    }
-    setLoading(false);
-  };
-
-  return (
-    <div className="min-h-screen bg-[#f7f2ee] text-[#1a1a1a] py-10 px-6">
-      <div className="mx-auto max-w-5xl">
-        <h1 className="text-3xl font-semibold">Test génération</h1>
-        <p className="mt-2 text-gray-500">
-          Outil interne — pipeline complet sans passer par l'application.
-        </p>
-
-        <div className="mt-8 rounded-3xl bg-white p-6 shadow-sm space-y-5">
-
-          <div>
-            <label className="text-sm font-medium text-gray-700">Clé de test</label>
-            <input
-              type="password"
-              value={testKey}
-              onChange={(e) => setTestKey(e.target.value)}
-              placeholder="TEST_STAGING_KEY"
-              className="mt-2 w-full rounded-2xl border border-[#e8d3b0] px-4 py-3 text-sm"
-            />
-          </div>
-
-          {/* Mode */}
-          <div className="flex gap-2 rounded-2xl bg-[#f7f2ee] p-1">
-            {(["vide", "habite"] as const).map((m) => (
-              <button
-                key={m}
-                onClick={() => { setMode(m); setRoomType("salon"); setResult(null); }}
-                className={
-                  "flex-1 rounded-xl py-3 text-sm font-medium transition " +
-                  (mode === m ? "bg-[#bd8a34] text-white" : "text-gray-600")
-                }
-              >
-                {m === "vide" ? "Bien vide (A → B → C)" : "Bien habité"}
-              </button>
-            ))}
-          </div>
-
-          {mode === "habite" && (
-            <div>
-              <label className="text-sm font-medium text-gray-700">Type de client</label>
-              <select
-                value={clientType}
-                onChange={(e) => setClientType(e.target.value)}
-                className="mt-2 w-full rounded-2xl border border-[#e8d3b0] bg-white px-4 py-3 text-sm"
-              >
-                <option value="particulier">Particulier</option>
-                <option value="pro">PRO</option>
-              </select>
-            </div>
-          )}
-
-          {/* Photo principale */}
-          <div>
-            <label className="text-sm font-medium text-gray-700">
-              Photo principale <span className="text-gray-400">(celle qui sera transformée)</span>
-            </label>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleMainPhoto}
-              disabled={!!uploading}
-              className="mt-2 w-full rounded-2xl border border-[#e8d3b0] px-4 py-3 text-sm"
-            />
-            {uploading === "principale" && <p className="mt-2 text-xs text-[#9a6f26]">Envoi...</p>}
-            {imageUrl && (
-              <img src={imageUrl} alt="" className="mt-3 h-32 rounded-xl object-cover" />
-            )}
-          </div>
-
-          {/* Vues complémentaires — biens vides uniquement */}
-          {mode === "vide" && (
-            <div>
-              <label className="text-sm font-medium text-gray-700">
-                Vues complémentaires <span className="text-gray-400">(facultatif, max 2)</span>
-              </label>
-              <p className="mt-1 text-xs text-gray-500">
-                Autres angles de la même pièce. Servent à comprendre l'espace, ne génèrent pas d'image.
-              </p>
-              {vuesComp.length < 2 && (
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleVueComp}
-                  disabled={!!uploading}
-                  className="mt-2 w-full rounded-2xl border border-[#e8d3b0] px-4 py-3 text-sm"
-                />
-              )}
-              {uploading === "complementaire" && <p className="mt-2 text-xs text-[#9a6f26]">Envoi...</p>}
-              {vuesComp.length > 0 && (
-                <div className="mt-3 flex gap-3">
-                  {vuesComp.map((u, i) => (
-                    <div key={i} className="relative">
-                      <img src={u} alt="" className="h-24 rounded-xl object-cover" />
-                      <button
-                        onClick={() => setVuesComp((prev) => prev.filter((_, j) => j !== i))}
-                        className="absolute -right-2 -top-2 h-6 w-6 rounded-full bg-red-500 text-xs text-white"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Type de pièce */}
-          <div>
-            <label className="text-sm font-medium text-gray-700">Type de pièce</label>
-            <select
-              value={roomType}
-              onChange={(e) => setRoomType(e.target.value)}
-              className="mt-2 w-full rounded-2xl border border-[#e8d3b0] bg-white px-4 py-3 text-sm"
-            >
-              {roomList.map((r) => (
-                <option key={r.id} value={r.id}>{r.label}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Micro-modules — biens vides uniquement */}
-          {mode === "vide" && (
-            <div>
-              <label className="text-sm font-medium text-gray-700">
-                Besoins particuliers <span className="text-gray-400">(facultatif)</span>
-              </label>
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                {MICRO_MODULES.map((m) => (
-                  <label
-                    key={m.id}
-                    className={
-                      "flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-sm " +
-                      (micros.includes(m.id)
-                        ? "border-[#bd8a34] bg-[#faf4ec]"
-                        : "border-[#e8e0d8] bg-white")
-                    }
-                  >
-                    <input
-                      type="checkbox"
-                      checked={micros.includes(m.id)}
-                      onChange={() => toggleMicro(m.id)}
-                    />
-                    {m.label}
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Commentaire */}
-          {mode === "vide" && (
-            <div>
-              <label className="text-sm font-medium text-gray-700">
-                Commentaire client <span className="text-gray-400">(facultatif)</span>
-              </label>
-              <textarea
-                value={commentaire}
-                onChange={(e) => setCommentaire(e.target.value)}
-                rows={3}
-                placeholder="Précisions particulières sur cette pièce..."
-                className="mt-2 w-full resize-none rounded-2xl border border-[#e8d3b0] px-4 py-3 text-sm"
-              />
-            </div>
-          )}
-
-          <button
-            onClick={handleGenerate}
-            disabled={loading || !!uploading}
-            className="w-full rounded-2xl bg-[#bd8a34] px-6 py-4 text-sm font-medium text-white shadow-md transition hover:opacity-90 disabled:opacity-50"
-          >
-            {loading
-              ? mode === "vide"
-                ? "Analyse, implantation puis génération (1 à 2 min)..."
-                : "Génération en cours..."
-              : "Lancer"}
-          </button>
-
-          {error && <p className="text-sm text-red-600 break-all">{error}</p>}
-        </div>
-
-        {/* ── Pipeline bloqué ── */}
-        {result?.blocked && (
-          <div className="mt-8 rounded-3xl border-2 border-amber-300 bg-amber-50 p-8">
-            <p className="text-lg font-semibold text-amber-900">
-              Génération non lancée
-            </p>
-            <p className="mt-2 text-sm text-amber-800">
-              Arrêt à l'étape {result.etape} — {result.raison}
-            </p>
-
-            {result.demandes?.length > 0 && (
-              <div className="mt-5">
-                <p className="text-sm font-medium text-amber-900">Vues nécessaires :</p>
-                <ul className="mt-2 list-disc pl-5 text-sm text-amber-800 space-y-1">
-                  {result.demandes.map((d: string, i: number) => (
-                    <li key={i}>{d}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            <details className="mt-6">
-              <summary className="cursor-pointer text-sm text-amber-800">
-                Voir l'analyse complète
-              </summary>
-              <pre className="mt-3 overflow-auto whitespace-pre-wrap rounded-xl bg-white p-4 text-xs text-gray-600">
-                {JSON.stringify(result.analyse, null, 2)}
-              </pre>
-              {result.implantation && (
-                <pre className="mt-3 overflow-auto whitespace-pre-wrap rounded-xl bg-white p-4 text-xs text-gray-600">
-                  {JSON.stringify(result.implantation, null, 2)}
-                </pre>
-              )}
-            </details>
-          </div>
-        )}
-
-        {/* ── Résultat ── */}
-        {result?.success && (
-          <div className="mt-8 space-y-6">
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              <div className="rounded-3xl bg-white p-4 shadow-sm">
-                <p className="mb-3 text-sm font-medium text-gray-700">Avant</p>
-                <img src={result.originalUrl} alt="Avant" className="w-full rounded-2xl" />
-              </div>
-              <div className="rounded-3xl bg-white p-4 shadow-sm">
-                <p className="mb-3 text-sm font-medium text-gray-700">Après</p>
-                <img src={result.generatedUrl} alt="Après" className="w-full rounded-2xl" />
-              </div>
-            </div>
-
-            {/* Contrôle post-génération — uniquement pour le pipeline biens vides */}
-            {result.controle && (
-              <div
-                className={
-                  "rounded-3xl border-2 p-6 " +
-                  (result.valide
-                    ? "border-emerald-300 bg-emerald-50"
-                    : "border-red-300 bg-red-50")
-                }
-              >
-                <p
-                  className={
-                    "text-sm font-semibold " +
-                    (result.valide ? "text-emerald-900" : "text-red-900")
-                  }
-                >
-                  {result.valide
-                    ? "Contrôle post-génération : validé"
-                    : "Contrôle post-génération : révision manuelle nécessaire"}
-                </p>
-                <p
-                  className={
-                    "mt-1 text-xs " +
-                    (result.valide ? "text-emerald-800" : "text-red-800")
-                  }
-                >
-                  {result.valide
-                    ? (result.tentativesRegeneration > 0
-                        ? `Validé après ${result.tentativesRegeneration} régénération(s) automatique(s).`
-                        : "Validé dès la première génération, aucune régénération nécessaire.")
-                    : (result.tentativesRegeneration > 0
-                        ? `Rejeté après ${result.tentativesRegeneration} régénération(s) automatique(s) — toujours non conforme.`
-                        : "Rejeté dès la première génération — écarts jugés non corrigibles automatiquement par une simple régénération.")}
-                </p>
-
-                {!result.valide && result.controle.issues_summary && (
-                  <p className="mt-3 rounded-xl bg-white p-3 text-sm text-red-800">
-                    {result.controle.issues_summary}
-                  </p>
-                )}
-
-                <details className="mt-4">
-                  <summary className="cursor-pointer text-xs text-gray-600">
-                    Voir le détail du contrôle (JSON)
-                  </summary>
-                  <pre className="mt-3 overflow-auto whitespace-pre-wrap rounded-xl bg-white p-4 text-xs text-gray-600">
-                    {JSON.stringify(result.controle, null, 2)}
-                  </pre>
-                </details>
-              </div>
-            )}
-
-            {result.controle && mode === "vide" && (
-              <div className="rounded-3xl bg-white p-6 shadow-sm">
-                <p className="text-sm font-medium text-gray-700">
-                  Comparaison de modèles (diagnostic)
-                </p>
-                <p className="mt-1 text-xs text-gray-500">
-                  Relance 8 générations à partir du même prompt et de la même implantation figée
-                  (sans relancer A ni B) : 3× gpt-image-2, 3× gpt-image-2.5-flare, 2× gpt-image-2.5-sunburst.
-                </p>
-                <button
-                  onClick={lancerComparaisonModeles}
-                  disabled={comparaisonEnCours}
-                  className="mt-3 rounded-2xl bg-[#1a1a1a] px-5 py-3 text-xs font-medium text-white disabled:opacity-50"
-                >
-                  {comparaisonEnCours
-                    ? `Comparaison en cours (${comparaison.length}/8)...`
-                    : "Lancer la comparaison de modèles"}
-                </button>
-
-                {comparaison.length > 0 && (
-                  <div className="mt-4 space-y-2">
-                    {comparaison.map((c, i) => (
-                      <div
-                        key={i}
-                        className={
-                          "rounded-xl border p-3 text-xs " +
-                          (c.error
-                            ? "border-gray-300 bg-gray-50 text-gray-500"
-                            : c.controle?.controle_status === "VALIDE"
-                            ? "border-emerald-300 bg-emerald-50 text-emerald-900"
-                            : "border-red-300 bg-red-50 text-red-900")
-                        }
-                      >
-                        <span className="font-semibold">
-                          {c.model} — tentative {c.tentative}
-                        </span>{" "}
-                        —{" "}
-                        {c.error
-                          ? `Erreur : ${c.error}`
-                          : c.controle?.controle_status === "VALIDE"
-                          ? "Validé"
-                          : `Rejeté — ${c.controle?.issues_summary || "détail dans le JSON"}`}
-                        {c.generatedUrl && (
-                          <a
-                            href={c.generatedUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="ml-2 underline"
-                          >
-                            voir l'image
-                          </a>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {result.detectedModules && (
-              <div className="rounded-3xl bg-white p-6 shadow-sm">
-                <p className="text-sm font-medium text-gray-700">Micro-modules détectés</p>
-                <p className="mt-2 text-sm text-[#9a6f26]">
-                  {result.detectedModules.length ? result.detectedModules.join(", ") : "aucun"}
-                </p>
-              </div>
-            )}
-
-            {result.implantation && (
-              <details className="rounded-3xl bg-white p-6 shadow-sm">
-                <summary className="cursor-pointer text-sm font-medium text-gray-700">
-                  Voir l'implantation verrouillée
-                </summary>
-                <pre className="mt-4 overflow-auto whitespace-pre-wrap text-xs text-gray-600">
-                  {JSON.stringify(result.implantation, null, 2)}
-                </pre>
-              </details>
-            )}
-
-            {result.analyse && (
-              <details className="rounded-3xl bg-white p-6 shadow-sm">
-                <summary className="cursor-pointer text-sm font-medium text-gray-700">
-                  Voir l'analyse (Prompt A)
-                </summary>
-                <pre className="mt-4 overflow-auto whitespace-pre-wrap text-xs text-gray-600">
-                  {JSON.stringify(result.analyse, null, 2)}
-                </pre>
-              </details>
-            )}
-
-            <details className="rounded-3xl bg-white p-6 shadow-sm">
-              <summary className="cursor-pointer text-sm font-medium text-gray-700">
-                Voir le prompt envoyé
-              </summary>
-              <pre className="mt-4 whitespace-pre-wrap text-xs text-gray-600">{result.prompt}</pre>
-            </details>
-          </div>
-        )}
-      </div>
-    </div>
+  const cloudRes = await axios.post(
+    `https://api.cloudinary.com/v1_1/${process.env.CLOUDINARY_CLOUD_NAME}/image/upload`,
+    form,
+    { headers: form.getHeaders(), maxBodyLength: Infinity }
   );
+  return cloudRes.data.secure_url;
 }
+
+/**
+ * Envoie un prompt + une image à un modèle d'image OpenAI, renvoie l'URL Cloudinary du résultat.
+ * model : 'gpt-image-2' (défaut), 'gpt-image-2.5-flare' ou 'gpt-image-2.5-sunburst'.
+ * L'image est normalisée en PNG par Cloudinary pour garantir la compatibilité.
+ */
+async function genererImage(prompt, imageUrl, model = 'gpt-image-2') {
+  const imageNormalisee = imageUrl.includes('/upload/')
+    ? imageUrl.replace('/upload/', '/upload/w_1536,c_limit,f_png,fl_force_strip/')
+    : imageUrl;
+
+  const imageRes = await axios.get(imageNormalisee, { responseType: 'arraybuffer', timeout: 60000 });
+  const imageBuffer = Buffer.from(imageRes.data);
+
+  const form = new FormData();
+  form.append('model', model);
+  form.append('prompt', prompt);
+  form.append('image', imageBuffer, { filename: 'source.png', contentType: 'image/png' });
+  form.append('quality', 'high');
+    form.append('size', 'auto');
+
+  const openaiRes = await axios.post(
+    'https://api.openai.com/v1/images/edits',
+    form,
+    {
+      headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}`, ...form.getHeaders() },
+      maxBodyLength: Infinity,
+      timeout: 180000,
+    }
+  );
+
+  const b64 = openaiRes.data.data[0].b64_json;
+  if (!b64) throw new Error('Aucune image générée par OpenAI.');
+  return uploadBufferToCloudinary(Buffer.from(b64, 'base64'), 'generated.png');
+}
+
+/**
+ * Construit le texte de correction à ajouter au prompt de synthèse à partir
+ * du verdict du contrôle post-génération, pour une nouvelle tentative ciblée.
+ */
+function construireCorrectionDepuisControle(controle) {
+  return [
+    '',
+    '=== CORRECTION OBLIGATOIRE SUITE AU CONTRÔLE POST-GÉNÉRATION ===',
+    "La génération précédente a été rejetée pour les raisons suivantes. Corrige-les strictement, sans modifier le reste de l'implantation ni de l'architecture :",
+    controle.issues_summary || '',
+    JSON.stringify(
+      {
+        forbidden_elements_visible: controle.forbidden_elements_visible || [],
+        out_of_frame_furniture_visible: controle.out_of_frame_furniture_visible || [],
+        required_furniture_missing: controle.required_furniture_missing || [],
+        placement_conflicts: controle.placement_conflicts || [],
+        space_utilization_issue: controle.space_utilization_issue || { detected: false, detail: '' },
+        forbidden_zones_violated: controle.forbidden_zones_violated || [],
+      },
+      null,
+      2
+    ),
+  ].join('\n');
+}
+
+/**
+ * Génère une image puis la fait vérifier par le contrôle post-génération.
+ * Régénère automatiquement (jusqu'à MAX_REGENERATIONS fois) si le contrôle
+ * détecte un écart corrigible. Retourne le résultat final, qu'il soit validé
+ * ou à envoyer en révision manuelle.
+ */
+async function genererEtControler({ prompt, imageUrl, implantation }) {
+  let promptCourant = prompt;
+  let generatedUrl = await genererImage(promptCourant, imageUrl);
+  let controle = await controlerGeneration({
+    photoPrincipale: imageUrl,
+    imageGeneree: generatedUrl,
+    implantation,
+  });
+
+  let tentatives = 0;
+  while (
+    controle.controle_status !== 'VALIDE' &&
+    controle.next_step === 'REGENERATE' &&
+    tentatives < MAX_REGENERATIONS
+  ) {
+    tentatives += 1;
+    console.log(`[TestStaging] Contrôle rejeté (régénération ${tentatives}/${MAX_REGENERATIONS}) — ${controle.issues_summary}`);
+
+    promptCourant = promptCourant + construireCorrectionDepuisControle(controle);
+    generatedUrl = await genererImage(promptCourant, imageUrl);
+    controle = await controlerGeneration({
+      photoPrincipale: imageUrl,
+      imageGeneree: generatedUrl,
+      implantation,
+    });
+  }
+
+  const valide = controle.controle_status === 'VALIDE';
+
+  return {
+    generatedUrl,
+    promptFinal: promptCourant,
+    controle,
+    valide,
+    manualReview: !valide,
+    tentativesRegeneration: tentatives,
+  };
+}
+
+// ─── POST /api/test-staging/upload ─────────────────────────────────────────
+router.post('/upload', upload.single('photo'), async (req, res) => {
+  if (req.body.testKey !== process.env.TEST_STAGING_KEY) {
+    return res.status(403).json({ error: 'Accès refusé.' });
+  }
+  if (!req.file) {
+    return res.status(400).json({ error: 'Aucun fichier reçu.' });
+  }
+
+  try {
+    const url = await uploadBufferToCloudinary(req.file.buffer, req.file.originalname);
+    res.json({ url });
+  } catch (err) {
+    console.error('[TestStaging] Erreur upload:', err.response?.data || err.message);
+    res.status(500).json({ error: "Erreur lors de l'envoi de la photo." });
+  }
+});
+
+// ─── POST /api/test-staging/habites ────────────────────────────────────────
+router.post('/habites', async (req, res) => {
+  const { imageUrl, roomType, testKey, clientType = 'particulier' } = req.body;
+
+  if (testKey !== process.env.TEST_STAGING_KEY) {
+    return res.status(403).json({ error: 'Accès refusé.' });
+  }
+  if (!imageUrl || !roomType) {
+    return res.status(400).json({ error: 'imageUrl et roomType requis.' });
+  }
+
+  try {
+    const builder = clientType === 'pro' ? buildPromptHabitesPro : buildPromptHabitesParticuliers;
+    const { prompt, detectedModules } = await builder(roomType, imageUrl);
+
+    const generatedUrl = await genererImage(prompt, imageUrl);
+
+    console.log(`[TestStaging] Habité généré — ${clientType} / ${roomType}`);
+    res.json({
+      success: true,
+      originalUrl: imageUrl,
+      generatedUrl,
+      roomType,
+      clientType,
+      detectedModules,
+      prompt,
+    });
+  } catch (err) {
+    console.error('[TestStaging] Erreur habités:', err.response?.data || err.message);
+    res.status(500).json({
+      error: 'Erreur lors de la génération.',
+      detail: err.response?.data?.error?.message || err.message,
+    });
+  }
+});
+
+// ─── POST /api/test-staging/comparer-un-modele ─────────────────────────────
+// Un seul cycle génération + contrôle, à prompt et implantation figés, avec
+// le modèle d'image choisi. Appelée plusieurs fois de suite par la page pour
+// comparer gpt-image-2 / gpt-image-2.5-flare / gpt-image-2.5-sunburst sans
+// jamais relancer A ni B, et sans faire une seule requête trop longue.
+router.post('/comparer-un-modele', async (req, res) => {
+  const { imageUrl, prompt, implantation, model, testKey } = req.body;
+
+  if (testKey !== process.env.TEST_STAGING_KEY) {
+    return res.status(403).json({ error: 'Accès refusé.' });
+  }
+  if (!imageUrl || !prompt || !implantation || !model) {
+    return res.status(400).json({ error: 'imageUrl, prompt, implantation et model sont requis.' });
+  }
+
+  try {
+    const generatedUrl = await genererImage(prompt, imageUrl, model);
+    const controle = await controlerGeneration({
+      photoPrincipale: imageUrl,
+      imageGeneree: generatedUrl,
+      implantation,
+    });
+
+    console.log(`[CompareModeles] ${model} — ${controle.controle_status}`);
+
+    res.json({ success: true, model, generatedUrl, controle });
+  } catch (err) {
+    console.error(`[CompareModeles] Erreur (${model}):`, err.response?.data || err.message);
+    res.status(500).json({
+      error: 'Erreur lors de la génération.',
+      detail: err.response?.data?.error?.message || err.message,
+    });
+  }
+});
+
+// ─── POST /api/test-staging/vides ──────────────────────────────────────────
+// Pipeline A → B → synthèse → génération → contrôle post-génération
+router.post('/vides', async (req, res) => {
+  const {
+    imageUrl,
+    photosComplementaires = [],
+    roomType,
+    testKey,
+    activeMicroModules = [],
+    commentaireClient = '',
+  } = req.body;
+
+  if (testKey !== process.env.TEST_STAGING_KEY) {
+    return res.status(403).json({ error: 'Accès refusé.' });
+  }
+  if (!imageUrl || !roomType) {
+    return res.status(400).json({ error: 'imageUrl et roomType requis.' });
+  }
+
+  try {
+    const resultat = await buildPromptBienVide({
+      photoPrincipale: imageUrl,
+      photosComplementaires,
+      roomType,
+      activeMicroModules,
+      commentaireClient,
+    });
+
+    // Le pipeline s'est arrêté : photos insuffisantes ou implantation impossible
+    if (resultat.status !== 'PRET') {
+      console.log(`[TestStaging] Vide bloqué à l'étape ${resultat.etape} — ${resultat.raison}`);
+      return res.json({
+        success: false,
+        blocked: true,
+        status: resultat.status,
+        etape: resultat.etape,
+        raison: resultat.raison,
+        demandes: resultat.demandes,
+        analyse: resultat.analyse,
+        implantation: resultat.implantation || null,
+      });
+    }
+
+    const {
+      generatedUrl,
+      promptFinal,
+      controle,
+      valide,
+      manualReview,
+      tentativesRegeneration,
+    } = await genererEtControler({
+      prompt: resultat.prompt,
+      imageUrl,
+      implantation: resultat.implantation,
+    });
+
+    console.log(
+      `[TestStaging] Vide généré — ${roomType} — contrôle: ${controle.controle_status} (${tentativesRegeneration} régénération(s)) — ${manualReview ? 'RÉVISION MANUELLE' : 'OK'}`
+    );
+
+    res.json({
+      success: true,
+      valide,
+      manualReview,
+      tentativesRegeneration,
+      originalUrl: imageUrl,
+      generatedUrl,
+      roomType,
+      prompt: promptFinal,
+      analyse: resultat.analyse,
+      implantation: resultat.implantation,
+      controle,
+    });
+  } catch (err) {
+    console.error('[TestStaging] Erreur vides:', err.response?.data || err.message);
+    res.status(500).json({
+      error: 'Erreur lors de la génération.',
+      detail: err.response?.data?.error?.message || err.message,
+    });
+  }
+});
+
+module.exports = router;
