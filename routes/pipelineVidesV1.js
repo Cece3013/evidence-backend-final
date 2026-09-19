@@ -37,8 +37,14 @@ async function appelVisionJSON(prompt, photoPrincipale, maxTokens = 800) {
     throw new Error('Photo principale invalide.');
   }
 
+  // Contrainte technique de l'API OpenAI : avec response_format "json_object",
+  // le mot "JSON" doit apparaître dans le message envoyé. Ajouté ici, au
+  // niveau de l'appel, jamais dans le texte des prompts stockés (Contrôle
+  // Photo V2, classification cuisine) qui restent inchangés.
+  const promptAvecRappelJSON = `${prompt}\n\n(Réponds uniquement avec le JSON demandé ci-dessus, sans texte autour.)`;
+
   const content = [
-    { type: 'text', text: prompt },
+    { type: 'text', text: promptAvecRappelJSON },
     { type: 'image_url', image_url: { url: urlValide } },
   ];
 
