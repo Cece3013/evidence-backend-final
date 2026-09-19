@@ -82,6 +82,8 @@ app.use('/api/pro/auth', require('./routes/proAuth'));
 app.use('/api/pro/projects', require('./routes/proProjects'));
 const testStagingRouter = require('./routes/testStaging');
 app.use('/api/test-staging', testStagingRouter);
+const testStagingV1Router = require('./routes/testStagingV1');
+app.use('/api/test-staging-v1', testStagingV1Router);
 
 // ─── Health check ─────────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => res.json({ status: 'ok', version: '2.0.0' }));
