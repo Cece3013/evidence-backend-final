@@ -7,6 +7,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 const router = express.Router();
 
 const { buildPromptBienVideV1 } = require('./pipelineVidesV1');
+const { GUIDE_VISUEL_SALON_SAM_ACTIF } = require('./guideVisuelV1');
 
 async function uploadBufferToCloudinary(buffer, filename) {
   const timestamp = Math.round(Date.now() / 1000);
@@ -134,9 +135,11 @@ router.post('/vides', async (req, res) => {
     return res.status(400).json({ error: 'imageUrl et roomType requis.' });
   }
 
-  // PROTOTYPE Guide Visuel : actif seulement si guideImageUrl est fourni ET
-  // roomType === 'salon_salle_a_manger'. Absent → comportement inchangé.
-  const utiliserGuideVisuel = Boolean(guideImageUrl) && roomType === 'salon_salle_a_manger';
+  // PROTOTYPE Guide Visuel : actif seulement si guideImageUrl est fourni,
+  // roomType === 'salon_salle_a_manger', ET le drapeau maître est actif
+  // (désactivé le 20/09/2026 — décision V1, voir guideVisuelV1.js).
+  const utiliserGuideVisuel =
+    Boolean(guideImageUrl) && roomType === 'salon_salle_a_manger' && GUIDE_VISUEL_SALON_SAM_ACTIF;
 
   try {
     const resultat = await buildPromptBienVideV1({
