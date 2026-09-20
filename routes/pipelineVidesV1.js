@@ -18,6 +18,7 @@ const {
   LECTURE_RENFORCEE_SALON_SAM_ACTIVE,
   ROOM_TYPES_AVEC_LECTURE_FONCTIONNELLE,
 } = require('./lectureFonctionnelleV1');
+const { INSTRUCTION_GUIDE_VISUEL } = require('./guideVisuelV1');
 
 const OPENAI_HEADERS = {
   Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
@@ -162,14 +163,21 @@ const OPTIONS_CUISINE = [
 // génération (les deux états "existante" — présentable ou datée).
 const ETATS_CUISINE_AVEC_CHOIX = ['CUISINE_EXISTANTE_PRESENTABLE', 'CUISINE_EXISTANTE_DATEE'];
 
-// ─── ASSEMBLAGE — Noyau + Module (+ Lecture Fonctionnelle), sans compression ──
-function construirePromptV1({ roomType, choixCuisine, lectureFonctionnelle }) {
+// ─── ASSEMBLAGE — Noyau + Module (+ Lecture Fonctionnelle OU Guide Visuel) ────
+function construirePromptV1({ roomType, choixCuisine, lectureFonctionnelle, utiliserGuideVisuel }) {
   const module = MODULES_VIDE_V3[roomType];
   if (!module) {
     throw new Error(`Module V3 introuvable pour le type de pièce : ${roomType}`);
   }
 
-  const blocLecture = lectureFonctionnelle ? '\n' + lectureFonctionnelle : '';
+  // PROTOTYPE Guide Visuel : remplace la lecture fonctionnelle par l'instruction
+  // du guide, uniquement quand explicitement demandé (salon_salle_a_manger +
+  // guide fourni). N'affecte aucun autre cas.
+  const blocLecture = utiliserGuideVisuel
+    ? '\n' + INSTRUCTION_GUIDE_VISUEL
+    : lectureFonctionnelle
+    ? '\n' + lectureFonctionnelle
+    : '';
 
   const blocChoix =
     roomType === 'cuisine' && choixCuisine && CHOIX_CUISINE_TEXTE[choixCuisine]
@@ -192,7 +200,7 @@ function construirePromptV1({ roomType, choixCuisine, lectureFonctionnelle }) {
  * - { status: 'PRET', prompt, controle, classificationCuisine }
  *   → prompt final assemblé, prêt pour l'appel de génération d'image.
  */
-async function buildPromptBienVideV1({ photoPrincipale, roomType, choixCuisine = null }) {
+async function buildPromptBienVideV1({ photoPrincipale, roomType, choixCuisine = null, utiliserGuideVisuel = false }) {
   const controle = await controlePhoto(photoPrincipale);
 
   if (!controle.allow_generation) {
@@ -223,9 +231,12 @@ async function buildPromptBienVideV1({ photoPrincipale, roomType, choixCuisine =
     }
   }
 
-  const lectureFonctionnelle = await lireFonctionnellement(photoPrincipale, roomType);
+  // PROTOTYPE Guide Visuel : quand actif, la lecture fonctionnelle textuelle
+  // n'est PAS appelée du tout (pour isoler l'effet du guide, comme demandé) ;
+  // construirePromptV1 utilise l'instruction du guide à la place.
+  const lectureFonctionnelle = utiliserGuideVisuel ? null : await lireFonctionnellement(photoPrincipale, roomType);
 
-  const prompt = construirePromptV1({ roomType, choixCuisine, lectureFonctionnelle });
+  const prompt = construirePromptV1({ roomType, choixCuisine, lectureFonctionnelle, utiliserGuideVisuel });
 
   return {
     status: 'PRET',
