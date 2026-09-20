@@ -13,4 +13,9 @@ Installer table et chaises dans la zone SALLE À MANGER indiquée.
 Aucun mobilier principal ne doit être placé en dehors de ces deux zones.
 Préserver les circulations, la cuisine, l'entrée et les passages.`;
 
-module.exports = { INSTRUCTION_GUIDE_VISUEL };
+// Désactivé le 20/09/2026 — décision V1 : test non concluant (table hors
+// zone, cuisine inventée, TV mal orientée). Code conservé, réactivable en
+// repassant ce drapeau à true.
+const GUIDE_VISUEL_SALON_SAM_ACTIF = false;
+
+module.exports = { INSTRUCTION_GUIDE_VISUEL, GUIDE_VISUEL_SALON_SAM_ACTIF };
