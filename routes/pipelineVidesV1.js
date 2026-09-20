@@ -11,6 +11,11 @@ const axios = require('axios');
 const { CONTROLE_PHOTO_V2, CLASSIFICATION_CUISINE } = require('./controlePhotoV2');
 const { NOYAU_EVIDENCE_V3 } = require('./noyauVideV3');
 const MODULES_VIDE_V3 = require('./modulesVideV3');
+const {
+  LECTURE_FONCTIONNELLE_SALON_SAM,
+  LECTURE_FONCTIONNELLE_SALON,
+  ROOM_TYPES_AVEC_LECTURE_FONCTIONNELLE,
+} = require('./lectureFonctionnelleV1');
 
 const OPENAI_HEADERS = {
   Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
@@ -63,11 +68,55 @@ async function appelVisionJSON(prompt, photoPrincipale, maxTokens = 800) {
   return JSON.parse(raw.replace(/```json|```/g, '').trim());
 }
 
+// ─── LECTURE FONCTIONNELLE — appel en texte libre, pas de JSON ───────────────
+// Sortie en langage naturel uniquement : pas de response_format json_object
+// ici, donc pas de contrainte "le mot JSON doit apparaître".
+async function appelVisionTexte(prompt, photoPrincipale, maxTokens = 400) {
+  const urlValide = versionAllegee(photoPrincipale);
+  if (!urlValide) {
+    throw new Error('Photo principale invalide.');
+  }
+
+  const content = [
+    { type: 'text', text: prompt },
+    { type: 'image_url', image_url: { url: urlValide } },
+  ];
+
+  const res = await axios.post(
+    'https://api.openai.com/v1/chat/completions',
+    {
+      model: MODELE_ANALYSE,
+      ...limiteTokens(maxTokens),
+      messages: [{ role: 'user', content }],
+    },
+    { headers: OPENAI_HEADERS, timeout: 90000 }
+  );
+
+  return res.data.choices[0].message.content.trim();
+}
+
 // ─── CONTRÔLE PHOTO V2 — responsabilité unique : photo suffisante ou non ──────
 async function controlePhoto(photoPrincipale) {
   const resultat = await appelVisionJSON(CONTROLE_PHOTO_V2, photoPrincipale, 500);
   console.log(`[PipelineVidesV1] Contrôle photo — statut: ${resultat.status}`);
   return resultat;
+}
+
+// ─── LECTURE FONCTIONNELLE — uniquement salon et salon_salle_a_manger ────────
+// Ajoutée entre le Contrôle Photo V2 et l'assemblage du prompt final, sur
+// demande explicite, pour pallier un zonage fonctionnel mal exploité sur les
+// pièces à deux fonctions. Ne réintroduit aucun système géométrique — texte
+// libre uniquement. Retourne null pour tout autre type de pièce : aucun
+// changement de comportement ailleurs.
+async function lireFonctionnellement(photoPrincipale, roomType) {
+  if (!ROOM_TYPES_AVEC_LECTURE_FONCTIONNELLE.includes(roomType)) {
+    return null;
+  }
+
+  const prompt = roomType === 'salon_salle_a_manger' ? LECTURE_FONCTIONNELLE_SALON_SAM : LECTURE_FONCTIONNELLE_SALON;
+  const lecture = await appelVisionTexte(prompt, photoPrincipale, 400);
+  console.log(`[PipelineVidesV1] Lecture fonctionnelle (${roomType}) — ${lecture.slice(0, 80)}...`);
+  return lecture;
 }
 
 // ─── CLASSIFICATION CUISINE — séparée, appelée uniquement si pertinent ────────
@@ -103,19 +152,21 @@ const OPTIONS_CUISINE = [
 // génération (les deux états "existante" — présentable ou datée).
 const ETATS_CUISINE_AVEC_CHOIX = ['CUISINE_EXISTANTE_PRESENTABLE', 'CUISINE_EXISTANTE_DATEE'];
 
-// ─── ASSEMBLAGE — Noyau + Module, sans synthèse ni compression ────────────────
-function construirePromptV1({ roomType, choixCuisine }) {
+// ─── ASSEMBLAGE — Noyau + Module (+ Lecture Fonctionnelle), sans compression ──
+function construirePromptV1({ roomType, choixCuisine, lectureFonctionnelle }) {
   const module = MODULES_VIDE_V3[roomType];
   if (!module) {
     throw new Error(`Module V3 introuvable pour le type de pièce : ${roomType}`);
   }
+
+  const blocLecture = lectureFonctionnelle ? '\n' + lectureFonctionnelle : '';
 
   const blocChoix =
     roomType === 'cuisine' && choixCuisine && CHOIX_CUISINE_TEXTE[choixCuisine]
       ? '\n\n' + CHOIX_CUISINE_TEXTE[choixCuisine]
       : '';
 
-  return [NOYAU_EVIDENCE_V3, '', module, blocChoix].join('\n');
+  return [NOYAU_EVIDENCE_V3, '', module, blocLecture, blocChoix].join('\n');
 }
 
 /**
@@ -162,13 +213,16 @@ async function buildPromptBienVideV1({ photoPrincipale, roomType, choixCuisine =
     }
   }
 
-  const prompt = construirePromptV1({ roomType, choixCuisine });
+  const lectureFonctionnelle = await lireFonctionnellement(photoPrincipale, roomType);
+
+  const prompt = construirePromptV1({ roomType, choixCuisine, lectureFonctionnelle });
 
   return {
     status: 'PRET',
     prompt,
     controle,
     classificationCuisine,
+    lectureFonctionnelle,
   };
 }
 
