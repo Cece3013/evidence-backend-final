@@ -64,6 +64,44 @@ async function genererImage(prompt, imageUrl, model = 'gpt-image-2.5-sunburst') 
   return uploadBufferToCloudinary(Buffer.from(b64, 'base64'), 'generated.png');
 }
 
+/**
+ * PROTOTYPE — Guide Visuel Assisté, salon_salle_a_manger uniquement.
+ * Envoie DEUX images à l'endpoint edits : la photo source (image[0], celle
+ * à transformer) et le guide de zonage (image[1], uniquement indicatif).
+ * Séparée de genererImage() ci-dessus : aucun impact sur le flux normal.
+ */
+async function genererImageAvecGuide(prompt, imageUrl, guideUrl, model = 'gpt-image-2.5-sunburst') {
+  const normaliser = (url) =>
+    url.includes('/upload/') ? url.replace('/upload/', '/upload/w_1536,c_limit,f_png,fl_force_strip/') : url;
+
+  const [imageRes, guideRes] = await Promise.all([
+    axios.get(normaliser(imageUrl), { responseType: 'arraybuffer', timeout: 60000 }),
+    axios.get(normaliser(guideUrl), { responseType: 'arraybuffer', timeout: 60000 }),
+  ]);
+
+  const form = new FormData();
+  form.append('model', model);
+  form.append('prompt', prompt);
+  form.append('image[]', Buffer.from(imageRes.data), { filename: 'source.png', contentType: 'image/png' });
+  form.append('image[]', Buffer.from(guideRes.data), { filename: 'guide.png', contentType: 'image/png' });
+  form.append('quality', 'high');
+  form.append('size', 'auto');
+
+  const openaiRes = await axios.post(
+    'https://api.openai.com/v1/images/edits',
+    form,
+    {
+      headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}`, ...form.getHeaders() },
+      maxBodyLength: Infinity,
+      timeout: 180000,
+    }
+  );
+
+  const b64 = openaiRes.data.data[0].b64_json;
+  if (!b64) throw new Error('Aucune image générée par OpenAI.');
+  return uploadBufferToCloudinary(Buffer.from(b64, 'base64'), 'generated.png');
+}
+
 // ─── POST /api/test-staging-v1/upload ──────────────────────────────────────
 router.post('/upload', upload.single('photo'), async (req, res) => {
   if (req.body.testKey !== process.env.TEST_STAGING_KEY) {
@@ -87,7 +125,7 @@ router.post('/upload', upload.single('photo'), async (req, res) => {
 // → Noyau + Module → génération. Une seule photo, jamais de vues
 // complémentaires.
 router.post('/vides', async (req, res) => {
-  const { imageUrl, roomType, choixCuisine, testKey } = req.body;
+  const { imageUrl, roomType, choixCuisine, guideImageUrl, testKey } = req.body;
 
   if (testKey !== process.env.TEST_STAGING_KEY) {
     return res.status(403).json({ error: 'Accès refusé.' });
@@ -96,11 +134,16 @@ router.post('/vides', async (req, res) => {
     return res.status(400).json({ error: 'imageUrl et roomType requis.' });
   }
 
+  // PROTOTYPE Guide Visuel : actif seulement si guideImageUrl est fourni ET
+  // roomType === 'salon_salle_a_manger'. Absent → comportement inchangé.
+  const utiliserGuideVisuel = Boolean(guideImageUrl) && roomType === 'salon_salle_a_manger';
+
   try {
     const resultat = await buildPromptBienVideV1({
       photoPrincipale: imageUrl,
       roomType,
       choixCuisine: choixCuisine || null,
+      utiliserGuideVisuel,
     });
 
     if (resultat.status === 'PHOTO_A_REPRENDRE') {
@@ -126,9 +169,11 @@ router.post('/vides', async (req, res) => {
     }
 
     // status === 'PRET'
-    const generatedUrl = await genererImage(resultat.prompt, imageUrl);
+    const generatedUrl = utiliserGuideVisuel
+      ? await genererImageAvecGuide(resultat.prompt, imageUrl, guideImageUrl)
+      : await genererImage(resultat.prompt, imageUrl);
 
-    console.log(`[TestStagingV1] Vide généré — ${roomType}`);
+    console.log(`[TestStagingV1] Vide généré — ${roomType}${utiliserGuideVisuel ? ' (guide visuel)' : ''}`);
     res.json({
       success: true,
       originalUrl: imageUrl,
@@ -138,6 +183,8 @@ router.post('/vides', async (req, res) => {
       controle: resultat.controle,
       classificationCuisine: resultat.classificationCuisine,
       lectureFonctionnelle: resultat.lectureFonctionnelle,
+      guideVisuelUtilise: utiliserGuideVisuel,
+      guideImageUrl: utiliserGuideVisuel ? guideImageUrl : undefined,
     });
   } catch (err) {
     console.error('[TestStagingV1] Erreur vides:', err.response?.data || err.message);
