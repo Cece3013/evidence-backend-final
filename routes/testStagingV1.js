@@ -48,7 +48,6 @@ async function genererImage(prompt, imageUrl, model = 'gpt-image-2.5-sunburst') 
   form.append('image', imageBuffer, { filename: 'source.png', contentType: 'image/png' });
   form.append('quality', 'high');
   form.append('size', 'auto');
-  form.append('input_fidelity', 'high');
 
   const openaiRes = await axios.post(
     'https://api.openai.com/v1/images/edits',
@@ -138,6 +137,7 @@ router.post('/vides', async (req, res) => {
       prompt: resultat.prompt,
       controle: resultat.controle,
       classificationCuisine: resultat.classificationCuisine,
+      lectureFonctionnelle: resultat.lectureFonctionnelle,
     });
   } catch (err) {
     console.error('[TestStagingV1] Erreur vides:', err.response?.data || err.message);
