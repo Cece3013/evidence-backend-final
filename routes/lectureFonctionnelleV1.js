@@ -136,9 +136,13 @@ Avant de générer, vérifier que :
 — la salle à manger doit rester visuellement rattachée au séjour, et non absorbée par la
 cuisine.`;
 
-// Types de pièce concernés par ce premier test — à étendre plus tard sur
-// décision explicite, pas automatiquement.
-const ROOM_TYPES_AVEC_LECTURE_FONCTIONNELLE = ['salon', 'salon_salle_a_manger'];
+// Types de pièce concernés par la Lecture Fonctionnelle.
+// salon_salle_a_manger désactivé le 20/09/2026 — décision V1 : trois
+// prototypes testés (lecture simple, renforcée, guide visuel) tous jugés
+// non concluants sur ce cas. Retour au pipeline simple NOYAU + MODULE pour
+// ce type de pièce. Code conservé, réactivable en remettant
+// 'salon_salle_a_manger' dans ce tableau.
+const ROOM_TYPES_AVEC_LECTURE_FONCTIONNELLE = ['salon'];
 
 module.exports = {
   LECTURE_FONCTIONNELLE_SALON_SAM,
