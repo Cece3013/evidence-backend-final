@@ -14,6 +14,8 @@ const MODULES_VIDE_V3 = require('./modulesVideV3');
 const {
   LECTURE_FONCTIONNELLE_SALON_SAM,
   LECTURE_FONCTIONNELLE_SALON,
+  LECTURE_FONCTIONNELLE_SALON_SAM_RENFORCEE,
+  LECTURE_RENFORCEE_SALON_SAM_ACTIVE,
   ROOM_TYPES_AVEC_LECTURE_FONCTIONNELLE,
 } = require('./lectureFonctionnelleV1');
 
@@ -113,9 +115,17 @@ async function lireFonctionnellement(photoPrincipale, roomType) {
     return null;
   }
 
-  const prompt = roomType === 'salon_salle_a_manger' ? LECTURE_FONCTIONNELLE_SALON_SAM : LECTURE_FONCTIONNELLE_SALON;
-  const lecture = await appelVisionTexte(prompt, photoPrincipale, 400);
-  console.log(`[PipelineVidesV1] Lecture fonctionnelle (${roomType}) — ${lecture.slice(0, 80)}...`);
+  let prompt;
+  if (roomType === 'salon_salle_a_manger') {
+    prompt = LECTURE_RENFORCEE_SALON_SAM_ACTIVE
+      ? LECTURE_FONCTIONNELLE_SALON_SAM_RENFORCEE
+      : LECTURE_FONCTIONNELLE_SALON_SAM;
+  } else {
+    prompt = LECTURE_FONCTIONNELLE_SALON;
+  }
+
+  const lecture = await appelVisionTexte(prompt, photoPrincipale, 500);
+  console.log(`[PipelineVidesV1] Lecture fonctionnelle (${roomType}${roomType === 'salon_salle_a_manger' && LECTURE_RENFORCEE_SALON_SAM_ACTIVE ? ', renforcée' : ''}) — ${lecture.slice(0, 80)}...`);
   return lecture;
 }
 
