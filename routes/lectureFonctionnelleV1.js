@@ -80,6 +80,62 @@ Ne pas aménager les autres zones fonctionnelles visibles sur la photo.
 Si aucune autre fonction n'est visible, le dire simplement : aucune zone supplémentaire à
 préserver.`;
 
+// ─── LECTURE FONCTIONNELLE RENFORCÉE — Salon/SAM UNIQUEMENT ───────────────────
+// Isolée du reste : n'est utilisée que si roomType === "salon_salle_a_manger"
+// ET que le drapeau ci-dessous est actif. Pour revenir immédiatement à
+// l'ancienne version (LECTURE_FONCTIONNELLE_SALON_SAM ci-dessus) si les tests
+// ne sont pas concluants, il suffit de repasser ce drapeau à false — rien
+// d'autre à toucher, aucun autre module n'est concerné.
+const LECTURE_RENFORCEE_SALON_SAM_ACTIVE = true;
+
+const LECTURE_FONCTIONNELLE_SALON_SAM_RENFORCEE = `LECTURE FONCTIONNELLE RENFORCÉE — SALON / SALLE À MANGER
+
+À partir de cette unique photo, rédige une lecture structurée en blocs numérotés, en
+t'adaptant à ce que montre réellement la photo. Chaque bloc combine une description
+concrète de ce qui est visible et la consigne impérative qui en découle directement —
+ne jamais séparer la description de sa consigne.
+
+Ne jamais utiliser de coordonnées, d'identifiants de murs, de codes de zones ou tout autre
+système de référence abstrait. Décrire uniquement ce qui est visible, en langage naturel,
+comme le ferait une décoratrice regardant la photo.
+
+Rédige la réponse sous cette forme exacte :
+
+LECTURE FONCTIONNELLE RENFORCÉE — SALON / SALLE À MANGER
+
+1. ZONE SALON
+[décrire la zone : localisation, indice visuel]
+Le canapé doit être installé dans cette zone.
+Le meuble TV doit également être installé dans cette zone, sur un mur cohérent avec
+l'implantation du salon.
+Aucun de ces deux meubles ne peut être placé dans l'entrée, la cuisine, un dégagement ou
+un passage.
+
+2. ZONE SALLE À MANGER
+[décrire la zone : localisation, indice visuel, limite précise avec la zone voisine]
+La table à manger et les chaises doivent être installées EXCLUSIVEMENT dans cette zone,
+jamais dans la zone Cuisine ni dans une zone interdite listée ci-dessous.
+
+3. ZONES INTERDITES AU MOBILIER PRINCIPAL
+Pour chaque zone identifiée comme cuisine visible (même partiellement), entrée, dégagement
+ou passage : [nommer la zone] — AUCUN meuble de salon ni de salle à manger n'y est autorisé,
+même partiellement.
+Si aucune zone interdite n'est visible, l'écrire explicitement : "Aucune zone interdite
+identifiée."
+
+4. RÈGLE DE NON-SUPPRESSION
+Aucun des meubles principaux listés (canapé, meuble TV, table à manger, chaises) ne peut
+être supprimé ou omis pour éviter un conflit de placement. Si l'espace semble juste,
+réduire la taille ou le nombre de chaises plutôt que supprimer un meuble principal.
+
+5. VÉRIFICATION AVANT GÉNÉRATION
+Avant de générer, vérifier que :
+— la table à manger n'est ni dans la cuisine ni dans l'entrée/le passage ;
+— le meuble TV est bien dans la zone salon, jamais dans un dégagement ;
+— aucun meuble principal n'a été supprimé ;
+— la salle à manger doit rester visuellement rattachée au séjour, et non absorbée par la
+cuisine.`;
+
 // Types de pièce concernés par ce premier test — à étendre plus tard sur
 // décision explicite, pas automatiquement.
 const ROOM_TYPES_AVEC_LECTURE_FONCTIONNELLE = ['salon', 'salon_salle_a_manger'];
@@ -87,5 +143,7 @@ const ROOM_TYPES_AVEC_LECTURE_FONCTIONNELLE = ['salon', 'salon_salle_a_manger'];
 module.exports = {
   LECTURE_FONCTIONNELLE_SALON_SAM,
   LECTURE_FONCTIONNELLE_SALON,
+  LECTURE_FONCTIONNELLE_SALON_SAM_RENFORCEE,
+  LECTURE_RENFORCEE_SALON_SAM_ACTIVE,
   ROOM_TYPES_AVEC_LECTURE_FONCTIONNELLE,
 };
