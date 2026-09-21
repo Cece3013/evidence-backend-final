@@ -126,7 +126,7 @@ router.post('/upload', upload.single('photo'), async (req, res) => {
 // → Noyau + Module → génération. Une seule photo, jamais de vues
 // complémentaires.
 router.post('/vides', async (req, res) => {
-  const { imageUrl, roomType, choixCuisine, guideImageUrl, testKey } = req.body;
+  const { imageUrl, roomType, choixCuisine, guideImageUrl, utiliserStyleVariant, testKey } = req.body;
 
   if (testKey !== process.env.TEST_STAGING_KEY) {
     return res.status(403).json({ error: 'Accès refusé.' });
@@ -147,6 +147,7 @@ router.post('/vides', async (req, res) => {
       roomType,
       choixCuisine: choixCuisine || null,
       utiliserGuideVisuel,
+      utiliserStyleVariant: Boolean(utiliserStyleVariant),
     });
 
     if (resultat.status === 'PHOTO_A_REPRENDRE') {
@@ -188,6 +189,7 @@ router.post('/vides', async (req, res) => {
       lectureFonctionnelle: resultat.lectureFonctionnelle,
       guideVisuelUtilise: utiliserGuideVisuel,
       guideImageUrl: utiliserGuideVisuel ? guideImageUrl : undefined,
+      styleVariantId: resultat.styleVariantId,
     });
   } catch (err) {
     console.error('[TestStagingV1] Erreur vides:', err.response?.data || err.message);
