@@ -19,6 +19,7 @@ const {
   ROOM_TYPES_AVEC_LECTURE_FONCTIONNELLE,
 } = require('./lectureFonctionnelleV1');
 const { INSTRUCTION_GUIDE_VISUEL } = require('./guideVisuelV1');
+const { ROOM_TYPES_AVEC_STYLE_VARIANT, construireStyleVariant } = require('./styleVariantV1');
 
 const OPENAI_HEADERS = {
   Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
@@ -164,7 +165,7 @@ const OPTIONS_CUISINE = [
 const ETATS_CUISINE_AVEC_CHOIX = ['CUISINE_EXISTANTE_PRESENTABLE', 'CUISINE_EXISTANTE_DATEE'];
 
 // ─── ASSEMBLAGE — Noyau + Module (+ Lecture Fonctionnelle OU Guide Visuel) ────
-function construirePromptV1({ roomType, choixCuisine, lectureFonctionnelle, utiliserGuideVisuel }) {
+function construirePromptV1({ roomType, choixCuisine, lectureFonctionnelle, utiliserGuideVisuel, styleVariantTexte }) {
   const module = MODULES_VIDE_V3[roomType];
   if (!module) {
     throw new Error(`Module V3 introuvable pour le type de pièce : ${roomType}`);
@@ -184,7 +185,12 @@ function construirePromptV1({ roomType, choixCuisine, lectureFonctionnelle, util
       ? '\n\n' + CHOIX_CUISINE_TEXTE[choixCuisine]
       : '';
 
-  return [NOYAU_EVIDENCE_V3, '', module, blocLecture, blocChoix].join('\n');
+  // TEST A/B STYLE_VARIANT : ajouté APRÈS tout le reste, sans rien y
+  // toucher. N'affecte que salon et salon_salle_a_manger, et uniquement
+  // quand explicitement demandé pour ce test.
+  const blocStyle = styleVariantTexte ? '\n\n' + styleVariantTexte : '';
+
+  return [NOYAU_EVIDENCE_V3, '', module, blocLecture, blocChoix, blocStyle].join('\n');
 }
 
 /**
@@ -200,7 +206,13 @@ function construirePromptV1({ roomType, choixCuisine, lectureFonctionnelle, util
  * - { status: 'PRET', prompt, controle, classificationCuisine }
  *   → prompt final assemblé, prêt pour l'appel de génération d'image.
  */
-async function buildPromptBienVideV1({ photoPrincipale, roomType, choixCuisine = null, utiliserGuideVisuel = false }) {
+async function buildPromptBienVideV1({
+  photoPrincipale,
+  roomType,
+  choixCuisine = null,
+  utiliserGuideVisuel = false,
+  utiliserStyleVariant = false,
+}) {
   const controle = await controlePhoto(photoPrincipale);
 
   if (!controle.allow_generation) {
@@ -236,7 +248,18 @@ async function buildPromptBienVideV1({ photoPrincipale, roomType, choixCuisine =
   // construirePromptV1 utilise l'instruction du guide à la place.
   const lectureFonctionnelle = utiliserGuideVisuel ? null : await lireFonctionnellement(photoPrincipale, roomType);
 
-  const prompt = construirePromptV1({ roomType, choixCuisine, lectureFonctionnelle, utiliserGuideVisuel });
+  // TEST A/B STYLE_VARIANT : uniquement salon / salon_salle_a_manger, et
+  // uniquement si explicitement demandé pour cet appel (permet de comparer
+  // A — sans STYLE_VARIANT — et B — avec — sur les mêmes photos).
+  let styleVariantId = null;
+  let styleVariantTexte = null;
+  if (utiliserStyleVariant && ROOM_TYPES_AVEC_STYLE_VARIANT.includes(roomType)) {
+    const style = construireStyleVariant();
+    styleVariantId = style.id;
+    styleVariantTexte = style.texte;
+  }
+
+  const prompt = construirePromptV1({ roomType, choixCuisine, lectureFonctionnelle, utiliserGuideVisuel, styleVariantTexte });
 
   return {
     status: 'PRET',
@@ -244,6 +267,7 @@ async function buildPromptBienVideV1({ photoPrincipale, roomType, choixCuisine =
     controle,
     classificationCuisine,
     lectureFonctionnelle,
+    styleVariantId,
   };
 }
 
