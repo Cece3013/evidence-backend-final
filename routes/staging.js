@@ -10,6 +10,17 @@ global.stagingOrders = global.stagingOrders || [];
 
 const notion = new Client({ auth: process.env.NOTION_API_KEY });
 
+// ─── Protection des routes internes (même clé que la page /admin) ─────────────
+// Sans la clé ADMIN_SECRET_KEY, ces routes refusent l'accès : les données
+// clients (noms, emails, photos) ne sont plus consultables publiquement.
+function requireAdmin(req, res, next) {
+  const key = req.query.key || req.headers['x-admin-key'];
+  if (!process.env.ADMIN_SECRET_KEY || key !== process.env.ADMIN_SECRET_KEY) {
+    return res.status(401).json({ error: 'Accès refusé.' });
+  }
+  next();
+}
+
 async function uploadToCloudinary(file) {
   const timestamp = Math.round(Date.now() / 1000);
   const signature = crypto
@@ -298,13 +309,13 @@ async function processOrder({ photos, clientName, clientEmail, clientPhone, prop
   console.log(`[Staging] Commande ${orderId} en attente de validation`);
 }
 
-// ─── GET /api/staging/orders ──────────────────────────────────────────────────
-router.get('/orders', (req, res) => {
+// ─── GET /api/staging/orders ── (protégé : clé admin requise) ─────────────────
+router.get('/orders', requireAdmin, (req, res) => {
   res.json(global.stagingOrders || []);
 });
 
-// ─── PATCH /api/staging/orders/:orderId/validate ──────────────────────────────
-router.patch('/orders/:orderId/validate', async (req, res) => {
+// ─── PATCH /api/staging/orders/:orderId/validate ── (protégé : clé admin) ─────
+router.patch('/orders/:orderId/validate', requireAdmin, async (req, res) => {
   const order = global.stagingOrders.find(o => o.orderId === req.params.orderId);
   if (!order) return res.status(404).json({ error: 'Commande introuvable.' });
 
