@@ -271,14 +271,22 @@ function prochaineFamilleStyle() {
 }
 
 /**
- * Retourne { id, texte } de la famille sélectionnée pour cet appel, et
- * avance le compteur de rotation.
+ * Retourne { id, texte } de la famille sélectionnée pour cet appel.
+ * Si familleForcee ("A" à "E") est fourni et valide, retourne directement
+ * cette famille SANS avancer le compteur de rotation — utile pour tester
+ * une famille précise isolément, sans perturber la rotation séquentielle
+ * normale utilisée par la comparaison automatique des 5 familles.
  */
-function construireStyleVariant() {
-  const famille = prochaineFamilleStyle();
+function construireStyleVariant(familleForcee) {
+  const famille = familleForcee
+    ? ROTATION.find((f) => f.id === String(familleForcee).toUpperCase())
+    : null;
+
+  const familleChoisie = famille || prochaineFamilleStyle();
+
   return {
-    id: famille.id,
-    texte: [famille.texte, '', BLOC_PARTAGE, '', REGLE_DIFFERENCIATION_OBLIGATOIRE].join('\n'),
+    id: familleChoisie.id,
+    texte: [familleChoisie.texte, '', BLOC_PARTAGE, '', REGLE_DIFFERENCIATION_OBLIGATOIRE].join('\n'),
   };
 }
 
