@@ -109,6 +109,16 @@ router.get('/', requireAdmin, (req, res) => {
 
   <script>
     const ADMIN_KEY = new URLSearchParams(window.location.search).get('key');
+
+    // Neutralise les caractères spéciaux : un nom de client ne peut plus contenir de code exécutable
+    function esc(v) {
+      return String(v == null ? '' : v)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
     let selectedFile = null;
 
     const dropZone = document.getElementById('drop-zone');
@@ -154,10 +164,10 @@ router.get('/', requireAdmin, (req, res) => {
         list.innerHTML = data.orders.map(o => {
           const initials = (o.clientName || 'CL').split(' ').map(n => n[0]).join('').toUpperCase().slice(0,2);
           return \`<div class="order-row">
-            <div class="avatar">\${initials}</div>
+            <div class="avatar">\${esc(initials)}</div>
             <div class="order-info">
-              <div class="order-name">\${o.clientName || 'Client'}</div>
-              <div class="order-meta">\${o.reference} · \${o.formule || ''} · \${formatDate(o.dateCommande)}</div>
+              <div class="order-name">\${esc(o.clientName || 'Client')}</div>
+              <div class="order-meta">\${esc(o.reference)} · \${esc(o.formule || '')} · \${esc(formatDate(o.dateCommande))}</div>
             </div>
             <span class="badge \${o.pdfLivre ? 'badge-done' : 'badge-wait'}">\${o.pdfLivre ? 'Livré' : 'En attente'}</span>
           </div>\`;
@@ -165,7 +175,7 @@ router.get('/', requireAdmin, (req, res) => {
 
         const enAttente = data.orders.filter(o => !o.pdfLivre);
         select.innerHTML = '<option value="">Sélectionnez un client...</option>' +
-          enAttente.map(o => \`<option value="\${o.pageId}">\${o.clientName || 'Client'} — \${o.reference}</option>\`).join('');
+          enAttente.map(o => \`<option value="\${esc(o.pageId)}">\${esc(o.clientName || 'Client')} — \${esc(o.reference)}</option>\`).join('');
       } catch(e) {
         console.error(e);
         document.getElementById('orders-list').innerHTML =
@@ -225,16 +235,26 @@ router.get('/', requireAdmin, (req, res) => {
 // ─── GET /admin/orders — Commandes biens habités payées, depuis Notion ────────
 router.get('/orders', requireAdmin, async (req, res) => {
   try {
-    const query = await axios.post(
-      `https://api.notion.com/v1/databases/${process.env.NOTION_DATABASE_ID}/query`,
-      {
+    // Lecture de toutes les commandes payées, page par page (plus de limite à 100)
+    const results = [];
+    let cursor = undefined;
+    do {
+      const body = {
         page_size: 100,
+        filter: { property: 'Paiement réussi', checkbox: { equals: true } },
         sorts: [{ property: 'Date de commande', direction: 'descending' }],
-      },
-      { headers: NOTION_HEADERS }
-    );
+      };
+      if (cursor) body.start_cursor = cursor;
+      const query = await axios.post(
+        `https://api.notion.com/v1/databases/${process.env.NOTION_DATABASE_ID}/query`,
+        body,
+        { headers: NOTION_HEADERS }
+      );
+      results.push(...query.data.results);
+      cursor = query.data.has_more ? query.data.next_cursor : undefined;
+    } while (cursor);
 
-    const orders = query.data.results
+    const orders = results
       .filter((p) => {
         const props = p.properties;
         const paye = props['Paiement réussi']?.checkbox === true;
