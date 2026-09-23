@@ -126,7 +126,7 @@ router.post('/upload', upload.single('photo'), async (req, res) => {
 // → Noyau + Module → génération. Une seule photo, jamais de vues
 // complémentaires.
 router.post('/vides', async (req, res) => {
-  const { imageUrl, roomType, choixCuisine, guideImageUrl, utiliserStyleVariant, testKey } = req.body;
+  const { imageUrl, roomType, choixCuisine, guideImageUrl, utiliserStyleVariant, familleForcee, testKey } = req.body;
 
   if (testKey !== process.env.TEST_STAGING_KEY) {
     return res.status(403).json({ error: 'Accès refusé.' });
@@ -148,6 +148,7 @@ router.post('/vides', async (req, res) => {
       choixCuisine: choixCuisine || null,
       utiliserGuideVisuel,
       utiliserStyleVariant: Boolean(utiliserStyleVariant),
+      familleForcee: familleForcee || null,
     });
 
     if (resultat.status === 'PHOTO_A_REPRENDRE') {
