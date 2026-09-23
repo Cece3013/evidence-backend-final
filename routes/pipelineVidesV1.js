@@ -257,13 +257,14 @@ async function buildPromptBienVideV1({
   // construirePromptV1 utilise l'instruction du guide à la place.
   const lectureFonctionnelle = utiliserGuideVisuel ? null : await lireFonctionnellement(photoPrincipale, roomType);
 
-  // TEST A/B STYLE_VARIANT : uniquement salon / salon_salle_a_manger, et
-  // uniquement si explicitement demandé pour cet appel (permet de comparer
-  // A — sans STYLE_VARIANT — et B — avec — sur les mêmes photos).
+  // STYLE_VARIANT : uniquement pour les pièces de ROOM_TYPES_AVEC_STYLE_VARIANT
+  // (salon, salon/SAM, chambres) et uniquement si demandé pour cet appel.
+  // Le type de pièce est transmis pour choisir la bonne déclinaison
+  // (salon/SAM inchangés, chambres déclinées).
   let styleVariantId = null;
   let styleVariantTexte = null;
   if (utiliserStyleVariant && ROOM_TYPES_AVEC_STYLE_VARIANT.includes(roomType)) {
-    const style = construireStyleVariant(familleForcee);
+    const style = construireStyleVariant(familleForcee, roomType);
     styleVariantId = style.id;
     styleVariantTexte = style.texte;
   }
