@@ -1,9 +1,21 @@
-// STYLE_VARIANT — Biens vides — V1 — Test A/B (Salon & Salon/SAM uniquement)
+// STYLE_VARIANT — Biens vides — V2 validée (Salon & Salon/SAM clôturés)
+// Extension aux autres modules (bilan de validation) : Chambre enfant,
+// Chambre parentale, Salle de bain, Cuisine, Entrée.
 // Ajouté APRÈS Noyau + Module, sans les modifier. Rotation séquentielle
 // parmi 5 familles stylistiques, sans appel de classification vision
 // supplémentaire (décision du 20/09/2026, point 1).
 
-const ROOM_TYPES_AVEC_STYLE_VARIANT = ['salon', 'salon_salle_a_manger'];
+const ROOM_TYPES_AVEC_STYLE_VARIANT = [
+  'salon',
+  'salon_salle_a_manger',
+  // Extension V2 — ordre de vérification : 1. chambre enfant, 2. chambre
+  // parentale, 3. salle de bain, 4. cuisine, 5. entrée
+  'chambre_enfant',
+  'chambre_parentale',
+  'salle_bain',
+  'cuisine',
+  'entree',
+];
 
 // Bloc partagé, toujours inclus quelle que soit la famille — reprend
 // verbatim les sections RÈGLE ANTI-RÉPÉTITION et ADAPTATION AU LOGEMENT RÉEL
