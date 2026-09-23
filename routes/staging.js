@@ -109,7 +109,7 @@ async function createNotionRecord(clientData, commandeData, photosData) {
         },
         "Type de prestation": { select: { name: commandeData.type_prestation || "—" } },
         "Formule": { select: { name: commandeData.formula || "—" } },
-        "Statut": { status: { name: "Nouveau client" } },
+        "Statut": { select: { name: "Nouveau client" } }, // colonne de type Sélection (comme dans validationJob.js)
         "Date de commande": { date: { start: new Date().toISOString() } },
         "Paiement réussi": { checkbox: true },
       },
