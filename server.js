@@ -92,6 +92,7 @@ app.use((err, req, res, next) => {
 });
 
 const { runValidationCheck } = require('./routes/validationJob');
+const { runGenerateurCheck } = require('./routes/generateurJob');
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
@@ -100,6 +101,10 @@ app.listen(PORT, () => {
   setInterval(runValidationCheck, 5 * 60 * 1000);
   // Première vérification au démarrage
   runValidationCheck();
+  // Générateur (pipeline V1) toutes les 2 minutes — inactif tant que la
+  // variable Railway GENERATEUR_ACTIF n'est pas égale à "true"
+  setInterval(runGenerateurCheck, 2 * 60 * 1000);
+  setTimeout(runGenerateurCheck, 30 * 1000);
 });
 
 module.exports = app;
