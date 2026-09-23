@@ -70,75 +70,171 @@ famille.`;
 
 const FAMILLE_A_NATUREL_DOUX = `FAMILLE STYLISTIQUE — A. NATUREL DOUX
 
-Palette :
-ivoire, lin, sable, beige doux.
+Palette dominante :
+ivoire, lin, sable clair, beige doux.
+
+Couleurs secondaires :
+taupe très clair, brun naturel discret.
+
+Bois :
+chêne clair / bois blond.
 
 Matières :
-lin, coton, laine légère, bois clair, fibres naturelles.
+lin, coton, laine, bois naturel clair, céramique mate.
 
-Ambiance :
-douce, chaleureuse, très lumineuse.
+Mobilier :
+formes simples, arrondies ou légèrement organiques, visuellement légères.
 
-Attention :
-ne pas systématiser tapis jute + grande plante + cadres abstraits.`;
+Luminaires :
+papier, tissu ou verre opalin ; éviter le rotin systématique.
+
+Décoration :
+très peu d'éléments, compositions calmes, art abstrait doux ou paysage minimal.
+
+À privilégier :
+douceur, lumière, matières mates, tons très naturels.
+
+À éviter :
+vert olive dominant, terracotta, noir graphique marqué, accumulation de plantes,
+tapis jute systématique, panier tressé systématique.`;
 
 const FAMILLE_B_CONTEMPORAIN_CHALEUREUX = `FAMILLE STYLISTIQUE — B. CONTEMPORAIN CHALEUREUX
 
-Palette :
-greige, taupe clair, écru, bois moyen, touches noires discrètes.
+Palette dominante :
+greige, taupe, crème, brun moyen.
+
+Couleurs secondaires :
+noir doux, brun chocolat, bronze discret.
+
+Bois :
+noyer clair ou bois moyen.
 
 Matières :
-bois, tissu texturé, métal noir léger, verre.
-
-Ambiance :
-plus graphique et contemporaine, mais toujours chaleureuse.
+bois, verre, métal noir fin, textiles structurés.
 
 Mobilier :
-lignes plus nettes et légèrement plus structurées.`;
+lignes plus nettes, silhouettes plus architecturées, tables basses plus graphiques.
+
+Luminaires :
+métal, verre ou formes géométriques simples.
+
+Décoration :
+plus structurée, art abstrait contemporain, peu de végétation.
+
+À privilégier :
+contraste modéré, mobilier plus contemporain, compositions plus graphiques.
+
+À éviter :
+ambiance bohème, rotin, paniers, jute dominant, coussins vert olive systématiques,
+accumulation de matières végétales.`;
 
 const FAMILLE_C_MEDITERRANEEN_SOBRE = `FAMILLE STYLISTIQUE — C. MÉDITERRANÉEN SOBRE
 
-Palette :
-blanc cassé, sable, pierre, terre cuite très modérée, olive doux.
+Palette dominante :
+blanc cassé, sable, pierre claire, beige chaud.
+
+Couleurs secondaires :
+terracotta très modérée, ocre doux, olive clair.
+
+Bois :
+bois naturel légèrement patiné.
 
 Matières :
-bois naturel, lin, céramique, fibres naturelles.
+lin, céramique, bois, pierre, enduits mats.
 
-Ambiance :
-lumineuse, simple, chaleureuse.
+Mobilier :
+simple, chaleureux, légèrement artisanal sans effet bohème.
 
-Éviter :
-effet bohème chargé,
-accumulation de terracotta,
-accumulation de paniers ou végétation.`;
+Luminaires :
+céramique, verre, métal patiné ou formes très simples.
+
+Décoration :
+céramique, végétation méditerranéenne légère, art inspiré paysage/architecture/formes
+naturelles.
+
+À privilégier :
+chaleur solaire, simplicité, matières minérales.
+
+À éviter :
+total look terracotta, accumulation de paniers, macramé, rotin dominant,
+jungle végétale, style bohème chargé.`;
 
 const FAMILLE_D_ELEGANT_ORGANIQUE = `FAMILLE STYLISTIQUE — D. ÉLÉGANT ORGANIQUE
 
-Palette :
-crème, taupe, beige grisé, brun doux.
+Palette dominante :
+crème, taupe, beige grisé, brun chaud.
+
+Couleurs secondaires :
+chocolat, bronze, brun fumé.
+
+Bois :
+bois moyen à foncé.
 
 Matières :
-bois moyen, textile bouclé léger, verre, céramique mate.
+bois, verre, laine, bouclé discret, pierre claire ou céramique sculpturale.
 
-Ambiance :
-sobre, élégante, contemporaine, organique.
+Mobilier :
+formes arrondies, volumes plus sculpturaux, lignes élégantes mais réalistes.
 
-Formes :
-mobilier éventuellement plus arrondi ou sculptural, mais restant réaliste et accessible.`;
+Luminaires :
+verre, métal bronze, formes organiques contemporaines.
+
+Décoration :
+peu d'objets, objets plus sculpturaux, art abstrait plus affirmé.
+
+À privilégier :
+sophistication sobre, contraste doux, formes organiques.
+
+À éviter :
+rotin, tapis jute rustique, décoration trop champêtre, accessoires enfantins,
+accumulation de petites plantes.`;
 
 const FAMILLE_E_SCANDI_LUMINEUX = `FAMILLE STYLISTIQUE — E. SCANDI LUMINEUX
 
-Palette :
-ivoire, blanc chaud, gris chaud, chêne clair, touches de couleur très discrètes.
+Palette dominante :
+blanc chaud, ivoire, gris clair chaud, beige très pâle.
+
+Couleurs secondaires :
+bleu grisé discret, gris vert très léger, noir minimal.
+
+Bois :
+chêne très clair / frêne.
 
 Matières :
-bois clair, laine, coton, verre.
+bois clair, coton, laine, verre, métal léger.
 
-Ambiance :
-épurée, lumineuse, fonctionnelle.
+Mobilier :
+lignes droites, fonctionnelles, visuellement légères, pieds fins.
+
+Luminaires :
+métal blanc/noir fin, verre opalin, formes nordiques simples.
 
 Décoration :
-plus minimale, moins végétalisée, moins d'objets.`;
+très minimale, peu de plantes, cadres graphiques simples, accessoires très limités.
+
+À privilégier :
+luminosité, sobriété, fonctionnalité, espace visuel.
+
+À éviter :
+terracotta, bois foncé, tapis jute épais, rotin massif, ambiance cocooning beige
+trop chargée, accumulation d'objets décoratifs.`;
+
+// Règle supplémentaire — différenciation obligatoire (V2). Ajoutée à chaque
+// famille via BLOC_PARTAGE serait redondant : elle est ajoutée une seule
+// fois, après le bloc partagé, dans construireStyleVariant().
+const REGLE_DIFFERENCIATION_OBLIGATOIRE = `RÈGLE SUPPLÉMENTAIRE — DIFFÉRENCIATION OBLIGATOIRE
+
+La famille sélectionnée doit être visuellement identifiable.
+
+Ne pas retomber automatiquement sur la combinaison :
+canapé beige, coussins vert olive, plaid vert/gris, tapis jute, table basse bois +
+métal noir, luminaire en fibres, grosse plante en pot.
+
+Si la famille choisie interdit ou décourage un de ces éléments, le remplacer par une
+alternative cohérente avec cette famille.
+
+La différence entre deux familles successives doit être perceptible immédiatement dans :
+palette, matières, type de bois, luminaires, forme du mobilier, textiles, décoration.`;
 
 // Ordre de rotation demandé : A → B → C → D → E → A...
 const ROTATION = [
@@ -170,13 +266,14 @@ function construireStyleVariant() {
   const famille = prochaineFamilleStyle();
   return {
     id: famille.id,
-    texte: [famille.texte, '', BLOC_PARTAGE].join('\n'),
+    texte: [famille.texte, '', BLOC_PARTAGE, '', REGLE_DIFFERENCIATION_OBLIGATOIRE].join('\n'),
   };
 }
 
 module.exports = {
   ROOM_TYPES_AVEC_STYLE_VARIANT,
   construireStyleVariant,
+  REGLE_DIFFERENCIATION_OBLIGATOIRE,
   BLOC_PARTAGE,
   FAMILLE_A_NATUREL_DOUX,
   FAMILLE_B_CONTEMPORAIN_CHALEUREUX,
