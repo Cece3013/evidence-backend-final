@@ -52,13 +52,14 @@ async function checkProjectComplete(databaseId, relationProperty, parentPage) {
 }
 
 async function sendClientEmail(parentPage, type) {
-  let email, name, reference = null;
+  let email, name, reference = null, codeSuivi = null;
 
   if (type === 'particulier') {
     email = parentPage.properties['Email']?.email;
     name = parentPage.properties['Nom du Client']?.title?.[0]?.plain_text || 'cher client';
     const ref = parentPage.properties['Référence Dossier']?.unique_id;
     if (ref) reference = `${ref.prefix || ''}-${ref.number}`;
+    codeSuivi = parentPage.properties['Code suivi']?.rich_text?.[0]?.plain_text || null;
   } else {
     const relationId = parentPage.properties['Nom entreprise']?.relation?.[0]?.id;
     if (relationId) {
@@ -73,8 +74,9 @@ async function sendClientEmail(parentPage, type) {
     return;
   }
 
-  const suiviUrl = reference
-    ? `https://evidence-platform-pied.vercel.app/commande/suivi/${reference}`
+  // Lien de suivi sécurisé : uniquement si le dossier possède un code secret
+  const suiviUrl = reference && codeSuivi
+    ? `https://evidence-platform-pied.vercel.app/commande/suivi/${reference}?code=${codeSuivi}`
     : null;
 
   const accesHtml = type === 'pro'
