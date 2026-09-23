@@ -6,14 +6,33 @@ const NOTION_HEADERS = {
   'Content-Type': 'application/json',
 };
 
+// Lit TOUS les résultats, page par page (Notion n'en renvoie que 100 à la fois)
 async function queryDatabase(databaseId, filter) {
-  const res = await axios.post(
-    `https://api.notion.com/v1/databases/${databaseId}/query`,
-    filter ? { filter } : {},
-    { headers: NOTION_HEADERS }
-  );
-  return res.data.results;
+  const results = [];
+  let cursor = undefined;
+  do {
+    const body = { page_size: 100 };
+    if (filter) body.filter = filter;
+    if (cursor) body.start_cursor = cursor;
+    const res = await axios.post(
+      `https://api.notion.com/v1/databases/${databaseId}/query`,
+      body,
+      { headers: NOTION_HEADERS }
+    );
+    results.push(...res.data.results);
+    cursor = res.data.has_more ? res.data.next_cursor : undefined;
+  } while (cursor);
+  return results;
 }
+
+// Photos cochées "Validé" mais pas encore traitées (ni "Validé" ni "Envoyé" en statut)
+const FILTRE_PHOTOS_A_TRAITER = {
+  and: [
+    { property: 'Validé', checkbox: { equals: true } },
+    { property: 'Statut', select: { does_not_equal: 'Validé' } },
+    { property: 'Statut', select: { does_not_equal: 'Envoyé' } },
+  ],
+};
 
 async function updatePage(pageId, properties) {
   await axios.patch(
@@ -134,22 +153,22 @@ async function runValidationCheck() {
   console.log('[ValidationJob] Démarrage vérification...');
 
   try {
-    const particuliersPhotos = await queryDatabase(process.env.NOTION_PHOTOS_DATABASE_ID, {
-      property: 'Validé', checkbox: { equals: true },
-    });
+    const particuliersPhotos = await queryDatabase(process.env.NOTION_PHOTOS_DATABASE_ID, FILTRE_PHOTOS_A_TRAITER);
     for (const photo of particuliersPhotos) {
       await updatePhotoStatus(process.env.NOTION_PHOTOS_DATABASE_ID, photo);
     }
 
-    const proPhotos = await queryDatabase(process.env.NOTION_PHOTOS_PRO_DATABASE_ID, {
-      property: 'Validé', checkbox: { equals: true },
-    });
+    const proPhotos = await queryDatabase(process.env.NOTION_PHOTOS_PRO_DATABASE_ID, FILTRE_PHOTOS_A_TRAITER);
     for (const photo of proPhotos) {
       await updatePhotoStatus(process.env.NOTION_PHOTOS_PRO_DATABASE_ID, photo);
     }
 
+    // Uniquement les dossiers payés et pas encore terminés (les paniers abandonnés sont ignorés)
     const clients = await queryDatabase(process.env.NOTION_DATABASE_ID, {
-      property: 'Statut', select: { does_not_equal: 'Terminé' },
+      and: [
+        { property: 'Statut', select: { does_not_equal: 'Terminé' } },
+        { property: 'Paiement réussi', checkbox: { equals: true } },
+      ],
     });
 
     for (const client of clients) {
