@@ -6,10 +6,8 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const stripeWebhook = require('./webhooks/stripeWebhook');
 const paymentsRouter = require('./routes/payments');
-const ordersRouter = require('./routes/orders');
 const aiRouter = require('./routes/ai');
 const invoicesRouter = require('./routes/invoices');
-const notionRoutes = require('./routes/notion');
 const adminRouter = require('./routes/admin');
 const authRouter = require('./routes/auth');
 const stagingRouter = require('./routes/staging');
@@ -65,15 +63,14 @@ const freeTrialLimiter = rateLimit({
 app.use('/api', apiLimiter);
 
 // ─── Routes ──────────────────────────────────────────────────────────────────────
+// Retirées : routes/orders.js et routes/notion.js (anciennes routes inactives)
 app.use('/api/payments', paymentsRouter);
 const clientAuthRouter = require('./routes/clientAuth');
 app.use('/api', clientAuthRouter);
-app.use('/api/orders', ordersRouter);
 app.use('/api/ai', aiRouter);
 app.use('/api/staging', stagingRouter);
 app.use('/api/ai/free-trial', freeTrialLimiter);
 app.use('/api/invoices', invoicesRouter);
-app.use('/api/notion', notionRoutes);
 app.use('/admin', adminRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/orders/client', authRouter);
