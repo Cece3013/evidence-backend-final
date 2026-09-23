@@ -212,6 +212,7 @@ async function buildPromptBienVideV1({
   choixCuisine = null,
   utiliserGuideVisuel = false,
   utiliserStyleVariant = false,
+  familleForcee = null,
 }) {
   const controle = await controlePhoto(photoPrincipale);
 
@@ -254,7 +255,7 @@ async function buildPromptBienVideV1({
   let styleVariantId = null;
   let styleVariantTexte = null;
   if (utiliserStyleVariant && ROOM_TYPES_AVEC_STYLE_VARIANT.includes(roomType)) {
-    const style = construireStyleVariant();
+    const style = construireStyleVariant(familleForcee);
     styleVariantId = style.id;
     styleVariantTexte = style.texte;
   }
