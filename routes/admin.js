@@ -280,6 +280,7 @@ router.post('/send-pdf', requireAdmin, async (req, res) => {
     const clientEmail = props['Email']?.email || null;
     const ref = props['Référence Dossier']?.unique_id;
     const reference = ref ? `${ref.prefix || ''}-${ref.number}` : 'dossier';
+    const codeSuivi = props['Code suivi']?.rich_text?.[0]?.plain_text || null;
 
     // 2. Upload du PDF sur Cloudinary (signé)
     const timestamp = Math.round(Date.now() / 1000);
@@ -322,7 +323,18 @@ router.post('/send-pdf', requireAdmin, async (req, res) => {
 
     // 4. Email au client
     if (clientEmail) {
-      const suiviUrl = `https://evidence-platform-pied.vercel.app/commande/suivi/${reference}`;
+      // Lien de suivi sécurisé : uniquement si le dossier possède un code secret
+      const suiviUrl = codeSuivi
+        ? `https://evidence-platform-pied.vercel.app/commande/suivi/${reference}?code=${codeSuivi}`
+        : null;
+
+      const blocSuivi = suiviUrl
+        ? `<p style="color: #888; font-size: 12px; text-align: center;">
+             Vous pouvez aussi le retrouver à tout moment sur votre page de suivi :<br/>
+             <a href="${suiviUrl}" style="color: #8c6b34;">Voir ma page de suivi</a>
+           </p>`
+        : '';
+
       await axios.post('https://api.resend.com/emails', {
         from: 'Evidence Home Staging <contact@evidence-homestaging.fr>',
         to: clientEmail,
@@ -342,10 +354,7 @@ router.post('/send-pdf', requireAdmin, async (req, res) => {
                   Télécharger mon rapport PDF
                 </a>
               </div>
-              <p style="color: #888; font-size: 12px; text-align: center;">
-                Vous pouvez aussi le retrouver à tout moment sur votre page de suivi :<br/>
-                <a href="${suiviUrl}" style="color: #8c6b34;">${suiviUrl}</a>
-              </p>
+              ${blocSuivi}
               <p style="color: #888; font-size: 12px; margin-top: 20px;">Référence : ${reference}</p>
             </div>
           </div>
