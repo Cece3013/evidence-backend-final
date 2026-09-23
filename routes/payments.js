@@ -33,6 +33,15 @@ const NOTION_HEADERS = {
   'Content-Type': 'application/json',
 };
 
+// Adresse du site (utilisée dans les liens envoyés aux clients)
+const SITE_URL = 'https://evidence-platform-pied.vercel.app';
+
+// Construit le lien de suivi sécurisé : référence + code secret aléatoire
+function buildSuiviUrl(reference, suiviCode) {
+  if (!reference || !suiviCode) return null;
+  return `${SITE_URL}/commande/suivi/${reference}?code=${suiviCode}`;
+}
+
 function computeTotal(formula, options = []) {
   let total = formula.amount;
   const details = [];
@@ -140,6 +149,9 @@ router.post('/create-checkout', async (req, res) => {
     const orderId = `ORD-${uuidv4().split('-')[0].toUpperCase()}`;
     const isHabite = metadata.propertyType === 'habite';
 
+    // Code secret du lien de suivi : 32 caractères aléatoires, impossible à deviner
+    const suiviCode = crypto.randomBytes(16).toString('hex');
+
     // 1. Fiche client dans Notion (paiement pas encore validé)
     const clientPage = await axios.post(
       'https://api.notion.com/v1/pages',
@@ -154,6 +166,7 @@ router.post('/create-checkout', async (req, res) => {
           "Formule": { select: { name: formula.label } },
           "Date de commande": { date: { start: new Date().toISOString() } },
           "Paiement réussi": { checkbox: false },
+          "Code suivi": { rich_text: [{ text: { content: suiviCode } }] },
         },
       },
       { headers: NOTION_HEADERS }
@@ -200,8 +213,8 @@ router.post('/create-checkout', async (req, res) => {
       mode: 'payment',
       line_items: buildLineItems(formula, options),
       customer_email: clientEmail || undefined,
-      success_url: 'https://evidence-platform-pied.vercel.app/commande/confirmation?session={CHECKOUT_SESSION_ID}',
-      cancel_url: 'https://evidence-platform-pied.vercel.app/commande',
+      success_url: `${SITE_URL}/commande/confirmation?session={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${SITE_URL}/commande`,
       metadata: {
         orderId,
         formulaId,
@@ -212,6 +225,7 @@ router.post('/create-checkout', async (req, res) => {
         referenceDossier,
         isHabite: String(isHabite),
         photoCount: String(photos.length),
+        suiviCode,
       },
     });
 
@@ -239,6 +253,7 @@ router.post('/finalize', async (req, res) => {
 
     const m = session.metadata || {};
     const isHabite = m.isHabite === 'true';
+    const suiviUrl = buildSuiviUrl(m.referenceDossier, m.suiviCode);
 
     global.finalizedOrders = global.finalizedOrders || {};
     const alreadyProcessed = !!global.finalizedOrders[m.orderId];
@@ -255,7 +270,14 @@ router.post('/finalize', async (req, res) => {
 
       // 2. Email de confirmation au client
       try {
-        const suiviUrl = `https://evidence-platform-pied.vercel.app/commande/suivi/${m.referenceDossier}`;
+        const boutonSuivi = suiviUrl
+          ? `<div style="text-align: center; margin: 28px 0;">
+               <a href="${suiviUrl}" style="background: #b88a44; color: #fff; text-decoration: none; padding: 14px 28px; border-radius: 8px; display: inline-block; font-size: 14px;">
+                 Suivre ma commande
+               </a>
+             </div>`
+          : '';
+
         await axios.post('https://api.resend.com/emails', {
           from: 'Evidence Home Staging <contact@evidence-homestaging.fr>',
           to: m.clientEmail,
@@ -275,11 +297,7 @@ router.post('/finalize', async (req, res) => {
                     ? "Notre équipe analyse votre bien et vous enverra votre rapport personnalisé sous 48 à 72h."
                     : "Vos visuels sont en cours de préparation et vous seront livrés sous 12h."}
                 </p>
-                <div style="text-align: center; margin: 28px 0;">
-                  <a href="${suiviUrl}" style="background: #b88a44; color: #fff; text-decoration: none; padding: 14px 28px; border-radius: 8px; display: inline-block; font-size: 14px;">
-                    Suivre ma commande
-                  </a>
-                </div>
+                ${boutonSuivi}
                 <p style="color: #888; font-size: 12px; margin-top: 24px;">
                   Référence : ${m.referenceDossier}<br/>
                   Formule : ${m.formulaLabel || ''}<br/>
@@ -307,6 +325,7 @@ router.post('/finalize', async (req, res) => {
       formulaLabel: m.formulaLabel,
       photoCount: m.photoCount,
       isHabite,
+      suiviUrl,
     });
   } catch (err) {
     console.error('[Payments] Erreur finalize:', err.response?.data || err.message);
@@ -314,30 +333,43 @@ router.post('/finalize', async (req, res) => {
   }
 });
 
-// ─── GET /api/payments/suivi/:reference ──────────────────────────────────────────
-// Page de suivi client : état de la commande + fichiers livrés
+// ─── GET /api/payments/suivi/:reference?code=... ─────────────────────────────────
+// Page de suivi client : état de la commande + fichiers livrés.
+// Accès uniquement avec la référence ET le code secret du dossier.
 router.get('/suivi/:reference', async (req, res) => {
   const { reference } = req.params;
+  const code = String(req.query.code || '');
+
+  // Même réponse que "introuvable" : on ne révèle pas si la référence existe
+  if (!/^[a-f0-9]{32}$/.test(code)) {
+    return res.status(404).json({ error: 'Commande introuvable.' });
+  }
 
   try {
+    // Recherche directe de la fiche par son code secret (plus de limite à 100 fiches)
     const clientQuery = await axios.post(
       `https://api.notion.com/v1/databases/${process.env.NOTION_DATABASE_ID}/query`,
-      { page_size: 100 },
+      {
+        filter: { property: 'Code suivi', rich_text: { equals: code } },
+        page_size: 1,
+      },
       { headers: NOTION_HEADERS }
     );
 
-    const clientPage = clientQuery.data.results.find((p) => {
-      const ref = p.properties["Référence Dossier"];
-      if (!ref?.unique_id) return false;
-      const built = `${ref.unique_id.prefix || ''}-${ref.unique_id.number}`;
-      return built === reference;
-    });
-
+    const clientPage = clientQuery.data.results[0];
     if (!clientPage) {
       return res.status(404).json({ error: 'Commande introuvable.' });
     }
 
     const props = clientPage.properties;
+
+    // La référence de l'adresse doit correspondre à celle du dossier
+    const refProp = props["Référence Dossier"]?.unique_id;
+    const builtRef = refProp ? `${refProp.prefix || ''}-${refProp.number}` : null;
+    if (builtRef !== reference) {
+      return res.status(404).json({ error: 'Commande introuvable.' });
+    }
+
     if (props["Paiement réussi"]?.checkbox !== true) {
       return res.status(403).json({ error: 'Commande non finalisée.' });
     }
@@ -345,16 +377,17 @@ router.get('/suivi/:reference', async (req, res) => {
     const typePrestation = props["Type de prestation"]?.select?.name || '';
     const isHabite = typePrestation.toLowerCase().includes('habité');
 
-    // Photos liées à ce dossier
+    // Photos liées à ce dossier uniquement (filtre direct, plus de limite à 100 fiches)
     const photosQuery = await axios.post(
       `https://api.notion.com/v1/databases/${process.env.NOTION_PHOTOS_DATABASE_ID}/query`,
-      { page_size: 100 },
+      {
+        filter: { property: 'Nom du Client', relation: { contains: clientPage.id } },
+        page_size: 100,
+      },
       { headers: NOTION_HEADERS }
     );
 
-    const photos = photosQuery.data.results.filter((p) =>
-      p.properties["Nom du Client"]?.relation?.some((r) => r.id === clientPage.id)
-    );
+    const photos = photosQuery.data.results;
 
     const avant = [];
     const apres = [];
