@@ -205,6 +205,11 @@ function construirePromptV1({ roomType, choixCuisine, lectureFonctionnelle, util
  *     fonction avec `choixCuisine` renseigné.
  * - { status: 'PRET', prompt, controle, classificationCuisine }
  *   → prompt final assemblé, prêt pour l'appel de génération d'image.
+ *
+ * Option facultative `controleDejaEffectue` (production uniquement) :
+ * quand la photo a déjà passé le Contrôle Photo V2 avant paiement, on
+ * transmet ici ce résultat pour ne pas refaire le contrôle. Non fourni
+ * (cas des tests), le comportement est strictement identique à avant.
  */
 async function buildPromptBienVideV1({
   photoPrincipale,
@@ -213,8 +218,11 @@ async function buildPromptBienVideV1({
   utiliserGuideVisuel = false,
   utiliserStyleVariant = false,
   familleForcee = null,
+  controleDejaEffectue = null,
 }) {
-  const controle = await controlePhoto(photoPrincipale);
+  const controle = controleDejaEffectue && controleDejaEffectue.allow_generation === true
+    ? controleDejaEffectue
+    : await controlePhoto(photoPrincipale);
 
   if (!controle.allow_generation) {
     return {
