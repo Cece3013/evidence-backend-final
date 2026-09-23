@@ -70,33 +70,39 @@ famille.`;
 
 const FAMILLE_A_NATUREL_DOUX = `FAMILLE STYLISTIQUE — A. NATUREL DOUX
 
+Objectif : un univers très clair, doux, calme, lumineux et ton sur ton, nettement distinct
+du style générique.
+
 Palette dominante :
-ivoire, lin, sable clair, beige doux.
+ivoire, lin, beige très pâle, sable clair.
 
 Couleurs secondaires :
-taupe très clair, brun naturel discret.
+taupe très clair, brun naturel très discret.
 
 Bois :
-chêne clair / bois blond.
+chêne blond.
 
 Matières :
-lin, coton, laine, bois naturel clair, céramique mate.
+lin, coton, laine fine, verre opalin, céramique mate.
 
 Mobilier :
-formes simples, arrondies ou légèrement organiques, visuellement légères.
+formes simples et légères, arrondies ou légèrement organiques.
 
 Luminaires :
-papier, tissu ou verre opalin ; éviter le rotin systématique.
+verre opalin, papier ou tissu clair.
 
 Décoration :
 très peu d'éléments, compositions calmes, art abstrait doux ou paysage minimal.
 
 À privilégier :
-douceur, lumière, matières mates, tons très naturels.
+douceur, lumière, matières mates, très faible contraste, tons ton sur ton.
 
-À éviter :
-vert olive dominant, terracotta, noir graphique marqué, accumulation de plantes,
-tapis jute systématique, panier tressé systématique.`;
+INTERDIT EXPLICITEMENT (jamais dans cette famille) :
+vert olive dominant, terracotta, bois foncé, métal noir marqué, rotin, osier,
+suspension en panier, tapis jute grossier, accumulation de plantes.
+
+Le résultat doit être immédiatement identifiable par sa douceur, sa lumière et son très
+faible contraste — jamais par des matières brutes ou des couleurs soutenues.`;
 
 const FAMILLE_B_CONTEMPORAIN_CHALEUREUX = `FAMILLE STYLISTIQUE — B. CONTEMPORAIN CHALEUREUX
 
@@ -130,34 +136,40 @@ accumulation de matières végétales.`;
 
 const FAMILLE_C_MEDITERRANEEN_SOBRE = `FAMILLE STYLISTIQUE — C. MÉDITERRANÉEN SOBRE
 
+Objectif : un caractère méditerranéen réellement perceptible, mais élégant et non bohème.
+
 Palette dominante :
-blanc cassé, sable, pierre claire, beige chaud.
+blanc cassé, pierre claire, sable chaud.
 
 Couleurs secondaires :
-terracotta très modérée, ocre doux, olive clair.
+ocre doux, terracotta ponctuelle (touche, jamais dominante).
 
 Bois :
-bois naturel légèrement patiné.
+bois patiné.
 
 Matières :
-lin, céramique, bois, pierre, enduits mats.
+céramique, matières minérales, bois patiné, lin.
 
 Mobilier :
-simple, chaleureux, légèrement artisanal sans effet bohème.
+formes simples et artisanales, chaleureux, sans effet bohème.
 
 Luminaires :
-céramique, verre, métal patiné ou formes très simples.
+céramique, verre, métal patiné ou formes très simples — jamais rotin ni osier.
 
 Décoration :
-céramique, végétation méditerranéenne légère, art inspiré paysage/architecture/formes
-naturelles.
+céramique, art inspiré paysage/architecture/formes naturelles, formes simples et
+artisanales.
 
 À privilégier :
-chaleur solaire, simplicité, matières minérales.
+chaleur solaire, simplicité, matières minérales, caractère méditerranéen affirmé mais
+sobre.
 
-À éviter :
-total look terracotta, accumulation de paniers, macramé, rotin dominant,
-jungle végétale, style bohème chargé.`;
+INTERDIT EXPLICITEMENT (jamais dans cette famille) :
+suspension en rotin ou en osier, panier décoratif dominant, jute omniprésent, coussins
+vert olive automatiques, accumulation de plantes, macramé, look bohème.
+
+Une touche olive reste possible en accent ponctuel, mais ne doit jamais devenir
+l'élément principal de la composition.`;
 
 const FAMILLE_D_ELEGANT_ORGANIQUE = `FAMILLE STYLISTIQUE — D. ÉLÉGANT ORGANIQUE
 
