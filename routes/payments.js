@@ -6,6 +6,9 @@ const crypto = require('crypto');
 const multer = require('multer');
 const FormData = require('form-data');
 const axios = require('axios');
+const rateLimit = require('express-rate-limit');
+const { controlePhoto, classifierCuisine } = require('./pipelineVidesV1');
+const { confirmerPaiementCommande } = require('./confirmationCommande');
 const upload = multer({ storage: multer.memoryStorage() });
 const router = express.Router();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -32,6 +35,42 @@ const NOTION_HEADERS = {
   'Notion-Version': '2022-06-28',
   'Content-Type': 'application/json',
 };
+
+// Types de pièces acceptés pour les biens vides = modules du pipeline V1
+const ROOM_TYPES_V1 = [
+  'salon', 'salon_salle_a_manger', 'cuisine', 'salle_bain', 'chambre_parentale',
+  'chambre_enfant', 'chambre_ado', 'balcon_terrasse', 'entree',
+];
+
+// Familles STYLE_VARIANT : une par commande, en rotation d'un client à l'autre
+const FAMILLES_STYLE = ['A', 'B', 'C', 'D', 'E'];
+
+// États de cuisine pour lesquels le client doit choisir le niveau de transformation
+const ETATS_CUISINE_AVEC_CHOIX = ['CUISINE_EXISTANTE_PRESENTABLE', 'CUISINE_EXISTANTE_DATEE'];
+const CHOIX_CUISINE_VALIDES = ['valorisation_douce', 'projection_modernisee'];
+
+// Jeton de vérification : prouve que la photo a bien passé le contrôle
+// sur NOTRE serveur (impossible à fabriquer depuis le navigateur).
+function signerVerification(url, roomType, verification) {
+  return crypto
+    .createHmac('sha256', process.env.JWT_SECRET)
+    .update(JSON.stringify([url, roomType, verification]))
+    .digest('hex');
+}
+
+function jetonValide(url, roomType, verification, jeton) {
+  if (typeof jeton !== 'string' || jeton.length !== 64) return false;
+  const attendu = signerVerification(url, roomType, verification);
+  return crypto.timingSafeEqual(Buffer.from(attendu), Buffer.from(jeton));
+}
+
+// Limite anti-abus : chaque vérification coûte un appel d'analyse
+const verificationLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 40,
+  keyGenerator: (req) => req.ip,
+  message: { error: 'Trop de vérifications de photos. Réessayez dans une heure.' },
+});
 
 // Adresse du site (utilisée dans les liens envoyés aux clients)
 const SITE_URL = 'https://evidence-platform-pied.vercel.app';
@@ -136,6 +175,96 @@ router.post('/upload-photo', upload.single('photo'), async (req, res) => {
   }
 });
 
+// ─── POST /api/payments/verifier-photo ───────────────────────────────────────────
+// Bien vide, AVANT paiement : Contrôle Photo V1 (+ classification si cuisine).
+// Réponses possibles :
+//  { statut: 'ACCEPTEE', verification, jeton }
+//  { statut: 'CHOIX_CUISINE', verification, jeton, recommandation, options }
+//  { statut: 'REFUSEE', raison, conseil }  → refus bloquant, le client change de photo
+router.post('/verifier-photo', verificationLimiter, async (req, res) => {
+  const { url, roomType } = req.body || {};
+
+  const prefixeCloudinary = `https://res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME}/`;
+  if (typeof url !== 'string' || !url.startsWith(prefixeCloudinary)) {
+    return res.status(400).json({ error: 'Photo invalide.' });
+  }
+  if (!ROOM_TYPES_V1.includes(roomType)) {
+    return res.status(400).json({ error: 'Type de pièce inconnu.' });
+  }
+
+  try {
+    const controle = await controlePhoto(url);
+
+    if (!controle.allow_generation) {
+      return res.json({
+        statut: 'REFUSEE',
+        raison: controle.reason || "Cette photo ne permet pas un aménagement fiable.",
+        conseil: controle.retake_instruction || null,
+      });
+    }
+
+    // Ce qu'on garde du contrôle (réutilisé après paiement, sans refaire le contrôle)
+    const verification = {
+      status: controle.status || null,
+      allow_generation: true,
+      reason: controle.reason || null,
+      cuisine: null,
+    };
+
+    if (roomType === 'cuisine') {
+      const classification = await classifierCuisine(url);
+      verification.cuisine = classification.status || null;
+
+      if (ETATS_CUISINE_AVEC_CHOIX.includes(classification.status)) {
+        return res.json({
+          statut: 'CHOIX_CUISINE',
+          verification,
+          jeton: signerVerification(url, roomType, verification),
+          recommandation: classification.status === 'CUISINE_EXISTANTE_PRESENTABLE'
+            ? 'valorisation_douce'
+            : 'projection_modernisee',
+          options: [
+            { id: 'valorisation_douce', label: 'Valorisation douce', description: "Moderniser légèrement l'existant : désencombrement, harmonisation et rafraîchissement, tout en conservant fortement l'aspect actuel de la cuisine." },
+            { id: 'projection_modernisee', label: 'Projection modernisée', description: "Montrer le potentiel d'une cuisine plus actuelle : modernisation cohérente des façades, du plan de travail, de la crédence et des murs, en conservant l'implantation et les contraintes réelles." },
+          ],
+        });
+      }
+    }
+
+    res.json({ statut: 'ACCEPTEE', verification, jeton: signerVerification(url, roomType, verification) });
+  } catch (err) {
+    console.error('[Payments] Erreur verifier-photo:', err.response?.data || err.message);
+    res.status(500).json({ error: 'La vérification de la photo a échoué. Réessayez.' });
+  }
+});
+
+// Vérifie les photos d'une commande de bien vide avant de créer le paiement.
+// Retourne null si tout est bon, sinon un message d'erreur pour le client.
+function erreurPhotosBienVide(photos, formula, options) {
+  const supplementaires = options
+    .filter((o) => o.id === 'photo_supplementaire')
+    .reduce((n, o) => n + Math.max(1, parseInt(o.quantity) || 1), 0);
+  const maxAutorise = (formula.maxPhotos || 0) + supplementaires;
+
+  if (photos.length > maxAutorise) {
+    return `Votre formule permet ${maxAutorise} photo(s). Retirez des photos ou ajoutez l'option « Photo supplémentaire ».`;
+  }
+
+  for (let i = 0; i < photos.length; i++) {
+    const p = photos[i] || {};
+    const n = i + 1;
+    if (!ROOM_TYPES_V1.includes(p.roomType)) return `Photo ${n} : type de pièce inconnu.`;
+    if (!p.verification || !jetonValide(p.url, p.roomType, p.verification, p.jeton)) {
+      return `Photo ${n} : elle n'a pas été vérifiée. Merci de la renvoyer.`;
+    }
+    const choixRequis = p.roomType === 'cuisine' && ETATS_CUISINE_AVEC_CHOIX.includes(p.verification.cuisine);
+    if (choixRequis && !CHOIX_CUISINE_VALIDES.includes(p.choixCuisine)) {
+      return `Photo ${n} : merci de choisir le niveau de transformation de la cuisine.`;
+    }
+  }
+  return null;
+}
+
 // ─── POST /api/payments/create-checkout ──────────────────────────────────────────
 // Crée la commande dans Notion, puis redirige vers Stripe Checkout (parcours web)
 router.post('/create-checkout', async (req, res) => {
@@ -148,6 +277,14 @@ router.post('/create-checkout', async (req, res) => {
 
     const orderId = `ORD-${uuidv4().split('-')[0].toUpperCase()}`;
     const isHabite = metadata.propertyType === 'habite';
+
+    if (!Array.isArray(photos) || photos.length === 0) {
+      return res.status(400).json({ error: 'Ajoutez au moins une photo.' });
+    }
+    if (!isHabite) {
+      const erreur = erreurPhotosBienVide(photos, formula, options);
+      if (erreur) return res.status(400).json({ error: erreur });
+    }
 
     // Code secret du lien de suivi : 32 caractères aléatoires, impossible à deviner
     const suiviCode = crypto.randomBytes(16).toString('hex');
@@ -176,14 +313,33 @@ router.post('/create-checkout', async (req, res) => {
 
     // 2. Référence dossier générée par Notion
     let referenceDossier = orderId;
+    let numeroDossier = null;
     try {
       const full = await axios.get(`https://api.notion.com/v1/pages/${clientPageId}`, { headers: NOTION_HEADERS });
       const refProp = full.data.properties["Référence Dossier"];
       if (refProp?.unique_id) {
         referenceDossier = `${refProp.unique_id.prefix || ''}-${refProp.unique_id.number}`;
+        numeroDossier = refProp.unique_id.number;
       }
     } catch (err) {
       console.error('[Payments] Référence dossier non lue:', err.message);
+    }
+
+    // Bien vide : une famille de style pour toute la commande, en rotation
+    // d'un client à l'autre (numéro de dossier), au hasard si numéro illisible
+    if (!isHabite) {
+      const famille = numeroDossier
+        ? FAMILLES_STYLE[(numeroDossier - 1) % FAMILLES_STYLE.length]
+        : FAMILLES_STYLE[crypto.randomInt(FAMILLES_STYLE.length)];
+      try {
+        await axios.patch(
+          `https://api.notion.com/v1/pages/${clientPageId}`,
+          { properties: { 'Famille style': { select: { name: famille } } } },
+          { headers: NOTION_HEADERS }
+        );
+      } catch (err) {
+        console.error('[Payments] Famille style non enregistrée:', err.response?.data || err.message);
+      }
     }
 
     // 3. Une entrée par photo
@@ -200,6 +356,13 @@ router.post('/create-checkout', async (req, res) => {
             "Pièce": { select: { name: photo.roomType } },
             "Statut": { select: { name: 'En attente' } },
             "Type de prestation": { select: { name: isHabite ? 'Bien habité' : 'Bien vide' } },
+            ...(isHabite ? {} : {
+              "Statut génération": { select: { name: 'En attente paiement' } },
+              "Contrôle photo": { rich_text: [{ text: { content: JSON.stringify(photo.verification).slice(0, 1900) } }] },
+              ...(photo.roomType === 'cuisine' && CHOIX_CUISINE_VALIDES.includes(photo.choixCuisine)
+                ? { "Choix cuisine": { select: { name: photo.choixCuisine } } }
+                : {}),
+            }),
           },
         },
         { headers: NOTION_HEADERS }
@@ -238,7 +401,8 @@ router.post('/create-checkout', async (req, res) => {
 });
 
 // ─── POST /api/payments/finalize ─────────────────────────────────────────────────
-// Retour de Stripe : marque la commande payée et envoie l'email de confirmation
+// Retour de Stripe (page de confirmation du site). Le webhook Stripe fait le
+// même travail de son côté : le premier arrivé confirme, l'autre ne refait rien.
 router.post('/finalize', async (req, res) => {
   const { sessionId } = req.body;
   if (!sessionId) {
@@ -252,71 +416,7 @@ router.post('/finalize', async (req, res) => {
     }
 
     const m = session.metadata || {};
-    const isHabite = m.isHabite === 'true';
-    const suiviUrl = buildSuiviUrl(m.referenceDossier, m.suiviCode);
-
-    global.finalizedOrders = global.finalizedOrders || {};
-    const alreadyProcessed = !!global.finalizedOrders[m.orderId];
-    global.finalizedOrders[m.orderId] = true;
-
-    if (!alreadyProcessed) {
-      // 1. Cocher "Paiement réussi" dans Notion
-      await axios.patch(
-        `https://api.notion.com/v1/pages/${m.notionPageId}`,
-        { properties: { "Paiement réussi": { checkbox: true } } },
-        { headers: NOTION_HEADERS }
-      );
-      console.log(`[Payments] Paiement confirmé — ${m.referenceDossier}`);
-
-      // 2. Email de confirmation au client
-      try {
-        const boutonSuivi = suiviUrl
-          ? `<div style="text-align: center; margin: 28px 0;">
-               <a href="${suiviUrl}" style="background: #b88a44; color: #fff; text-decoration: none; padding: 14px 28px; border-radius: 8px; display: inline-block; font-size: 14px;">
-                 Suivre ma commande
-               </a>
-             </div>`
-          : '';
-
-        await axios.post('https://api.resend.com/emails', {
-          from: 'Evidence Home Staging <contact@evidence-homestaging.fr>',
-          to: m.clientEmail,
-          subject: 'Votre commande Evidence Home Staging a bien été reçue',
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8f7f4; padding: 32px;">
-              <div style="background: #1a1a1a; padding: 24px; border-radius: 12px; text-align: center; margin-bottom: 24px;">
-                <h1 style="color: #c8a96e; margin: 0; font-size: 22px;">Evidence Home Staging</h1>
-              </div>
-              <div style="background: #fff; border-radius: 12px; padding: 24px;">
-                <h2 style="color: #1a1a1a; font-size: 18px;">Bonjour ${m.clientName || 'cher client'},</h2>
-                <p style="color: #555; line-height: 1.6;">
-                  Nous avons bien reçu votre commande ainsi que vos ${m.photoCount} photo(s).
-                </p>
-                <p style="color: #555; line-height: 1.6;">
-                  ${isHabite
-                    ? "Notre équipe analyse votre bien et vous enverra votre rapport personnalisé sous 48 à 72h."
-                    : "Vos visuels sont en cours de préparation et vous seront livrés sous 12h."}
-                </p>
-                ${boutonSuivi}
-                <p style="color: #888; font-size: 12px; margin-top: 24px;">
-                  Référence : ${m.referenceDossier}<br/>
-                  Formule : ${m.formulaLabel || ''}<br/>
-                  Conservez ce lien, il vous permettra de récupérer vos fichiers.
-                </p>
-              </div>
-            </div>
-          `,
-        }, {
-          headers: {
-            Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        console.log(`[Payments] Email envoyé à ${m.clientEmail}`);
-      } catch (err) {
-        console.error('[Payments] Erreur email:', err.response?.data || err.message);
-      }
-    }
+    await confirmerPaiementCommande(session);
 
     res.json({
       success: true,
@@ -324,8 +424,8 @@ router.post('/finalize', async (req, res) => {
       clientName: m.clientName,
       formulaLabel: m.formulaLabel,
       photoCount: m.photoCount,
-      isHabite,
-      suiviUrl,
+      isHabite: m.isHabite === 'true',
+      suiviUrl: buildSuiviUrl(m.referenceDossier, m.suiviCode),
     });
   } catch (err) {
     console.error('[Payments] Erreur finalize:', err.response?.data || err.message);
