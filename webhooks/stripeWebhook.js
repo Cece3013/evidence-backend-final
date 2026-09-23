@@ -1,6 +1,7 @@
 const express = require('express');
 const Stripe = require('stripe');
 const axios = require('axios');
+const { confirmerPaiementCommande } = require('../routes/confirmationCommande');
 const router = express.Router();
 
 const stripe = process.env.STRIPE_SECRET_KEY
@@ -78,6 +79,19 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
     const sessionId = session.id;
     console.log('[Webhook] ✅ Paiement réussi pour session:', sessionId);
 
+    // Commande particulier du site : elle porte notionPageId dans ses métadonnées
+    if (session.metadata?.notionPageId) {
+      try {
+        const resultat = await confirmerPaiementCommande(session);
+        console.log(`[Webhook] Commande site ${session.metadata.referenceDossier} :`,
+          resultat.traite ? 'confirmée' : resultat.raison);
+      } catch (err) {
+        console.error('[Webhook] Erreur confirmation commande site:', err.response?.data || err.message);
+      }
+      return;
+    }
+
+    // Sinon : abonnement PRO (comportement inchangé)
     try {
       await updateNotionSubscriptionStatus(sessionId, 'Actif');
     } catch (err) {
