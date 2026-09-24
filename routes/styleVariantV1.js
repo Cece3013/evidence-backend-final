@@ -458,7 +458,18 @@ Rendu : luminosité, sobriété, espace visuel.`;
 
 const STYLE_A_CHAMBRE_ENFANT = `A — NATUREL DOUX — CHAMBRE ENFANT
 
-Linge de lit : ivoire, lin et beige très pâle.
+La palette dominante doit rester clairement :
+ivoire, lin, beige très pâle et bois blond.
+Les couleurs secondaires éventuelles
+restent très discrètes.
+Ne pas remplacer cette palette
+par du rose dominant,
+du vert sauge dominant
+ou du bleu dominant.
+
+Linge de lit : ivoire, lin et beige très pâle,
+majoritairement uni ou très discrètement texturé.
+Éviter les motifs enfantins répétés.
 Lampe : abat-jour en tissu clair ou verre opalin.
 Tapis : coton clair uni.
 Rangements secondaires : chêne blond, formes légères et arrondies.
