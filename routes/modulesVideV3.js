@@ -383,6 +383,28 @@ une porte,
 un placard
 ou un rangement.
 
+Avant de retenir un emplacement,
+vérifier qu’un lit de dimensions réelles 90×190 cm
+peut physiquement y tenir
+sans réduction, raccourcissement,
+déformation ou miniaturisation.
+
+Les dimensions 90×190 sont une contrainte fixe.
+
+Si le lit ne tient pas réellement
+avec les dégagements nécessaires,
+rejeter cet emplacement
+et choisir une autre implantation crédible.
+
+Ne jamais adapter la taille du lit
+pour conserver un emplacement choisi.
+
+Ordre de décision :
+1. conserver strictement le lit 90×190 ;
+2. vérifier qu’il tient réellement ;
+3. vérifier ouvertures, radiateur, porte, placards et circulation ;
+4. seulement ensuite valider l’emplacement.
+
 LA CRÉDIBILITÉ DE L’AMÉNAGEMENT
 PRIME SUR LA VARIÉTÉ.
 
@@ -403,6 +425,52 @@ et quelques indices enfantins discrets.
 - plantes systématiques ;
 - décoration trop bébé ;
 - décoration trop genrée.
+
+INDICES ENFANTINS — SOBRIÉTÉ
+
+Le rendu doit évoquer une chambre d’enfant
+sans accumulation décorative.
+
+Maximum :
+2 indices enfantins clairement visibles
+dans toute la pièce,
+toutes catégories confondues.
+
+Exemples d’indices enfantins :
+- peluche ;
+- jouet ;
+- illustration enfantine ;
+- objet décoratif ludique ;
+- panier à motif enfantin ;
+- petite maison ou figurine.
+
+Ne pas chercher à représenter toutes ces catégories.
+Une chambre peut n’avoir qu’un seul indice enfantin
+si cela suffit.
+
+Éviter notamment :
+- plusieurs peluches ;
+- plusieurs paniers ;
+- plusieurs affiches enfantines ;
+- accumulation de jouets ;
+- multiplication d’objets décoratifs ludiques.
+
+Le mobilier fonctionnel neutre
+(bureau, bibliothèque, rangement, lampe)
+ne compte pas comme indice enfantin.
+
+NEUTRALITÉ
+
+La chambre doit rester neutre et largement projetable
+pour une annonce immobilière.
+
+Éviter une palette fortement genrée.
+
+Le rose ou le bleu peuvent apparaître
+comme petite touche secondaire
+si la famille stylistique le permet,
+mais ne doivent pas devenir
+la couleur dominante de la chambre.
 
 La chambre doit suggérer clairement sa fonction
 sans devenir une mise en scène enfantine trop personnalisée.`,
