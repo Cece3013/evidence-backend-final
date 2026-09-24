@@ -344,21 +344,44 @@ radiateurs,
 proportions
 et circulations.
 
+LIT ENFANT — EMPLACEMENT
+
 Utiliser un lit enfant 90×190 cm
 aux proportions réalistes.
+Ne jamais modifier ces dimensions.
 
-Choisir son implantation
-en fonction de la géométrie réelle,
-des ouvertures,
-du radiateur
-et des circulations.
+Avant de placer le lit, analyser :
+- les murs réellement exploitables ;
+- la fenêtre ;
+- le radiateur ;
+- la porte ;
+- les placards ;
+- la circulation ;
+- les proportions réelles de la pièce.
 
-Éviter une implantation stéréotypée
-lorsqu’une autre solution naturelle
-est clairement possible,
+Comparer les différentes implantations crédibles
+avant de choisir la position la plus naturelle du lit.
 
-mais ne jamais forcer une disposition différente
-si cela nuit au réalisme.
+Le lit ne doit PAS être automatiquement plaqué
+dans sa longueur contre un mur latéral.
+
+Lorsque la géométrie le permet, privilégier :
+- la tête de lit contre un mur principal ;
+- le lit développé perpendiculairement à ce mur ;
+- un ou deux côtés du lit dégagés
+  lorsque cela reste crédible.
+
+Le placement contre un mur latéral reste possible
+lorsque la taille ou la configuration réelle de la pièce
+le justifie clairement.
+
+Ne jamais forcer une autre disposition
+si elle réduit la circulation
+ou gêne une ouverture,
+un radiateur,
+une porte,
+un placard
+ou un rangement.
 
 LA CRÉDIBILITÉ DE L’AMÉNAGEMENT
 PRIME SUR LA VARIÉTÉ.
