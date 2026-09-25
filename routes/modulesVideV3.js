@@ -344,66 +344,57 @@ radiateurs,
 proportions
 et circulations.
 
-LIT ENFANT — EMPLACEMENT
+EMPLACEMENT DU LIT
 
-Utiliser un lit enfant 90×190 cm
-aux proportions réalistes.
-Ne jamais modifier ces dimensions.
+Les dimensions du lit sont une contrainte fixe :
+lit enfant 90×190 cm réels.
+Ne jamais réduire, raccourcir, déformer ou miniaturiser le lit
+pour le faire tenir à un emplacement.
 
-Avant de placer le lit, analyser :
+Avant de choisir l’emplacement, analyser :
 - les murs réellement exploitables ;
 - la fenêtre ;
 - le radiateur ;
-- la porte ;
+- la porte et son ouverture ;
 - les placards ;
 - la circulation ;
 - les proportions réelles de la pièce.
 
-Comparer les différentes implantations crédibles
-avant de choisir la position la plus naturelle du lit.
+Puis, dans cet ordre :
 
-Le lit ne doit PAS être automatiquement plaqué
+1. Conserver strictement les dimensions réelles du lit.
+
+2. Pour chaque emplacement envisagé,
+vérifier que le lit y tient réellement,
+avec les dégagements nécessaires.
+Sinon, rejeter cet emplacement.
+
+3. Comparer plusieurs implantations crédibles.
+Ne jamais retenir la première par habitude.
+
+4. Ne pas choisir automatiquement le mur latéral :
+le lit ne doit PAS être plaqué par défaut
 dans sa longueur contre un mur latéral.
 
-Lorsque la géométrie le permet, privilégier :
+5. Lorsqu’elle est possible, privilégier :
 - la tête de lit contre un mur principal ;
 - le lit développé perpendiculairement à ce mur ;
 - un ou deux côtés du lit dégagés
   lorsque cela reste crédible.
 
-Le placement contre un mur latéral reste possible
-lorsque la taille ou la configuration réelle de la pièce
-le justifie clairement.
+6. Conserver le placement latéral
+uniquement lorsqu’il est réellement justifié
+par la géométrie de la pièce
+(pièce étroite, ou mur principal occupé
+par une fenêtre, un radiateur, une porte ou un placard).
 
-Ne jamais forcer une autre disposition
+Ne jamais forcer une implantation
 si elle réduit la circulation
 ou gêne une ouverture,
 un radiateur,
 une porte,
 un placard
 ou un rangement.
-
-Avant de retenir un emplacement,
-vérifier qu’un lit de dimensions réelles 90×190 cm
-peut physiquement y tenir
-sans réduction, raccourcissement,
-déformation ou miniaturisation.
-
-Les dimensions 90×190 sont une contrainte fixe.
-
-Si le lit ne tient pas réellement
-avec les dégagements nécessaires,
-rejeter cet emplacement
-et choisir une autre implantation crédible.
-
-Ne jamais adapter la taille du lit
-pour conserver un emplacement choisi.
-
-Ordre de décision :
-1. conserver strictement le lit 90×190 ;
-2. vérifier qu’il tient réellement ;
-3. vérifier ouvertures, radiateur, porte, placards et circulation ;
-4. seulement ensuite valider l’emplacement.
 
 LA CRÉDIBILITÉ DE L’AMÉNAGEMENT
 PRIME SUR LA VARIÉTÉ.
@@ -513,6 +504,79 @@ raccourcir,
 miniaturiser
 ou surdimensionner le lit
 pour améliorer la composition.
+
+EMPLACEMENT DU LIT
+
+Les dimensions du lit sont une contrainte fixe :
+les dimensions réelles retenues ci-dessus (90, 120 ou 140 selon le volume).
+Ne jamais réduire, raccourcir, déformer ou miniaturiser le lit
+pour le faire tenir à un emplacement.
+
+La taille du lit est d’abord choisie
+selon le volume réel de la pièce,
+conformément aux règles ci-dessus.
+Une fois cette taille choisie,
+ses dimensions deviennent une contrainte fixe
+pour toute la recherche d’implantation.
+
+Ne jamais :
+- changer de 120 à 90 ;
+- changer de 140 à 120 ;
+- ou réduire visuellement le lit
+simplement pour conserver un emplacement plus facile.
+
+Ordre :
+1. choisir la dimension crédible du lit selon le volume réel ;
+2. figer cette dimension ;
+3. rechercher ensuite l’implantation compatible avec cette dimension.
+
+Avant de choisir l’emplacement, analyser :
+- les murs réellement exploitables ;
+- la fenêtre ;
+- le radiateur ;
+- la porte et son ouverture ;
+- les placards ;
+- la circulation ;
+- les proportions réelles de la pièce.
+
+Puis, dans cet ordre :
+
+1. Conserver strictement les dimensions réelles du lit.
+
+2. Pour chaque emplacement envisagé,
+vérifier que le lit y tient réellement,
+avec les dégagements nécessaires.
+Sinon, rejeter cet emplacement.
+
+3. Comparer plusieurs implantations crédibles.
+Ne jamais retenir la première par habitude.
+
+4. Ne pas choisir automatiquement le mur latéral :
+le lit ne doit PAS être plaqué par défaut
+dans sa longueur contre un mur latéral.
+
+5. Lorsqu’elle est possible, privilégier :
+- la tête de lit contre un mur principal ;
+- le lit développé perpendiculairement à ce mur ;
+- un ou deux côtés du lit dégagés
+  lorsque cela reste crédible.
+
+6. Conserver le placement latéral
+uniquement lorsqu’il est réellement justifié
+par la géométrie de la pièce
+(pièce étroite, ou mur principal occupé
+par une fenêtre, un radiateur, une porte ou un placard).
+
+Ne jamais forcer une implantation
+si elle réduit la circulation
+ou gêne une ouverture,
+un radiateur,
+une porte,
+un placard
+ou un rangement.
+
+LA CRÉDIBILITÉ DE L’AMÉNAGEMENT
+PRIME SUR LA VARIÉTÉ.
 
 Ajouter un bureau
 si la place réelle le permet.
