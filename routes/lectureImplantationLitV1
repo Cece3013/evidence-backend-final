@@ -1,4 +1,4 @@
-// Lecture d'implantation du lit — Biens vides — V1 (chambre ado) / V2 (chambre enfant)
+// Lecture d'implantation du lit — Biens vides — V1 (chambre ado) / V3 (chambre enfant)
 // Composant spécialisé, validé : UNIQUEMENT chambre_enfant et chambre_ado,
 // UNIQUEMENT pour la décision d'implantation du lit.
 // Ne réactive pas les anciennes Lectures Fonctionnelles Salon/SAM archivées.
@@ -97,10 +97,12 @@ Reste dégagé : [porte, fenêtre, radiateur, placard, trappe, circulation].
 Le lit garde strictement ses dimensions réelles et ne doit jamais être réduit, raccourci ou déformé.`;
 }
 
-// Texte V2 — chambre_enfant uniquement (validé).
+// Texte V3 — chambre_enfant uniquement.
 // Priorité : tête de lit seule contre un mur, lit avançant dans la pièce.
 // Grand côté contre un mur : solution secondaire, uniquement si nécessaire.
-const PROMPT_ENFANT_V2 = `LECTURE D'IMPLANTATION — LIT — CHAMBRE ENFANT
+// V3 : lecture de la forme de la pièce AVANT le choix du mur,
+// règle pièce longue et étroite, repères visuels justifiés, bureau enfant compact.
+const PROMPT_ENFANT_V3 = `LECTURE D'IMPLANTATION — LIT — CHAMBRE ENFANT
 
 À partir de cette unique photo, décide où placer le lit.
 Raisonne uniquement sur les murs visibles sur la photo.
@@ -119,7 +121,18 @@ Utilise ces repères et les proportions générales de la pièce
 pour juger la place disponible.
 Ne jamais inventer de mesures exactes.
 
-3. DEUX CONFIGURATIONS, DANS CET ORDRE DE PRIORITÉ
+3. FORME DE LA PIÈCE
+
+Avant d'examiner les implantations, classer visuellement la pièce :
+- PIÈCE LONGUE ET ÉTROITE ;
+- PIÈCE AUX PROPORTIONS ÉQUILIBRÉES ;
+- PROPORTIONS INCERTAINES.
+
+Se baser uniquement sur la perspective visible, les murs, la fenêtre,
+le radiateur, la porte et les proportions générales.
+Ne pas produire de mesure exacte.
+
+4. DEUX CONFIGURATIONS, DANS CET ORDRE DE PRIORITÉ
 
 CONFIGURATION PRIORITAIRE — TÊTE DE LIT SEULE CONTRE UN MUR
 - seul le petit côté de la tête de lit touche un mur ;
@@ -140,7 +153,7 @@ ou manifestement incohérente à cause :
 Qu'elle soit possible ne suffit pas pour la retenir.
 Elle n'est utilisée qu'après avoir éliminé la configuration prioritaire.
 
-4. VÉRIFICATION DE PLACE — CONFIGURATION PRIORITAIRE
+5. VÉRIFICATION DE PLACE — CONFIGURATION PRIORITAIRE
 
 Pour chaque mur pouvant recevoir la tête de lit,
 ce qui compte n'est pas la longueur de ce mur,
@@ -152,7 +165,44 @@ Cette profondeur doit contenir réellement :
 - et les autres usages indispensables de la chambre
   (ouverture de porte, accès à la fenêtre, radiateur).
 
-5. ORDRE DE DÉCISION
+Repères visuels :
+les dimensions usuelles d'une porte, d'une fenêtre ou d'un radiateur
+peuvent servir de repères d'ordre de grandeur,
+mais uniquement pour comparer les proportions.
+Ne pas produire une largeur de pièce fictive au centimètre ou au décimètre près.
+
+Interdire une conclusion du type « la profondeur paraît suffisante »
+sans expliquer quel élément visible permet de le penser.
+La justification doit être du type :
+« la pièce paraît nettement plus longue que large ; au regard de la largeur
+de la fenêtre et du radiateur visibles, un lit de 190 cm traversant la pièce
+laisserait vraisemblablement trop peu de dégagement ».
+
+Bureau enfant :
+le bureau enfant est obligatoire mais compact.
+Il reste secondaire par rapport au lit et mesure environ
+70 à 90 cm de large et 40 à 45 cm de profondeur.
+Ne pas réserver l'équivalent d'un grand bureau adulte
+pour décider de l'implantation du lit.
+Mais vérifier qu'une petite zone crédible subsiste pour ce bureau.
+
+6. RÈGLE POUR UNE PIÈCE LONGUE ET ÉTROITE
+
+Si la pièce est clairement beaucoup plus longue que large :
+ne pas considérer automatiquement qu'un lit de 190 cm peut traverser sa largeur.
+
+Dans ce cas, la configuration avec tête seule contre un mur latéral est :
+- INCOMPATIBLE si elle paraît manifestement trop profonde pour la largeur disponible ;
+- INCERTAINE si la largeur n'est pas suffisamment lisible ;
+- COMPATIBLE uniquement si l'espace transversal apparaît clairement généreux.
+
+Pour une pièce longue et étroite, si aucune implantation prioritaire
+n'est clairement COMPATIBLE, retenir la configuration secondaire :
+grand côté du lit contre un long mur.
+Ne jamais forcer la configuration prioritaire dans une pièce étroite
+uniquement parce qu'elle est préférée.
+
+7. ORDRE DE DÉCISION
 
 a) Examiner la configuration prioritaire contre tous les murs visibles réellement exploitables
    pouvant recevoir la tête de lit, si possible au moins deux.
@@ -204,8 +254,9 @@ Réponds en deux parties, sous cette forme exacte :
 
 ANALYSE
 Contraintes observées : [courte liste]
-Tête de lit seule contre [mur 1] : COMPATIBLE / INCERTAINE / INCOMPATIBLE — [raison courte, fondée sur la profondeur jusqu'au mur opposé]
-Tête de lit seule contre [mur 2] : COMPATIBLE / INCERTAINE / INCOMPATIBLE — [raison courte]
+Forme de la pièce : PIÈCE LONGUE ET ÉTROITE / PIÈCE AUX PROPORTIONS ÉQUILIBRÉES / PROPORTIONS INCERTAINES — [éléments visibles qui le montrent]
+Tête de lit seule contre [mur 1] : COMPATIBLE / INCERTAINE / INCOMPATIBLE — [raison courte, fondée sur la profondeur jusqu'au mur opposé et sur l'élément visible servant de repère]
+Tête de lit seule contre [mur 2] : COMPATIBLE / INCERTAINE / INCOMPATIBLE — [raison courte, avec le repère visible]
 Configuration secondaire nécessaire : NON / OUI — [raison précise si OUI]
 Choix final : [implantation retenue et raison courte]
 
@@ -220,7 +271,7 @@ Reste dégagé : [porte, fenêtre, radiateur, placard, trappe, circulation].
 Le lit garde strictement ses dimensions réelles et ne doit jamais être réduit, raccourci ou déformé.`;
 
 function promptLectureImplantation(roomType) {
-  if (roomType === 'chambre_enfant') return PROMPT_ENFANT_V2;
+  if (roomType === 'chambre_enfant') return PROMPT_ENFANT_V3;
   return promptLectureV1(roomType);
 }
 
@@ -245,7 +296,7 @@ function decouperReponse(texte) {
 
   // Une décision exploitable contient :
   // - format V1 (chambre ado) : "Tête de lit :" et "Sens du lit :" ;
-  // - format V2 (chambre enfant) : "Tête de lit contre :" et "Grand côté du lit contre un mur :".
+  // - format V2/V3 (chambre enfant) : "Tête de lit contre :" et "Grand côté du lit contre un mur :".
   const formatV1 = /T[êe]te de lit\s*:/i.test(decision) && /Sens du lit\s*:/i.test(decision);
   const formatV2 = /T[êe]te de lit contre\s*:/i.test(decision) && /Grand c[ôo]t[ée] du lit contre un mur\s*:/i.test(decision);
   if (!formatV1 && !formatV2) {
