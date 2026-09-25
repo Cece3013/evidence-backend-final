@@ -1,4 +1,4 @@
-// Lecture d'implantation du lit — Biens vides — V1
+// Lecture d'implantation du lit — Biens vides — V1 (chambre ado) / V2 (chambre enfant)
 // Composant spécialisé, validé : UNIQUEMENT chambre_enfant et chambre_ado,
 // UNIQUEMENT pour la décision d'implantation du lit.
 // Ne réactive pas les anciennes Lectures Fonctionnelles Salon/SAM archivées.
@@ -29,7 +29,8 @@ const NOM_PIECE = {
   chambre_ado: 'CHAMBRE ADO',
 };
 
-function promptLectureImplantation(roomType) {
+// Texte V1 — conservé à l'identique pour chambre_ado.
+function promptLectureV1(roomType) {
   return `LECTURE D'IMPLANTATION — LIT — ${NOM_PIECE[roomType]}
 
 À partir de cette unique photo, décide où placer le lit.
@@ -96,6 +97,133 @@ Reste dégagé : [porte, fenêtre, radiateur, placard, trappe, circulation].
 Le lit garde strictement ses dimensions réelles et ne doit jamais être réduit, raccourci ou déformé.`;
 }
 
+// Texte V2 — chambre_enfant uniquement (validé).
+// Priorité : tête de lit seule contre un mur, lit avançant dans la pièce.
+// Grand côté contre un mur : solution secondaire, uniquement si nécessaire.
+const PROMPT_ENFANT_V2 = `LECTURE D'IMPLANTATION — LIT — CHAMBRE ENFANT
+
+À partir de cette unique photo, décide où placer le lit.
+Raisonne uniquement sur les murs visibles sur la photo.
+
+1. TAILLE DU LIT
+
+Lit enfant 90×190 cm réels.
+Cette taille est fixe.
+
+2. CONTRAINTES VISIBLES
+
+Repère ce qui occupe chaque mur visible :
+fenêtre, radiateur, porte et son ouverture, placard, trappe, pente de toit, prises.
+
+Utilise ces repères et les proportions générales de la pièce
+pour juger la place disponible.
+Ne jamais inventer de mesures exactes.
+
+3. DEUX CONFIGURATIONS, DANS CET ORDRE DE PRIORITÉ
+
+CONFIGURATION PRIORITAIRE — TÊTE DE LIT SEULE CONTRE UN MUR
+- seul le petit côté de la tête de lit touche un mur ;
+- le lit de 190 cm avance depuis ce mur vers l'intérieur de la pièce ;
+- aucun des deux grands côtés du lit ne touche un mur ;
+- une circulation crédible reste possible autour du lit.
+
+CONFIGURATION SECONDAIRE — UN GRAND CÔTÉ DU LIT CONTRE UN MUR
+Autorisée uniquement si la configuration prioritaire est réellement impossible
+ou manifestement incohérente à cause :
+- de la largeur ou de la profondeur de la pièce ;
+- d'une porte ;
+- d'une fenêtre ;
+- d'un radiateur ;
+- d'un placard ou d'une trappe ;
+- ou d'un manque réel de circulation.
+
+Qu'elle soit possible ne suffit pas pour la retenir.
+Elle n'est utilisée qu'après avoir éliminé la configuration prioritaire.
+
+4. VÉRIFICATION DE PLACE — CONFIGURATION PRIORITAIRE
+
+Pour chaque mur pouvant recevoir la tête de lit,
+ce qui compte n'est pas la longueur de ce mur,
+mais la profondeur disponible devant lui, jusqu'au mur opposé.
+
+Cette profondeur doit contenir réellement :
+- les 190 cm du lit ;
+- le dégagement nécessaire au pied du lit ;
+- et les autres usages indispensables de la chambre
+  (ouverture de porte, accès à la fenêtre, radiateur).
+
+5. ORDRE DE DÉCISION
+
+a) Examiner la configuration prioritaire contre tous les murs visibles réellement exploitables
+   pouvant recevoir la tête de lit, si possible au moins deux.
+   Ne jamais inventer un mur ou une portion de pièce hors champ.
+   Pour chacun, conclure :
+   - COMPATIBLE : le lit tient clairement à sa taille réelle ;
+   - INCERTAINE : il est possible qu'il tienne, sans certitude ;
+   - INCOMPATIBLE : il ne tient pas à sa taille réelle.
+
+b) Si au moins un mur est COMPATIBLE,
+   retenir la configuration prioritaire contre ce mur.
+
+c) En cas de doute sur un mur, ne pas basculer automatiquement
+   vers la configuration secondaire :
+   comparer d'abord les autres murs possibles.
+
+Si aucun placement prioritaire n'est clairement COMPATIBLE
+mais qu'un ou plusieurs sont INCERTAINS,
+les comparer à la configuration secondaire :
+- si la configuration secondaire est clairement COMPATIBLE
+  et que la configuration prioritaire reste incertaine
+  faute de profondeur visible suffisante,
+  retenir la configuration secondaire ;
+- ne jamais forcer une configuration prioritaire incertaine
+  simplement pour respecter la préférence ;
+- dès qu'une configuration prioritaire est clairement COMPATIBLE,
+  elle reste prioritaire sur toute configuration secondaire.
+
+Si plusieurs murs permettent une configuration prioritaire COMPATIBLE,
+choisir celui qui offre la circulation la plus naturelle
+et préserve le mieux les autres usages de la chambre.
+
+d) Seulement si aucun mur ne permet la configuration prioritaire,
+   retenir la configuration secondaire, en donnant la raison précise.
+
+e) Si une table de chevet ne tient pas à côté de la tête de lit,
+   ne pas en mettre plutôt que réduire le lit.
+
+Préserver, si la pièce le permet, au moins une zone murale ou un espace crédible pour le bureau.
+Ne pas sacrifier une implantation naturelle du lit uniquement pour imposer un bureau
+dans une pièce trop petite.
+
+Ne jamais utiliser de coordonnées, de codes ou d'identifiants de murs.
+Nommer les murs en langage courant
+(mur de gauche, mur de droite, mur du fond, mur de la fenêtre, mur de la porte).
+Ne pas utiliser les mots « perpendiculaire » ni « longitudinal ».
+
+Réponds en deux parties, sous cette forme exacte :
+
+ANALYSE
+Contraintes observées : [courte liste]
+Tête de lit seule contre [mur 1] : COMPATIBLE / INCERTAINE / INCOMPATIBLE — [raison courte, fondée sur la profondeur jusqu'au mur opposé]
+Tête de lit seule contre [mur 2] : COMPATIBLE / INCERTAINE / INCOMPATIBLE — [raison courte]
+Configuration secondaire nécessaire : NON / OUI — [raison précise si OUI]
+Choix final : [implantation retenue et raison courte]
+
+IMPLANTATION DU LIT
+Lit : 90×190 cm réels, taille figée.
+Tête de lit contre : [mur et position générale].
+Grand côté du lit contre un mur : NON, les deux grands côtés restent dégagés du mur. / OUI, contre [mur], uniquement parce que [raison].
+Le lit se développe vers : [centre de la pièce / direction simple].
+Table de chevet : [position] ou aucune si la place manque.
+Zone bureau à préserver : [description simple] ou "sans objet".
+Reste dégagé : [porte, fenêtre, radiateur, placard, trappe, circulation].
+Le lit garde strictement ses dimensions réelles et ne doit jamais être réduit, raccourci ou déformé.`;
+
+function promptLectureImplantation(roomType) {
+  if (roomType === 'chambre_enfant') return PROMPT_ENFANT_V2;
+  return promptLectureV1(roomType);
+}
+
 /**
  * Sépare la réponse en { analyse, decision }.
  * decision = null si la partie "IMPLANTATION DU LIT" est absente (réponse inexploitable).
@@ -115,8 +243,12 @@ function decouperReponse(texte) {
     .join('\n');
   decision = decision.replace(/^[ \t]*IMPLANTATION DU LIT[ \t]*:?[ \t]*/i, 'IMPLANTATION DU LIT');
 
-  // Une décision exploitable contient au moins la tête de lit et le sens du lit
-  if (!/T[êe]te de lit\s*:/i.test(decision) || !/Sens du lit\s*:/i.test(decision)) {
+  // Une décision exploitable contient :
+  // - format V1 (chambre ado) : "Tête de lit :" et "Sens du lit :" ;
+  // - format V2 (chambre enfant) : "Tête de lit contre :" et "Grand côté du lit contre un mur :".
+  const formatV1 = /T[êe]te de lit\s*:/i.test(decision) && /Sens du lit\s*:/i.test(decision);
+  const formatV2 = /T[êe]te de lit contre\s*:/i.test(decision) && /Grand c[ôo]t[ée] du lit contre un mur\s*:/i.test(decision);
+  if (!formatV1 && !formatV2) {
     return { analyse: brut, decision: null };
   }
   return { analyse, decision };
