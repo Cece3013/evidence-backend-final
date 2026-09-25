@@ -188,6 +188,7 @@ router.post('/vides', async (req, res) => {
       controle: resultat.controle,
       classificationCuisine: resultat.classificationCuisine,
       lectureFonctionnelle: resultat.lectureFonctionnelle,
+      lectureImplantation: resultat.lectureImplantation,
       guideVisuelUtilise: utiliserGuideVisuel,
       guideImageUrl: utiliserGuideVisuel ? guideImageUrl : undefined,
       styleVariantId: resultat.styleVariantId,
