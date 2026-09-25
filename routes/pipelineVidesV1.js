@@ -20,6 +20,11 @@ const {
 } = require('./lectureFonctionnelleV1');
 const { INSTRUCTION_GUIDE_VISUEL } = require('./guideVisuelV1');
 const { ROOM_TYPES_AVEC_STYLE_VARIANT, construireStyleVariant } = require('./styleVariantV1');
+const {
+  ROOM_TYPES_AVEC_LECTURE_IMPLANTATION,
+  promptLectureImplantation,
+  decouperReponse,
+} = require('./lectureImplantationLitV1');
 
 const OPENAI_HEADERS = {
   Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
@@ -131,6 +136,44 @@ async function lireFonctionnellement(photoPrincipale, roomType) {
   return lecture;
 }
 
+// ─── LECTURE D'IMPLANTATION DU LIT — chambre_enfant et chambre_ado uniquement ──
+// Décide AVANT la génération où placer le lit. Seule la partie "IMPLANTATION
+// DU LIT" est ajoutée au prompt ; l'ANALYSE sert au diagnostic uniquement.
+// En cas d'échec : une nouvelle tentative, puis génération sans lecture
+// (fallback journalisé) — la commande n'est jamais bloquée.
+// Retourne null pour toute autre pièce.
+async function lireImplantationLit(photoPrincipale, roomType) {
+  if (!ROOM_TYPES_AVEC_LECTURE_IMPLANTATION.includes(roomType)) {
+    return null;
+  }
+
+  const prompt = promptLectureImplantation(roomType);
+  let derniereErreur = null;
+
+  for (let tentative = 1; tentative <= 2; tentative++) {
+    try {
+      const reponse = await appelVisionTexte(prompt, photoPrincipale, 1000);
+      const { analyse, decision } = decouperReponse(reponse);
+      if (!decision) throw new Error('Partie "IMPLANTATION DU LIT" absente ou incomplète.');
+
+      console.log(`[PipelineVidesV1] Lecture implantation lit (${roomType}) — tentative ${tentative} OK — ${decision.replace(/\n/g, ' | ').slice(0, 160)}`);
+      return { analyse, decision, fallback: false, tentatives: tentative };
+    } catch (err) {
+      derniereErreur = err;
+      console.error(`[PipelineVidesV1] Lecture implantation lit (${roomType}) — échec tentative ${tentative}/2 :`, err.response?.data?.error?.message || err.message);
+    }
+  }
+
+  console.error(`[PipelineVidesV1] ⚠️ FALLBACK lecture implantation lit (${roomType}) : génération SANS lecture.`);
+  return {
+    analyse: null,
+    decision: null,
+    fallback: true,
+    tentatives: 2,
+    erreur: derniereErreur?.response?.data?.error?.message || derniereErreur?.message || 'inconnue',
+  };
+}
+
 // ─── CLASSIFICATION CUISINE — séparée, appelée uniquement si pertinent ────────
 async function classifierCuisine(photoPrincipale) {
   const resultat = await appelVisionJSON(CLASSIFICATION_CUISINE, photoPrincipale, 300);
@@ -165,7 +208,7 @@ const OPTIONS_CUISINE = [
 const ETATS_CUISINE_AVEC_CHOIX = ['CUISINE_EXISTANTE_PRESENTABLE', 'CUISINE_EXISTANTE_DATEE'];
 
 // ─── ASSEMBLAGE — Noyau + Module (+ Lecture Fonctionnelle OU Guide Visuel) ────
-function construirePromptV1({ roomType, choixCuisine, lectureFonctionnelle, utiliserGuideVisuel, styleVariantTexte }) {
+function construirePromptV1({ roomType, choixCuisine, lectureFonctionnelle, utiliserGuideVisuel, styleVariantTexte, decisionImplantation }) {
   const module = MODULES_VIDE_V3[roomType];
   if (!module) {
     throw new Error(`Module V3 introuvable pour le type de pièce : ${roomType}`);
@@ -190,7 +233,14 @@ function construirePromptV1({ roomType, choixCuisine, lectureFonctionnelle, util
   // quand explicitement demandé pour ce test.
   const blocStyle = styleVariantTexte ? '\n\n' + styleVariantTexte : '';
 
-  return [NOYAU_EVIDENCE_V3, '', module, blocLecture, blocChoix, blocStyle].join('\n');
+  // Décision d'implantation du lit (chambres enfant/ado) : juste après le
+  // module. Ajoutée UNIQUEMENT si elle existe — pour toutes les autres pièces
+  // le prompt reste identique au caractère près.
+  const parties = [NOYAU_EVIDENCE_V3, '', module, blocLecture];
+  if (decisionImplantation) parties.push('\n' + decisionImplantation);
+  parties.push(blocChoix, blocStyle);
+
+  return parties.join('\n');
 }
 
 /**
@@ -269,7 +319,17 @@ async function buildPromptBienVideV1({
     styleVariantTexte = style.texte;
   }
 
-  const prompt = construirePromptV1({ roomType, choixCuisine, lectureFonctionnelle, utiliserGuideVisuel, styleVariantTexte });
+  // Lecture d'implantation du lit : chambre_enfant et chambre_ado uniquement
+  const lectureImplantation = await lireImplantationLit(photoPrincipale, roomType);
+
+  const prompt = construirePromptV1({
+    roomType,
+    choixCuisine,
+    lectureFonctionnelle,
+    utiliserGuideVisuel,
+    styleVariantTexte,
+    decisionImplantation: lectureImplantation?.decision || null,
+  });
 
   return {
     status: 'PRET',
@@ -277,6 +337,7 @@ async function buildPromptBienVideV1({
     controle,
     classificationCuisine,
     lectureFonctionnelle,
+    lectureImplantation,
     styleVariantId,
   };
 }
