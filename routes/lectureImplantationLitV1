@@ -1,4 +1,4 @@
-// Lecture d'implantation du lit — Biens vides — V1 (chambre ado) / V3 (chambre enfant)
+// Lecture d'implantation du lit — Biens vides — V1 (chambre ado) / V4 (chambre enfant)
 // Composant spécialisé, validé : UNIQUEMENT chambre_enfant et chambre_ado,
 // UNIQUEMENT pour la décision d'implantation du lit.
 // Ne réactive pas les anciennes Lectures Fonctionnelles Salon/SAM archivées.
@@ -97,12 +97,13 @@ Reste dégagé : [porte, fenêtre, radiateur, placard, trappe, circulation].
 Le lit garde strictement ses dimensions réelles et ne doit jamais être réduit, raccourci ou déformé.`;
 }
 
-// Texte V3 — chambre_enfant uniquement.
+// Texte V4 — chambre_enfant uniquement.
 // Priorité : tête de lit seule contre un mur, lit avançant dans la pièce.
 // Grand côté contre un mur : solution secondaire, uniquement si nécessaire.
+// V4 : règle selon la forme de la pièce (pièce longue et étroite : vérifier tous les murs, sinon grand côté contre un grand mur).
 // V3 : lecture de la forme de la pièce AVANT le choix du mur,
 // règle pièce longue et étroite, repères visuels justifiés, bureau enfant compact.
-const PROMPT_ENFANT_V3 = `LECTURE D'IMPLANTATION — LIT — CHAMBRE ENFANT
+const PROMPT_ENFANT_V4 = `LECTURE D'IMPLANTATION — LIT — CHAMBRE ENFANT
 
 À partir de cette unique photo, décide où placer le lit.
 Raisonne uniquement sur les murs visibles sur la photo.
@@ -186,21 +187,46 @@ Ne pas réserver l'équivalent d'un grand bureau adulte
 pour décider de l'implantation du lit.
 Mais vérifier qu'une petite zone crédible subsiste pour ce bureau.
 
-6. RÈGLE POUR UNE PIÈCE LONGUE ET ÉTROITE
+6. RÈGLE SELON LA FORME DE LA PIÈCE
 
-Si la pièce est clairement beaucoup plus longue que large :
+Si la pièce est équilibrée ou suffisamment large :
+conserver la logique ci-dessous :
+rechercher en priorité une implantation avec la tête de lit seule contre un mur.
+
+Si la pièce est longue et étroite :
+vérifier d'abord si la configuration prioritaire tient réellement,
+contre chaque mur envisagé, y compris un petit mur occupé par une fenêtre ou un radiateur,
+sans :
+- raccourcir le lit ;
+- réduire sa largeur ;
+- élargir artificiellement la pièce ;
+- gêner la porte, la fenêtre ou le radiateur ;
+- supprimer la circulation ;
+- empêcher l'installation du petit bureau enfant.
+
+Si elle tient clairement : la conserver.
+Si elle ne tient pas clairement : ne pas la forcer.
+Dans ce cas, retenir la configuration secondaire :
+grand côté du lit contre l'un des grands murs de la chambre,
+avec le lit 90×190 à ses dimensions réelles.
+
+Pour les murs latéraux d'une pièce longue et étroite,
 ne pas considérer automatiquement qu'un lit de 190 cm peut traverser sa largeur.
-
-Dans ce cas, la configuration avec tête seule contre un mur latéral est :
+La configuration avec tête seule contre un mur latéral est :
 - INCOMPATIBLE si elle paraît manifestement trop profonde pour la largeur disponible ;
 - INCERTAINE si la largeur n'est pas suffisamment lisible ;
 - COMPATIBLE uniquement si l'espace transversal apparaît clairement généreux.
 
-Pour une pièce longue et étroite, si aucune implantation prioritaire
-n'est clairement COMPATIBLE, retenir la configuration secondaire :
-grand côté du lit contre un long mur.
-Ne jamais forcer la configuration prioritaire dans une pièce étroite
-uniquement parce qu'elle est préférée.
+Cas de la chambre-couloir très étroite :
+- un lit placé en travers de la largeur n'est pas crédible ;
+- la solution naturelle est un lit en longueur contre un grand mur ;
+- le bureau enfant reste présent mais compact ;
+- la pièce ne doit jamais être élargie pour faire tenir une autre implantation.
+
+Cette règle ne fait pas de la configuration secondaire une règle générale.
+La hiérarchie reste :
+- pièce suffisamment large → tête de lit seule contre un mur, prioritaire ;
+- pièce réellement trop étroite → lit en longueur contre un grand mur.
 
 7. ORDRE DE DÉCISION
 
@@ -271,7 +297,7 @@ Reste dégagé : [porte, fenêtre, radiateur, placard, trappe, circulation].
 Le lit garde strictement ses dimensions réelles et ne doit jamais être réduit, raccourci ou déformé.`;
 
 function promptLectureImplantation(roomType) {
-  if (roomType === 'chambre_enfant') return PROMPT_ENFANT_V3;
+  if (roomType === 'chambre_enfant') return PROMPT_ENFANT_V4;
   return promptLectureV1(roomType);
 }
 
