@@ -324,14 +324,34 @@ async function buildPromptBienVideV1({
   // construirePromptV1 utilise l'instruction du guide à la place.
   const lectureFonctionnelle = utiliserGuideVisuel ? null : await lireFonctionnellement(photoPrincipale, roomType);
 
+  // Cuisine : le choix client (douce / modernisée) ne vaut que pour une
+  // cuisine existante. Pour une cuisine vide ou incomplète, il est ignoré,
+  // et le texte du choix n'est pas ajouté au prompt.
+  const choixCuisineEffectif =
+    roomType === 'cuisine' &&
+    classificationCuisine &&
+    ETATS_CUISINE_AVEC_CHOIX.includes(classificationCuisine.status)
+      ? choixCuisine
+      : null;
+
+  // Type de cuisine pour le STYLE_VARIANT : 'complete' (vide/incomplète),
+  // 'modernisee' (projection modernisée) ou 'douce' (valorisation douce).
+  let modeCuisine = 'douce';
+  if (roomType === 'cuisine' && classificationCuisine) {
+    if (!ETATS_CUISINE_AVEC_CHOIX.includes(classificationCuisine.status)) {
+      modeCuisine = 'complete';
+    } else if (choixCuisineEffectif === 'projection_modernisee') {
+      modeCuisine = 'modernisee';
+    }
+  }
+
   // STYLE_VARIANT : uniquement pour les pièces de ROOM_TYPES_AVEC_STYLE_VARIANT
-  // (salon, salon/SAM, chambres) et uniquement si demandé pour cet appel.
-  // Le type de pièce est transmis pour choisir la bonne déclinaison
-  // (salon/SAM inchangés, chambres déclinées).
+  // (salon, salon/SAM, chambres, cuisine, entrée) et uniquement si demandé.
+  // Le type de pièce (et pour la cuisine, son type) choisit la déclinaison.
   let styleVariantId = null;
   let styleVariantTexte = null;
   if (utiliserStyleVariant && ROOM_TYPES_AVEC_STYLE_VARIANT.includes(roomType)) {
-    const style = construireStyleVariant(familleForcee, roomType);
+    const style = construireStyleVariant(familleForcee, roomType, modeCuisine);
     styleVariantId = style.id;
     styleVariantTexte = style.texte;
   }
@@ -341,7 +361,7 @@ async function buildPromptBienVideV1({
 
   const prompt = construirePromptV1({
     roomType,
-    choixCuisine,
+    choixCuisine: choixCuisineEffectif,
     lectureFonctionnelle,
     utiliserGuideVisuel,
     styleVariantTexte,
