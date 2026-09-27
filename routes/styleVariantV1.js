@@ -867,7 +867,8 @@ const CADRE_ENTREE = `CADRE STYLE_VARIANT — ENTRÉE
 La famille stylistique agit uniquement sur : la finition du mobilier prévu par le
 module Entrée, le miroir, le luminaire, le textile et la décoration.
 
-Elle n'ajoute aucun meuble ni équipement pour exprimer le style.
+Elle n'ajoute aucun meuble ni équipement pour exprimer le style :
+jamais de porte-manteau, patère, crochet ou vêtement suspendu ajouté.
 Elle ne réduit jamais le passage : une entrée étroite garde au maximum un meuble
 peu profond, ou rien.
 Elle ne modifie jamais l'architecture, les ouvertures, les portes ni les volumes.`;
@@ -875,37 +876,42 @@ Elle ne modifie jamais l'architecture, les ouvertures, les portes ni les volumes
 const DECLINAISONS_ENTREE = {
   A: `A — NATUREL DOUX — ENTRÉE
 Console, banc, miroir : console fine en chêne blond ou laquée ivoire ; banc chêne blond avec galette lin ; miroir rond ou arrondi à cadre bois clair très fin.
-Textile : galette ou plaid lin écru ; tapis de passage tissé plat écru, jamais jute.
+Tapis : laine ou coton écru uni, surface lisse et fine ; jamais de jute ni de fibre tressée.
+Textile : galette ou plaid lin écru.
 Luminaire : applique ou suspension en verre opalin.
 Ambiance : très claire et calme ; un vase en céramique mate avec une branche végétale simple ou un feuillage discret, rien de plus.`,
   B: `B — CONTEMPORAIN CHALEUREUX — ENTRÉE
 Console, banc, miroir : console en noyer clair à piètement métal noir fin ; banc aux lignes nettes ; miroir rectangulaire à cadre noir fin.
-Textile : tapis de passage graphique grège et brun.
+Tapis : tissé plat fin à motif géométrique grège et brun ; jamais de jute ni de fibre tressée.
+Aucun panier.
 Luminaire : applique métal noir et verre fumé, ou lampe à poser graphique.
 Ambiance : structurée ; un plateau, un livre, un objet en céramique brune ; peu ou pas de plante.`,
   C: `C — MÉDITERRANÉEN SOBRE — ENTRÉE
 Console, banc, miroir : console en bois patiné ou plâtre clair ; banc bois patiné ; miroir à cadre bois naturel ou de forme arrondie simple.
-Textile : tapis coton à fines rayures sable et ocre doux.
+Tapis : coton tissé plat à fines rayures sable et ocre doux ; jamais de jute.
 Luminaire : applique céramique blanche ou métal patiné.
 Ambiance : solaire et minérale ; une jarre ou un vase en terre, une branche d'olivier en accent.
 Interdit : rotin, osier, macramé, look bohème.`,
   D: `D — ÉLÉGANT ORGANIQUE — ENTRÉE
 Console, banc, miroir : console aux formes arrondies en bois foncé ou pierre claire ; banc bouclette crème ; miroir organique à cadre bronze ou sans cadre.
-Textile : tapis laine unie crème ou brun doux, ou absent.
+Tapis : laine unie crème ou brun doux à poils ras, ou pas de tapis ; jamais de jute ni de fibre tressée.
 Luminaire : applique verre ambré ou bronze, formes organiques.
 Ambiance : sophistiquée et sobre ; un objet sculptural, une céramique, très peu d'éléments.`,
   E: `E — SCANDI LUMINEUX — ENTRÉE
 Console, banc, miroir : console murale fine en frêne ; banc à pieds fins avec rangement à chaussures ; miroir rond à fin cadre noir ou blanc.
 Si le module prévoit déjà un porte-manteau ou un rangement mural, sa finition est en bois clair.
-Textile : tapis de passage coton gris clair ou rayure discrète.
+Tapis : coton gris clair uni ou à rayure noire discrète, tissage fin ; jamais de jute ni de fibre tressée.
 Luminaire : applique métal blanc ou noir fin, verre opalin.
-Ambiance : fonctionnelle et lumineuse ; un panier fermé en tissu, une plante au plus.`,
+Ambiance : fonctionnelle et lumineuse ; aucun panier en osier ou en fibre ; une plante au plus.`,
 };
 
 const ANTI_REPETITION_ENTREE = `RÈGLE ANTI-RÉPÉTITION — ENTRÉE
 
 Ne pas reproduire automatiquement la combinaison :
 miroir rond à cadre bois + console bois clair + panier en osier + vase avec branchages.
+
+Le tapis en jute ou en fibre naturelle tressée est exclu de l'entrée dans toutes les familles.
+Le vase avec branchages et la grande plante en pot ne doivent pas apparaître à chaque fois.
 
 Faire varier réellement : forme et cadre du miroir, matière de la console,
 luminaire, textile, objets décoratifs.
