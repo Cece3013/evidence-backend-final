@@ -13,6 +13,20 @@
 
 const ROOM_TYPES_AVEC_LECTURE_IMPLANTATION = ['chambre_enfant', 'chambre_ado'];
 
+// Consigne de respect des proportions réelles de la pièce.
+// Ajoutée en fin du bloc IMPLANTATION DU LIT, donc uniquement dans la partie
+// envoyée au modèle d'image. Ajoutée par le code (et non demandée au modèle
+// d'analyse) pour qu'elle soit présente au mot près à chaque génération.
+// Validée pour la chambre enfant ; à reprendre pour la chambre ado lorsque
+// sa lecture sera adaptée.
+const RESPECT_PROPORTIONS_PIECE =
+  'Respecter strictement la largeur, la profondeur et les proportions visibles de la pièce. ' +
+  'Ne jamais élargir, allonger ou restructurer la chambre pour faire tenir le mobilier. ' +
+  "Si l'espace restant est insuffisant, réduire ou supprimer un meuble secondaire " +
+  'plutôt que modifier la pièce ou les dimensions du lit.';
+
+const ROOM_TYPES_AVEC_RESPECT_PROPORTIONS = ['chambre_enfant'];
+
 const TAILLE_LIT = {
   chambre_enfant: `Lit enfant 90×190 cm réels.
 Cette taille est fixe.`,
@@ -276,6 +290,27 @@ Nommer les murs en langage courant
 (mur de gauche, mur de droite, mur du fond, mur de la fenêtre, mur de la porte).
 Ne pas utiliser les mots « perpendiculaire » ni « longitudinal ».
 
+8. VOCABULAIRE DE L'IMPLANTATION RETENUE
+
+En configuration secondaire, c'est un grand côté du lit qui touche le mur,
+et non la tête de lit.
+Ne jamais écrire que la tête de lit est contre ce mur.
+Décrire alors séparément :
+- contre quel mur se trouve le grand côté du lit ;
+- vers quoi la tête du lit est orientée
+  (mur du fond, côté entrée, côté fenêtre, ou autre description simple).
+
+Renseigner donc les lignes de la décision ainsi :
+- en configuration PRIORITAIRE :
+  renseigner « Tête de lit contre »,
+  et écrire « sans objet » pour « Tête du lit orientée vers » ;
+- en configuration SECONDAIRE :
+  écrire « sans objet » pour « Tête de lit contre »,
+  et renseigner « Grand côté du lit contre » puis « Tête du lit orientée vers ».
+
+Cette distinction ne change aucune règle de décision :
+elle ne sert qu'à décrire correctement l'implantation déjà retenue.
+
 Réponds en deux parties, sous cette forme exacte :
 
 ANALYSE
@@ -288,8 +323,10 @@ Choix final : [implantation retenue et raison courte]
 
 IMPLANTATION DU LIT
 Lit : 90×190 cm réels, taille figée.
-Tête de lit contre : [mur et position générale].
-Grand côté du lit contre un mur : NON, les deux grands côtés restent dégagés du mur. / OUI, contre [mur], uniquement parce que [raison].
+Configuration : PRIORITAIRE / SECONDAIRE.
+Tête de lit contre : [mur et position générale] / sans objet.
+Grand côté du lit contre : aucun mur, les deux grands côtés restent dégagés du mur / [mur], uniquement parce que [raison précise].
+Tête du lit orientée vers : sans objet / [mur du fond / côté entrée / autre description simple].
 Le lit se développe vers : [centre de la pièce / direction simple].
 Table de chevet : [position] ou aucune si la place manque.
 Zone bureau à préserver : [description simple] ou "sans objet".
@@ -304,9 +341,12 @@ function promptLectureImplantation(roomType) {
 /**
  * Sépare la réponse en { analyse, decision }.
  * decision = null si la partie "IMPLANTATION DU LIT" est absente (réponse inexploitable).
- * La ligne "Zone bureau à préserver" est retirée de la décision si "sans objet".
+ * Toute ligne dont la valeur est "sans objet" est retirée de la décision :
+ * elle n'apporte aucune consigne au modèle d'image.
+ * roomType (facultatif) sert uniquement à ajouter la consigne de respect
+ * des proportions de la pièce aux pièces concernées.
  */
-function decouperReponse(texte) {
+function decouperReponse(texte, roomType) {
   const brut = String(texte || '').trim();
   const titres = [...brut.matchAll(/^[ \t]*\**[ \t]*IMPLANTATION DU LIT[ \t]*\**[ \t]*:?[ \t]*$/gim)];
   if (titres.length === 0) return { analyse: brut, decision: null };
@@ -316,18 +356,33 @@ function decouperReponse(texte) {
   let decision = brut.slice(dernier.index).trim()
     .split('\n')
     .map((l) => l.replace(/\*\*/g, '').trimEnd())
-    .filter((l) => !/^\s*Zone bureau à préserver\s*:\s*["«]?\s*sans objet/i.test(l))
+    .filter((l) => !/^[ \t]*[^:\n]{1,60}:[ \t]*["«]?[ \t]*sans objet/i.test(l))
     .join('\n');
   decision = decision.replace(/^[ \t]*IMPLANTATION DU LIT[ \t]*:?[ \t]*/i, 'IMPLANTATION DU LIT');
 
   // Une décision exploitable contient :
-  // - format V1 (chambre ado) : "Tête de lit :" et "Sens du lit :" ;
-  // - format V2/V3 (chambre enfant) : "Tête de lit contre :" et "Grand côté du lit contre un mur :".
-  const formatV1 = /T[êe]te de lit\s*:/i.test(decision) && /Sens du lit\s*:/i.test(decision);
-  const formatV2 = /T[êe]te de lit contre\s*:/i.test(decision) && /Grand c[ôo]t[ée] du lit contre un mur\s*:/i.test(decision);
-  if (!formatV1 && !formatV2) {
+  // - format chambre ado : "Tête de lit :" et "Sens du lit :" ;
+  // - format chambre enfant : une ligne décrivant la tête de lit
+  //   ("Tête de lit contre" en configuration prioritaire,
+  //    "Tête du lit orientée vers" en configuration secondaire)
+  //   ET une ligne décrivant le ou les grands côtés du lit.
+  const formatAdo = /T[êe]te de lit\s*:/i.test(decision) && /Sens du lit\s*:/i.test(decision);
+  const ligneTete = /^[ \t]*T[êe]te (?:de|du) lit[^\n]*:/im.test(decision);
+  const ligneCote = /^[ \t]*Grands? c[ôo]t[ée]s? du lit[^\n]*:/im.test(decision);
+  const formatEnfant = ligneTete && ligneCote;
+  if (!formatAdo && !formatEnfant) {
     return { analyse: brut, decision: null };
   }
+
+  // Consigne de respect des proportions — toujours en dernière position,
+  // ajoutée par le code pour être présente au mot près.
+  if (
+    ROOM_TYPES_AVEC_RESPECT_PROPORTIONS.includes(roomType) &&
+    !/Ne jamais élargir/i.test(decision)
+  ) {
+    decision += '\n' + RESPECT_PROPORTIONS_PIECE;
+  }
+
   return { analyse, decision };
 }
 
