@@ -348,12 +348,23 @@ Raisonne uniquement sur les murs visibles sur la photo.
 
 1. TAILLE DU LIT
 
-Choisis d'abord la taille du lit selon le volume visible de la pièce :
-- 90×190 ou 90×200 par défaut ;
-- 120×200 uniquement si le volume permet une circulation confortable ;
-- 140×190 ou 140×200 uniquement dans une chambre nettement plus grande.
+Choisis d'abord la taille du lit d'après le SEUL volume visible de la pièce :
+- 90×190 ou 90×200 pour une chambre standard ou étroite ;
+- 120×200 dès que la pièce paraît nettement plus large qu'une chambre standard,
+  c'est-à-dire lorsque le mur du fond laisse un linéaire libre de part et d'autre
+  de la fenêtre, et que le sol visible reste largement dégagé
+  une fois un lit simple imaginé dans la pièce ;
+- 140×190 ou 140×200 dans une chambre manifestement grande,
+  où un lit de 120 laisserait encore beaucoup d'espace libre.
 
-En cas de doute sur le volume, retenir la taille immédiatement inférieure.
+Le bureau, les rangements et la circulation ne sont JAMAIS une raison
+de choisir une taille de lit inférieure.
+Ils contraignent le choix du mur qui recevra le lit, pas les dimensions du lit.
+Ne jamais écrire qu'un 120 est écarté « pour garder une zone bureau »
+ou « pour conserver une circulation confortable ».
+
+Ne retenir la taille inférieure que si le volume de la pièce lui-même
+est réellement douteux.
 
 Puis fige cette taille.
 Elle ne doit jamais être réduite ensuite pour faciliter le placement.
@@ -439,8 +450,9 @@ Cette profondeur doit contenir réellement :
 
 Vérifier aussi la largeur occupée :
 un lit de 120 ou 140 cm mobilise nettement plus de linéaire de mur
-qu'un lit de 90 cm, et laisse d'autant moins de place au bureau
-et aux rangements.
+qu'un lit de 90 cm.
+Cela peut écarter un mur au profit d'un autre,
+jamais remettre en cause la taille déjà figée.
 
 Repères visuels :
 les dimensions usuelles d'une porte, d'une fenêtre ou d'un radiateur
@@ -571,7 +583,7 @@ Réponds en deux parties, sous cette forme exacte :
 ANALYSE
 Contraintes observées : [courte liste]
 Forme de la pièce : PIÈCE LONGUE ET ÉTROITE / PIÈCE AUX PROPORTIONS ÉQUILIBRÉES / PROPORTIONS INCERTAINES — [éléments visibles qui le montrent]
-Taille de lit retenue : [taille] — [raison courte fondée sur le volume visible]
+Taille de lit retenue : [taille] — [raison courte fondée uniquement sur le volume visible de la pièce, jamais sur le bureau ni sur la circulation]
 Zone bureau envisagée : [mur et position] — [raison courte]
 Tête de lit seule contre [mur 1] : COMPATIBLE / INCERTAINE / INCOMPATIBLE — [raison courte, fondée sur la profondeur jusqu'au mur opposé et sur l'élément visible servant de repère]
 Tête de lit seule contre [mur 2] : COMPATIBLE / INCERTAINE / INCOMPATIBLE — [raison courte, avec le repère visible]
