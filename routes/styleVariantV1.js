@@ -5,7 +5,9 @@
 // aux chambres.
 // Ajouté APRÈS Noyau + Module, sans les modifier. Une commande = une famille :
 // en production, la famille est imposée (familleForcee) pour toutes les pièces.
-// Pas de STYLE_VARIANT en V1 sur Cuisine, Salle de bain, Balcon/Terrasse, Entrée.
+// Cuisine et Entrée : déclinaisons validées en septembre 2026 (cadre cuisine
+// selon le type : valorisation douce / projection modernisée / vide-incomplète).
+// Pas de STYLE_VARIANT sur Salle de bain et Balcon/Terrasse.
 
 const ROOM_TYPES_AVEC_STYLE_VARIANT = [
   'salon',
@@ -13,6 +15,8 @@ const ROOM_TYPES_AVEC_STYLE_VARIANT = [
   'chambre_parentale',
   'chambre_enfant',
   'chambre_ado',
+  'cuisine',
+  'entree',
 ];
 
 const CHAMBRES = ['chambre_parentale', 'chambre_enfant', 'chambre_ado'];
@@ -589,6 +593,226 @@ const DECLINAISONS_CHAMBRES = {
   E: { chambre_parentale: STYLE_E_CHAMBRE_PARENTALE, chambre_enfant: STYLE_E_CHAMBRE_ENFANT, chambre_ado: STYLE_E_CHAMBRE_ADO },
 };
 
+// ═════════════════════════════════════════════════════════════════════════════
+// CUISINE et ENTRÉE — déclinaisons validées (septembre 2026)
+// Cuisine : le cadre dépend du type de cuisine (modeCuisine) :
+//   - 'douce'      : cuisine existante, Valorisation douce → ambiance seulement
+//   - 'modernisee' : cuisine datée, Projection modernisée → façades comprises
+//   - 'complete'   : cuisine vide ou incomplète → famille appliquée pleinement
+// En mode 'douce', seule la partie AMBIANCE de la déclinaison est transmise :
+// le modèle ne reçoit aucune teinte de façade, il ne peut donc pas repeindre.
+// ═════════════════════════════════════════════════════════════════════════════
+
+const PRIORITE_MATERIAUX_CARACTERE = `Les matériaux de caractère existants restent prioritaires sur la famille stylistique :
+terre cuite, tomettes, plafond bois, poutres, faïence artisanale, pierre,
+élément architectural fort. La famille s'y adapte et ne doit jamais effacer
+ce qui fait le charme du bien.`;
+
+const CADRE_CUISINE_DOUCE = `CADRE STYLE_VARIANT — CUISINE EXISTANTE, VALORISATION DOUCE
+
+La famille stylistique agit uniquement, et légèrement, sur l'ambiance :
+petite décoration, objets, textile éventuel, tapis éventuel, luminaire décoratif,
+touches décoratives.
+
+Elle ne modifie jamais : les façades existantes, leur couleur, les poignées,
+le plan de travail, la crédence, ni l'identité principale de la cuisine.
+Elle ne modifie jamais l'implantation, les ouvertures ni les volumes.
+
+` + PRIORITE_MATERIAUX_CARACTERE;
+
+const CADRE_CUISINE_MODERNISEE = `CADRE STYLE_VARIANT — CUISINE DATÉE, PROJECTION MODERNISÉE
+
+La famille stylistique peut orienter : les façades, les poignées, le plan de travail,
+la crédence, l'éclairage et l'ambiance générale.
+
+Elle respecte strictement : l'implantation, les caissons et leurs emplacements,
+la hotte, les ouvertures, les volumes et les matériaux de caractère.
+
+` + PRIORITE_MATERIAUX_CARACTERE + `
+
+BOIS DATÉ OU BOIS DE CARACTÈRE
+
+Un bois n'est pas considéré comme daté uniquement parce qu'il est ancien ou foncé.
+
+BOIS DE CARACTÈRE — à conserver :
+- bois massif ou visuellement qualitatif ;
+- veinage naturel intéressant ;
+- façades travaillées ou menuiserie cohérente avec le caractère du logement ;
+- bois en harmonie avec d'autres éléments existants : plafond, poutres, sol, encadrements ;
+- ensemble ancien mais encore esthétique et valorisable.
+
+BOIS DATÉ — peut être repeint dans la teinte de façade de la famille :
+- finition orangée ou jaunie, ou vernis très marqué ;
+- cuisine générique dont la teinte et la finition vieillissent fortement l'ensemble ;
+- façades lourdes ou visuellement datées sans valeur particulière ;
+- bois dont la modernisation valorise la cuisine sans supprimer un élément
+  patrimonial ou caractéristique du bien.
+
+Si les façades sont repeintes : mêmes caissons, mêmes emplacements, même hotte ;
+les moulures des portes peuvent rester visibles sous la peinture.
+
+En cas de doute : conserver le bois et moderniser autour de lui plutôt que le repeindre.`;
+
+const CADRE_CUISINE_COMPLETE = `CADRE STYLE_VARIANT — CUISINE VIDE OU INCOMPLÈTE
+
+La cuisine étant créée ou complétée, la famille stylistique s'applique pleinement :
+façades, plan de travail, crédence, poignées, éclairage, tapis éventuel et ambiance.
+
+Elle ne modifie jamais : l'implantation déduite des arrivées et éléments techniques
+visibles, les ouvertures, les volumes ni les proportions de la pièce.
+
+` + PRIORITE_MATERIAUX_CARACTERE;
+
+const CADRES_CUISINE = {
+  douce: CADRE_CUISINE_DOUCE,
+  modernisee: CADRE_CUISINE_MODERNISEE,
+  complete: CADRE_CUISINE_COMPLETE,
+};
+
+// Chaque déclinaison cuisine = { facades, ambiance }.
+// facades : transmis en modes 'modernisee' et 'complete' uniquement.
+const DECLINAISONS_CUISINE = {
+  A: {
+    facades: `A — NATUREL DOUX — CUISINE
+Esprit : très clair, doux, ton sur ton, presque sans contraste.
+Façades : ivoire, lin, blanc cassé chaud ou beige très pâle, finition mate.
+Plan de travail : chêne blond, ou composite crème mat.
+Crédence : carreau uni crème mat ou zellige ivoire, joints clairs.
+Métaux et poignées : prises intégrées, bois clair ou laiton brossé très fin ; jamais de métal noir.`,
+    ambiance: `A — NATUREL DOUX — AMBIANCE CUISINE
+Tapis : facultatif ; si présent, tissé plat coton ou laine écru ; jamais de jute.
+Luminaire : suspension en verre opalin ou céramique blanche.
+Accessoires : céramique mate claire, torchon lin, une plante légère au plus.
+Interdit : vert olive dominant, terracotta, bois foncé, métal noir marqué, rotin, osier, jute.`,
+  },
+  B: {
+    facades: `B — CONTEMPORAIN CHALEUREUX — CUISINE
+Esprit : lignes nettes, plus graphique, contraste modéré.
+Façades : grège, taupe ou cachemire, mates ou satinées.
+Plan de travail : noyer clair ou bois moyen, ou composite effet pierre gris chaud.
+Crédence : carreaux rectangulaires gris chaud posés verticalement, ou panneau effet pierre.
+Métaux et poignées : noir doux, profils longs et fins.`,
+    ambiance: `B — CONTEMPORAIN CHALEUREUX — AMBIANCE CUISINE
+Tapis : facultatif ; si présent, tissé plat graphique grège et brun.
+Luminaire : suspensions métal noir fin et verre fumé.
+Accessoires : peu d'objets, céramique brune, pas de plante ou une seule.
+À éviter : bohème, rotin, paniers, jute, vert olive.`,
+  },
+  C: {
+    facades: `C — MÉDITERRANÉEN SOBRE — CUISINE
+Esprit : lumineux et solaire, matériaux minéraux, jamais bohème.
+Façades : blanc cassé, sable chaud ou pierre claire ; ou bois patiné clair.
+Plan de travail : pierre claire, béton ciré clair ou bois patiné.
+Crédence : zellige blanc cassé ou sable ; une touche terracotta très ponctuelle possible, jamais dominante.
+Métaux et poignées : laiton patiné, fer patiné ou boutons céramique.`,
+    ambiance: `C — MÉDITERRANÉEN SOBRE — AMBIANCE CUISINE
+Tapis : facultatif ; si présent, coton tissé à fines rayures sable et ocre doux ; jamais jute ni rotin.
+Luminaire : suspension céramique ou verre, ou métal patiné.
+Accessoires : poteries artisanales, bois d'olivier, bouteille d'huile ; une touche olive possible en accent, jamais dominante.
+Interdit : rotin, osier, panier dominant, jute, macramé, look bohème.`,
+  },
+  D: {
+    facades: `D — ÉLÉGANT ORGANIQUE — CUISINE
+Esprit : plus profond et sophistiqué, contraste doux, formes arrondies.
+Façades : taupe chaud, brun fumé ou crème ; ou bois moyen à foncé type noyer.
+Si des façades en bois daté sont repeintes : taupe chaud ou crème uniquement, jamais bois foncé.
+Plan de travail : pierre claire légèrement veinée ou quartz crème.
+Crédence : la même pierre en panneau, ou carreaux crème légèrement brillants.
+Métaux et poignées : bronze ou laiton vieilli, formes arrondies.`,
+    ambiance: `D — ÉLÉGANT ORGANIQUE — AMBIANCE CUISINE
+Tapis : le plus souvent absent ; si présent, laine unie crème ou brun doux.
+Luminaire : verre soufflé ambré ou bronze, formes organiques.
+Accessoires : objets sculpturaux, céramique, bois tourné, peu nombreux.
+À éviter : rotin, jute, décoration champêtre, accumulation de petites plantes.`,
+  },
+  E: {
+    facades: `E — SCANDI LUMINEUX — CUISINE
+Esprit : très lumineux, fonctionnel, visuellement léger.
+Façades : blanc chaud mat ou gris clair chaud ; éventuellement bleu grisé très pâle et désaturé.
+Jamais de façade verte, même pâle.
+Plan de travail : chêne très clair ou frêne, ou stratifié blanc.
+Crédence : carreau blanc brillant, format métro ou carré, joints clairs.
+Métaux et poignées : fines barres noir mat minimales, ou prises intégrées.`,
+    ambiance: `E — SCANDI LUMINEUX — AMBIANCE CUISINE
+Tapis : facultatif ; si présent, coton gris clair ou rayure noir et blanc discrète.
+Luminaire : suspension métal blanc ou noir fin, ou verre opalin.
+Accessoires : très peu, une plante au plus.
+À éviter : terracotta, bois foncé, jute, rotin, accumulation d'objets.`,
+  },
+};
+
+const ANTI_REPETITION_CUISINE = `RÈGLE ANTI-RÉPÉTITION — CUISINE
+
+Ne jamais donner automatiquement à une cuisine des façades vert sauge ou vertes :
+le vert n'est possible qu'en accent ponctuel olive dans la famille C.
+
+Ne pas reproduire automatiquement d'une génération à l'autre :
+- plan de travail chêne clair ;
+- tapis de passage en jute ;
+- pot d'herbes aromatiques ;
+- planche à découper appuyée contre la crédence ;
+- bande LED sous tous les meubles hauts.
+
+Ces éléments restent possibles, mais ne doivent plus apparaître automatiquement.
+Le tapis n'est jamais obligatoire et peut être absent si la cuisine ne s'y prête pas ;
+s'il est présent, sa matière et son graphisme suivent la famille et il reste crédible
+pour une cuisine.
+Ne pas ajouter systématiquement une bande LED sous tous les meubles hauts ;
+faire varier le traitement de l'éclairage selon la cuisine et la famille.
+
+Faire varier réellement : teinte et finition des façades, matière du plan de travail,
+format de la crédence, métal des poignées, présence et matière du tapis,
+type de suspension.`;
+
+const CADRE_ENTREE = `CADRE STYLE_VARIANT — ENTRÉE
+
+La famille stylistique agit uniquement sur : la finition du mobilier prévu par le
+module Entrée, le miroir, le luminaire, le textile et la décoration.
+
+Elle n'ajoute aucun meuble ni équipement pour exprimer le style.
+Elle ne réduit jamais le passage : une entrée étroite garde au maximum un meuble
+peu profond, ou rien.
+Elle ne modifie jamais l'architecture, les ouvertures, les portes ni les volumes.`;
+
+const DECLINAISONS_ENTREE = {
+  A: `A — NATUREL DOUX — ENTRÉE
+Console, banc, miroir : console fine en chêne blond ou laquée ivoire ; banc chêne blond avec galette lin ; miroir rond ou arrondi à cadre bois clair très fin.
+Textile : galette ou plaid lin écru ; tapis de passage tissé plat écru, jamais jute.
+Luminaire : applique ou suspension en verre opalin.
+Ambiance : très claire et calme ; un vase en céramique mate avec une branche végétale simple ou un feuillage discret, rien de plus.`,
+  B: `B — CONTEMPORAIN CHALEUREUX — ENTRÉE
+Console, banc, miroir : console en noyer clair à piètement métal noir fin ; banc aux lignes nettes ; miroir rectangulaire à cadre noir fin.
+Textile : tapis de passage graphique grège et brun.
+Luminaire : applique métal noir et verre fumé, ou lampe à poser graphique.
+Ambiance : structurée ; un plateau, un livre, un objet en céramique brune ; peu ou pas de plante.`,
+  C: `C — MÉDITERRANÉEN SOBRE — ENTRÉE
+Console, banc, miroir : console en bois patiné ou plâtre clair ; banc bois patiné ; miroir à cadre bois naturel ou de forme arrondie simple.
+Textile : tapis coton à fines rayures sable et ocre doux.
+Luminaire : applique céramique blanche ou métal patiné.
+Ambiance : solaire et minérale ; une jarre ou un vase en terre, une branche d'olivier en accent.
+Interdit : rotin, osier, macramé, look bohème.`,
+  D: `D — ÉLÉGANT ORGANIQUE — ENTRÉE
+Console, banc, miroir : console aux formes arrondies en bois foncé ou pierre claire ; banc bouclette crème ; miroir organique à cadre bronze ou sans cadre.
+Textile : tapis laine unie crème ou brun doux, ou absent.
+Luminaire : applique verre ambré ou bronze, formes organiques.
+Ambiance : sophistiquée et sobre ; un objet sculptural, une céramique, très peu d'éléments.`,
+  E: `E — SCANDI LUMINEUX — ENTRÉE
+Console, banc, miroir : console murale fine en frêne ; banc à pieds fins avec rangement à chaussures ; miroir rond à fin cadre noir ou blanc.
+Si le module prévoit déjà un porte-manteau ou un rangement mural, sa finition est en bois clair.
+Textile : tapis de passage coton gris clair ou rayure discrète.
+Luminaire : applique métal blanc ou noir fin, verre opalin.
+Ambiance : fonctionnelle et lumineuse ; un panier fermé en tissu, une plante au plus.`,
+};
+
+const ANTI_REPETITION_ENTREE = `RÈGLE ANTI-RÉPÉTITION — ENTRÉE
+
+Ne pas reproduire automatiquement la combinaison :
+miroir rond à cadre bois + console bois clair + panier en osier + vase avec branchages.
+
+Faire varier réellement : forme et cadre du miroir, matière de la console,
+luminaire, textile, objets décoratifs.
+Ne pas ajouter artificiellement des objets uniquement pour créer de la variation.`;
+
 // Ordre de rotation demandé : A → B → C → D → E → A...
 const ROTATION = [
   { id: 'A', texte: FAMILLE_A_NATUREL_DOUX },
@@ -622,13 +846,43 @@ function prochaineFamilleStyle() {
  *    strictement inchangé (famille + bloc partagé + différenciation) ;
  *  - chambres : CADRE + famille déclinée + anti-répétition chambres
  *    + différenciation chambres + adaptation au logement réel.
+ *  - cuisine : CADRE selon modeCuisine ('douce' | 'modernisee' | 'complete')
+ *    + déclinaison (façades seulement hors 'douce') + ambiance
+ *    + anti-répétition cuisine + adaptation au logement réel ;
+ *  - entrée : CADRE + déclinaison + anti-répétition entrée
+ *    + adaptation au logement réel.
  */
-function construireStyleVariant(familleForcee, roomType) {
+function construireStyleVariant(familleForcee, roomType, modeCuisine = 'douce') {
   const famille = familleForcee
     ? ROTATION.find((f) => f.id === String(familleForcee).toUpperCase())
     : null;
 
   const familleChoisie = famille || prochaineFamilleStyle();
+
+  if (roomType === 'cuisine') {
+    // Mode inconnu → 'douce' : le cas le plus prudent (aucune façade modifiée).
+    const mode = CADRES_CUISINE[modeCuisine] ? modeCuisine : 'douce';
+    const declinaison = DECLINAISONS_CUISINE[familleChoisie.id];
+    const parties = [CADRES_CUISINE[mode], ''];
+    if (mode !== 'douce') parties.push(declinaison.facades, '');
+    parties.push(declinaison.ambiance, '', ANTI_REPETITION_CUISINE, '', ADAPTATION_LOGEMENT_REEL);
+    return { id: familleChoisie.id, texte: parties.join('\n') };
+  }
+
+  if (roomType === 'entree') {
+    return {
+      id: familleChoisie.id,
+      texte: [
+        CADRE_ENTREE,
+        '',
+        DECLINAISONS_ENTREE[familleChoisie.id],
+        '',
+        ANTI_REPETITION_ENTREE,
+        '',
+        ADAPTATION_LOGEMENT_REEL,
+      ].join('\n'),
+    };
+  }
 
   if (CHAMBRES.includes(roomType)) {
     return {
