@@ -596,8 +596,9 @@ const DECLINAISONS_CHAMBRES = {
 // ═════════════════════════════════════════════════════════════════════════════
 // CUISINE et ENTRÉE — déclinaisons validées (septembre 2026)
 // Cuisine : le cadre dépend du type de cuisine (modeCuisine) :
-//   - 'douce'      : cuisine existante, Valorisation douce → peinture des
-//                    façades existantes (dessin conservé), poignées, ambiance
+//   - 'douce'       : cuisine présentable, Valorisation douce → poignées, ambiance
+//   - 'douce_datee' : cuisine datée, Valorisation douce → peinture des façades
+//                     existantes (dessin conservé), poignées, ambiance
 //   - 'modernisee' : cuisine datée, Projection modernisée → façades comprises
 //   - 'complete'   : cuisine vide ou incomplète → famille appliquée pleinement
 // En mode 'douce', le modèle reçoit la teinte de peinture et les poignées de la
@@ -609,22 +610,51 @@ terre cuite, tomettes, plafond bois, poutres, faïence artisanale, pierre,
 élément architectural fort. La famille s'y adapte et ne doit jamais effacer
 ce qui fait le charme du bien.`;
 
-const CADRE_CUISINE_DOUCE = `CADRE STYLE_VARIANT — CUISINE EXISTANTE, VALORISATION DOUCE
+const MENUISERIES_HORS_CUISINE = `Les menuiseries et habillages de la pièce ne font pas partie de la cuisine :
+encadrements et habillages bois des fenêtres, lambrequins, portes, plinthes.
+Ne jamais les repeindre, les supprimer ni les modifier.`;
+
+// Valorisation douce, cuisine DATÉE : la peinture des façades est affirmée
+// (pas de condition à évaluer pour le modèle d'image).
+const CADRE_CUISINE_DOUCE_DATEE = `CADRE STYLE_VARIANT — CUISINE EXISTANTE DATÉE, VALORISATION DOUCE
 
 Rafraîchissement crédible et peu coûteux de la cuisine existante,
-qui garde sa structure et son dessin.
+qui garde sa structure et le dessin de ses portes.
 
-La famille stylistique peut :
-- repeindre les façades existantes dans sa teinte, en conservant exactement
-  leur dessin (moulures, panneaux, forme des portes), uniquement si leur teinte
-  actuelle vieillit la cuisine ; une cuisine déjà neutre et actuelle garde ses façades ;
+À faire :
+- repeindre toutes les façades existantes dans la teinte de la famille,
+  en conservant exactement leur dessin (moulures, panneaux, forme des portes) ;
 - remplacer les poignées par celles de la famille ;
 - orienter l'ambiance : luminaire, petite décoration, objets, textile éventuel,
   tapis éventuel.
 
-Elle ne modifie jamais : le dessin des portes, le plan de travail, la crédence,
-l'implantation, l'emplacement des meubles et de la hotte, les ouvertures ni les volumes.
-Un bois de caractère n'est jamais repeint.
+Seule exception : un bois de caractère (massif qualitatif, cohérent avec le caractère
+du logement) n'est pas repeint ; seules les poignées et l'ambiance changent.
+
+Ne jamais modifier : le dessin des portes, le plan de travail (même matière,
+même couleur), la crédence, l'implantation, l'emplacement des meubles
+et de la hotte, les ouvertures, les volumes.
+
+` + MENUISERIES_HORS_CUISINE + `
+
+` + PRIORITE_MATERIAUX_CARACTERE;
+
+// Valorisation douce, cuisine PRÉSENTABLE : façades conservées telles quelles.
+const CADRE_CUISINE_DOUCE = `CADRE STYLE_VARIANT — CUISINE EXISTANTE PRÉSENTABLE, VALORISATION DOUCE
+
+Rafraîchissement léger d'une cuisine déjà correcte.
+
+À faire :
+- conserver les façades existantes, leur couleur et leur dessin ;
+- remplacer éventuellement les poignées par celles de la famille ;
+- orienter l'ambiance : luminaire, petite décoration, objets, textile éventuel,
+  tapis éventuel.
+
+Ne jamais modifier : les façades, le plan de travail (même matière, même couleur),
+la crédence, l'implantation, l'emplacement des meubles et de la hotte,
+les ouvertures, les volumes.
+
+` + MENUISERIES_HORS_CUISINE + `
 
 ` + PRIORITE_MATERIAUX_CARACTERE;
 
@@ -675,7 +705,9 @@ BOIS DATÉ — modernisé selon la famille (façades contemporaines dans la tein
 - bois dont la modernisation valorise la cuisine sans supprimer un élément
   patrimonial ou caractéristique du bien.
 
-En cas de doute : conserver le bois et moderniser autour de lui plutôt que le repeindre.`;
+En cas de doute : conserver le bois et moderniser autour de lui plutôt que le repeindre.
+
+` + MENUISERIES_HORS_CUISINE;
 
 const CADRE_CUISINE_COMPLETE = `CADRE STYLE_VARIANT — CUISINE VIDE OU INCOMPLÈTE
 
@@ -685,19 +717,25 @@ façades, plan de travail, crédence, poignées, éclairage, tapis éventuel et 
 Elle ne modifie jamais : l'implantation déduite des arrivées et éléments techniques
 visibles, les ouvertures, les volumes ni les proportions de la pièce.
 
+` + MENUISERIES_HORS_CUISINE + `
+
 ` + PRIORITE_MATERIAUX_CARACTERE;
 
 const CADRES_CUISINE = {
   douce: CADRE_CUISINE_DOUCE,
+  douce_datee: CADRE_CUISINE_DOUCE_DATEE,
   modernisee: CADRE_CUISINE_MODERNISEE,
   complete: CADRE_CUISINE_COMPLETE,
 };
 
 // Chaque déclinaison cuisine = { peinture, facades, ambiance }.
-// peinture : mode 'douce' uniquement (teinte et poignées sur façades existantes).
+// poignees : mode 'douce' (cuisine présentable, façades conservées).
+// peinture : mode 'douce_datee' (teinte et poignées sur façades existantes).
 // facades  : modes 'modernisee' et 'complete' uniquement.
 const DECLINAISONS_CUISINE = {
   A: {
+    poignees: `A — NATUREL DOUX — VALORISATION DOUCE
+Poignées : laiton brossé fin ou bois clair ; jamais de métal noir.`,
     peinture: `A — NATUREL DOUX — VALORISATION DOUCE
 Teinte des façades repeintes : ivoire ou lin, finition mate.
 Poignées : laiton brossé fin ou bois clair ; jamais de métal noir.`,
@@ -714,6 +752,8 @@ Accessoires : céramique mate claire, torchon lin, une plante légère au plus.
 Interdit : vert olive dominant, terracotta, bois foncé, métal noir marqué, rotin, osier, jute.`,
   },
   B: {
+    poignees: `B — CONTEMPORAIN CHALEUREUX — VALORISATION DOUCE
+Poignées : barres fines noir doux.`,
     peinture: `B — CONTEMPORAIN CHALEUREUX — VALORISATION DOUCE
 Teinte des façades repeintes : grège ou cachemire, finition satinée.
 Poignées : barres fines noir doux.`,
@@ -730,9 +770,11 @@ Accessoires : peu d'objets, céramique brune, pas de plante ou une seule.
 À éviter : bohème, rotin, paniers, jute, vert olive.`,
   },
   C: {
+    poignees: `C — MÉDITERRANÉEN SOBRE — VALORISATION DOUCE
+Poignées : boutons céramique ou laiton patiné.`,
     peinture: `C — MÉDITERRANÉEN SOBRE — VALORISATION DOUCE
-Teinte des façades repeintes : sable chaud ou blanc cassé, finition mate.
-Poignées : laiton patiné ou boutons céramique.`,
+Teinte des façades repeintes : blanc cassé chaud ou pierre très claire, finition mate.
+Poignées : boutons céramique ou laiton patiné.`,
     facades: `C — MÉDITERRANÉEN SOBRE — CUISINE
 Esprit : lumineux et solaire, matériaux minéraux, jamais bohème.
 Façades : à cadre très fin (type shaker épuré) sable chaud ou pierre claire ; ou bois patiné clair à lames verticales.
@@ -746,8 +788,10 @@ Accessoires : poteries artisanales, bois d'olivier, bouteille d'huile ; une touc
 Interdit : rotin, osier, panier dominant, jute, macramé, look bohème.`,
   },
   D: {
+    poignees: `D — ÉLÉGANT ORGANIQUE — VALORISATION DOUCE
+Poignées : bronze ou laiton vieilli, formes arrondies.`,
     peinture: `D — ÉLÉGANT ORGANIQUE — VALORISATION DOUCE
-Teinte des façades repeintes : taupe chaud ou crème, finition mate.
+Teinte des façades repeintes : taupe profond ou brun fumé, finition mate.
 Poignées : bronze ou laiton vieilli, formes arrondies.`,
     facades: `D — ÉLÉGANT ORGANIQUE — CUISINE
 Esprit : plus profond et sophistiqué, contraste doux, formes arrondies.
@@ -763,6 +807,8 @@ Accessoires : objets sculpturaux, céramique, bois tourné, peu nombreux.
 À éviter : rotin, jute, décoration champêtre, accumulation de petites plantes.`,
   },
   E: {
+    poignees: `E — SCANDI LUMINEUX — VALORISATION DOUCE
+Poignées : fines barres noir mat.`,
     peinture: `E — SCANDI LUMINEUX — VALORISATION DOUCE
 Teinte des façades repeintes : blanc chaud mat ou gris clair chaud ; éventuellement bleu grisé très pâle ; jamais de vert.
 Poignées : fines barres noir mat.`,
@@ -797,7 +843,7 @@ Ne jamais donner automatiquement à une cuisine des façades vert sauge ou verte
 le vert n'est possible qu'en accent ponctuel olive dans la famille C.
 
 Ne pas reproduire automatiquement d'une génération à l'autre :
-- plan de travail chêne clair ;
+- plan de travail chêne clair (cuisines créées ou modernisées uniquement) ;
 - tapis de passage en jute ;
 - pot d'herbes aromatiques ;
 - planche à découper appuyée contre la crédence ;
@@ -812,7 +858,9 @@ faire varier le traitement de l'éclairage selon la cuisine et la famille.
 
 Faire varier réellement : teinte et finition des façades, matière du plan de travail,
 format de la crédence, métal des poignées, présence et matière du tapis,
-type de suspension.`;
+type de suspension.
+En Valorisation douce, la variation ne porte que sur ce que le cadre autorise :
+jamais sur le plan de travail ni la crédence.`;
 
 const CADRE_ENTREE = `CADRE STYLE_VARIANT — ENTRÉE
 
@@ -914,7 +962,8 @@ function construireStyleVariant(familleForcee, roomType, modeCuisine = 'douce') 
     const mode = CADRES_CUISINE[modeCuisine] ? modeCuisine : 'douce';
     const declinaison = DECLINAISONS_CUISINE[familleChoisie.id];
     const parties = [CADRES_CUISINE[mode], ''];
-    if (mode === 'douce') parties.push(declinaison.peinture, '');
+    if (mode === 'douce_datee') parties.push(declinaison.peinture, '');
+    else if (mode === 'douce') parties.push(declinaison.poignees, '');
     else parties.push(declinaison.facades, '', DIFFERENCIATION_CUISINE, '');
     parties.push(declinaison.ambiance, '', ANTI_REPETITION_CUISINE, '', ADAPTATION_LOGEMENT_REEL);
     return { id: familleChoisie.id, texte: parties.join('\n') };
