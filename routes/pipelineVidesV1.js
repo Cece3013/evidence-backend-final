@@ -153,7 +153,7 @@ async function lireImplantationLit(photoPrincipale, roomType) {
   for (let tentative = 1; tentative <= 2; tentative++) {
     try {
       const reponse = await appelVisionTexte(prompt, photoPrincipale, 1000);
-      const { analyse, decision } = decouperReponse(reponse);
+      const { analyse, decision } = decouperReponse(reponse, roomType);
       if (!decision) throw new Error('Partie "IMPLANTATION DU LIT" absente ou incomplète.');
 
       console.log(`[PipelineVidesV1] Lecture implantation lit (${roomType}) — tentative ${tentative} OK — ${decision.replace(/\n/g, ' | ').slice(0, 160)}`);
