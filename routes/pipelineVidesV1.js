@@ -335,13 +335,17 @@ async function buildPromptBienVideV1({
       : null;
 
   // Type de cuisine pour le STYLE_VARIANT : 'complete' (vide/incomplète),
-  // 'modernisee' (projection modernisée) ou 'douce' (valorisation douce).
+  // 'modernisee' (projection modernisée), 'douce_datee' (valorisation douce
+  // d'une cuisine datée : façades repeintes) ou 'douce' (valorisation douce
+  // d'une cuisine présentable : façades conservées).
   let modeCuisine = 'douce';
   if (roomType === 'cuisine' && classificationCuisine) {
     if (!ETATS_CUISINE_AVEC_CHOIX.includes(classificationCuisine.status)) {
       modeCuisine = 'complete';
     } else if (choixCuisineEffectif === 'projection_modernisee') {
       modeCuisine = 'modernisee';
+    } else if (classificationCuisine.status === 'CUISINE_EXISTANTE_DATEE') {
+      modeCuisine = 'douce_datee';
     }
   }
 
