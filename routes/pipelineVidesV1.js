@@ -216,9 +216,7 @@ const RESPECT_PROPORTIONS_TOUTES_PIECES =
   'Respecter strictement la largeur, la profondeur et les proportions visibles de la pièce. ' +
   'Ne jamais élargir, allonger ou restructurer la pièce pour faire tenir le mobilier. ' +
   "Si l'espace restant est insuffisant, réduire ou supprimer un meuble secondaire " +
-  'plutôt que modifier la pièce ou les dimensions des meubles principaux. ' +
-  'Conserver à l\'identique les poteaux, coffrages, niches et retours de mur visibles : ' +
-  'ne jamais les élargir, les déplacer ni les supprimer.';
+  'plutôt que modifier la pièce ou les dimensions des meubles principaux.';
 
 // ─── ASSEMBLAGE — Noyau + Module (+ Lecture Fonctionnelle OU Guide Visuel) ────
 function construirePromptV1({ roomType, choixCuisine, lectureFonctionnelle, utiliserGuideVisuel, styleVariantTexte, decisionImplantation }) {
