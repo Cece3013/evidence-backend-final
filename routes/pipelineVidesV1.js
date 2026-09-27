@@ -207,6 +207,17 @@ const OPTIONS_CUISINE = [
 // génération (les deux états "existante" — présentable ou datée).
 const ETATS_CUISINE_AVEC_CHOIX = ['CUISINE_EXISTANTE_PRESENTABLE', 'CUISINE_EXISTANTE_DATEE'];
 
+// ─── RESPECT DES PROPORTIONS — toutes les pièces ─────────────────────────────
+// Ajouté à la fin des consignes de la pièce, pour TOUTES les pièces.
+// Les chambres enfant/ado le reçoivent déjà via leur lecture d'implantation
+// du lit (version mentionnant le lit) : dans ce cas, il n'est pas ajouté une
+// seconde fois. Si leur lecture échoue, elles reçoivent cette version-ci.
+const RESPECT_PROPORTIONS_TOUTES_PIECES =
+  'Respecter strictement la largeur, la profondeur et les proportions visibles de la pièce. ' +
+  'Ne jamais élargir, allonger ou restructurer la pièce pour faire tenir le mobilier. ' +
+  "Si l'espace restant est insuffisant, réduire ou supprimer un meuble secondaire " +
+  'plutôt que modifier la pièce ou les dimensions des meubles principaux.';
+
 // ─── ASSEMBLAGE — Noyau + Module (+ Lecture Fonctionnelle OU Guide Visuel) ────
 function construirePromptV1({ roomType, choixCuisine, lectureFonctionnelle, utiliserGuideVisuel, styleVariantTexte, decisionImplantation }) {
   const module = MODULES_VIDE_V3[roomType];
@@ -234,10 +245,16 @@ function construirePromptV1({ roomType, choixCuisine, lectureFonctionnelle, util
   const blocStyle = styleVariantTexte ? '\n\n' + styleVariantTexte : '';
 
   // Décision d'implantation du lit (chambres enfant/ado) : juste après le
-  // module. Ajoutée UNIQUEMENT si elle existe — pour toutes les autres pièces
-  // le prompt reste identique au caractère près.
+  // module. Ajoutée UNIQUEMENT si elle existe.
   const parties = [NOYAU_EVIDENCE_V3, '', module, blocLecture];
   if (decisionImplantation) parties.push('\n' + decisionImplantation);
+
+  // Respect des proportions : pour toutes les pièces, sauf si la décision
+  // d'implantation du lit le contient déjà (pas de doublon).
+  const proportionsDejaPresentes =
+    decisionImplantation && /Ne jamais élargir/i.test(decisionImplantation);
+  if (!proportionsDejaPresentes) parties.push('\n' + RESPECT_PROPORTIONS_TOUTES_PIECES);
+
   parties.push(blocChoix, blocStyle);
 
   return parties.join('\n');
