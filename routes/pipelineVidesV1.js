@@ -9,6 +9,15 @@
 
 const axios = require('axios');
 const { CONTROLE_PHOTO_V2, CLASSIFICATION_CUISINE } = require('./controlePhotoV2');
+const {
+  CLASSIFICATION_SDB,
+  ETATS_SDB_AVEC_CHOIX,
+  OPTIONS_SDB,
+  recommandationSdb,
+  niveauSdb,
+  choisirVarianteSdb,
+  construireModuleSdb,
+} = require('./salleDeBainV4');
 const { NOYAU_EVIDENCE_V3 } = require('./noyauVideV3');
 const MODULES_VIDE_V3 = require('./modulesVideV3');
 const {
@@ -181,6 +190,13 @@ async function classifierCuisine(photoPrincipale) {
   return resultat;
 }
 
+// ─── CLASSIFICATION SALLE DE BAIN (V4) — uniquement pour salle_bain ──────────
+async function classifierSdb(photoPrincipale) {
+  const resultat = await appelVisionJSON(CLASSIFICATION_SDB, photoPrincipale, 300);
+  console.log(`[PipelineVidesV1] Classification SDB — statut: ${resultat.status}`);
+  return resultat;
+}
+
 // Textes à ajouter selon le choix utilisateur pour une cuisine existante.
 // Reprennent mot pour mot les descriptions UX fournies (section 10).
 const CHOIX_CUISINE_TEXTE = {
@@ -219,8 +235,10 @@ const RESPECT_PROPORTIONS_TOUTES_PIECES =
   'plutôt que modifier la pièce ou les dimensions des meubles principaux.';
 
 // ─── ASSEMBLAGE — Noyau + Module (+ Lecture Fonctionnelle OU Guide Visuel) ────
-function construirePromptV1({ roomType, choixCuisine, lectureFonctionnelle, utiliserGuideVisuel, styleVariantTexte, decisionImplantation }) {
-  const module = MODULES_VIDE_V3[roomType];
+function construirePromptV1({ roomType, choixCuisine, lectureFonctionnelle, utiliserGuideVisuel, styleVariantTexte, decisionImplantation, moduleRemplacement }) {
+  // Salle de bain V4 : le module (commun + niveau + variante) est fourni
+  // tout assemblé et remplace le module V3.
+  const module = moduleRemplacement || MODULES_VIDE_V3[roomType];
   if (!module) {
     throw new Error(`Module V3 introuvable pour le type de pièce : ${roomType}`);
   }
@@ -270,6 +288,9 @@ function construirePromptV1({ roomType, choixCuisine, lectureFonctionnelle, util
  *   → cuisine existante (présentable ou datée) : l'application doit
  *     proposer les 2 niveaux de transformation avant de rappeler cette
  *     fonction avec `choixCuisine` renseigné.
+ * - { status: 'CHOIX_SDB_REQUIS', classificationSdb, recommandation, options }
+ *   → salle de bain présentable ou datée : même principe, rappeler avec
+ *     `choixSdb` ('valorisation_douce' | 'projection_modernisee').
  * - { status: 'PRET', prompt, controle, classificationCuisine }
  *   → prompt final assemblé, prêt pour l'appel de génération d'image.
  *
@@ -282,6 +303,8 @@ async function buildPromptBienVideV1({
   photoPrincipale,
   roomType,
   choixCuisine = null,
+  choixSdb = null,
+  varianteSdb = null,
   utiliserGuideVisuel = false,
   utiliserStyleVariant = false,
   familleForcee = null,
@@ -317,6 +340,41 @@ async function buildPromptBienVideV1({
         options: OPTIONS_CUISINE,
       };
     }
+  }
+
+  // Salle de bain V4 : classification → (choix client si présentable/datée)
+  // → niveau + variante. La variante est déduite de la famille de la commande
+  // (A et D → bois ; B, C, E → blanc), sauf si varianteSdb est forcée (tests).
+  let classificationSdb = null;
+  let moduleSdb = null;
+  let niveauSdbRetenu = null;
+  let varianteSdbRetenue = null;
+  if (roomType === 'salle_bain') {
+    classificationSdb = await classifierSdb(photoPrincipale);
+
+    if (classificationSdb.status === 'PHOTO_A_REPRENDRE') {
+      return {
+        status: 'PHOTO_A_REPRENDRE',
+        raison: classificationSdb.reason,
+        retakeInstruction:
+          "Reprendre la photo de la salle de bain en montrant clairement la pièce et ses arrivées d'eau.",
+        controle,
+      };
+    }
+
+    if (ETATS_SDB_AVEC_CHOIX.includes(classificationSdb.status) && !choixSdb) {
+      return {
+        status: 'CHOIX_SDB_REQUIS',
+        classificationSdb,
+        recommandation: recommandationSdb(classificationSdb.status),
+        options: OPTIONS_SDB,
+      };
+    }
+
+    niveauSdbRetenu = niveauSdb(classificationSdb.status, choixSdb);
+    varianteSdbRetenue = choisirVarianteSdb({ varianteForcee: varianteSdb, famille: familleForcee });
+    moduleSdb = construireModuleSdb(niveauSdbRetenu, varianteSdbRetenue);
+    console.log(`[PipelineVidesV1] SDB — niveau: ${niveauSdbRetenu} — variante: ${varianteSdbRetenue}`);
   }
 
   // PROTOTYPE Guide Visuel : quand actif, la lecture fonctionnelle textuelle
@@ -370,6 +428,7 @@ async function buildPromptBienVideV1({
     utiliserGuideVisuel,
     styleVariantTexte,
     decisionImplantation: lectureImplantation?.decision || null,
+    moduleRemplacement: moduleSdb,
   });
 
   return {
@@ -380,6 +439,9 @@ async function buildPromptBienVideV1({
     lectureFonctionnelle,
     lectureImplantation,
     styleVariantId,
+    classificationSdb,
+    niveauSdb: niveauSdbRetenu,
+    varianteSdb: varianteSdbRetenue,
   };
 }
 
