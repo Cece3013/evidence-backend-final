@@ -113,6 +113,13 @@ async function genererPhotoCommande(photoPage, clientPage) {
     resultat = await buildPromptBienVideV1({ ...parametres, choixCuisine: resultat.recommandation });
   }
 
+  // Salle de bain V4 : même principe. Tant que le choix n'est pas proposé au
+  // client avant paiement, on applique la recommandation de la classification.
+  if (resultat.status === 'CHOIX_SDB_REQUIS') {
+    console.log(`[GenerationV1] Choix SDB absent → recommandation appliquée : ${resultat.recommandation}`);
+    resultat = await buildPromptBienVideV1({ ...parametres, choixSdb: resultat.recommandation });
+  }
+
   if (resultat.status === 'PHOTO_A_REPRENDRE') {
     return { statut: 'A_VERIFIER', raison: resultat.raison || 'Photo refusée par le contrôle.' };
   }
