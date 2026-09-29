@@ -126,7 +126,7 @@ router.post('/upload', upload.single('photo'), async (req, res) => {
 // → Noyau + Module → génération. Une seule photo, jamais de vues
 // complémentaires.
 router.post('/vides', async (req, res) => {
-  const { imageUrl, roomType, choixCuisine, guideImageUrl, utiliserStyleVariant, familleForcee, testKey } = req.body;
+  const { imageUrl, roomType, choixCuisine, choixSdb, varianteSdb, guideImageUrl, utiliserStyleVariant, familleForcee, testKey } = req.body;
 
   if (testKey !== process.env.TEST_STAGING_KEY) {
     return res.status(403).json({ error: 'Accès refusé.' });
@@ -146,6 +146,8 @@ router.post('/vides', async (req, res) => {
       photoPrincipale: imageUrl,
       roomType,
       choixCuisine: choixCuisine || null,
+      choixSdb: choixSdb || null,
+      varianteSdb: varianteSdb || null,
       utiliserGuideVisuel,
       utiliserStyleVariant: Boolean(utiliserStyleVariant),
       familleForcee: familleForcee || null,
@@ -173,6 +175,17 @@ router.post('/vides', async (req, res) => {
       });
     }
 
+    if (resultat.status === 'CHOIX_SDB_REQUIS') {
+      console.log(`[TestStagingV1] Choix SDB requis — ${resultat.classificationSdb.status}`);
+      return res.json({
+        success: false,
+        status: 'CHOIX_SDB_REQUIS',
+        classificationSdb: resultat.classificationSdb,
+        recommandation: resultat.recommandation,
+        options: resultat.options,
+      });
+    }
+
     // status === 'PRET'
     const generatedUrl = utiliserGuideVisuel
       ? await genererImageAvecGuide(resultat.prompt, imageUrl, guideImageUrl)
@@ -192,6 +205,9 @@ router.post('/vides', async (req, res) => {
       guideVisuelUtilise: utiliserGuideVisuel,
       guideImageUrl: utiliserGuideVisuel ? guideImageUrl : undefined,
       styleVariantId: resultat.styleVariantId,
+      classificationSdb: resultat.classificationSdb,
+      niveauSdb: resultat.niveauSdb,
+      varianteSdb: resultat.varianteSdb,
     });
   } catch (err) {
     console.error('[TestStagingV1] Erreur vides:', err.response?.data || err.message);
