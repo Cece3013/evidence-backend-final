@@ -84,7 +84,12 @@ async function confirmerPaiementCommande(session) {
       return { traite: false, raison: 'déjà confirmée' };
     }
 
-    await patchPage(m.notionPageId, { 'Paiement réussi': { checkbox: true } });
+    // Paiement confirmé : la commande apparaît comme « Nouveau » dans Gestion Clients
+    // (une commande abandonnée avant paiement reste sans statut)
+    await patchPage(m.notionPageId, {
+      'Paiement réussi': { checkbox: true },
+      'Statut': { select: { name: 'Nouveau' } },
+    });
     console.log(`[Confirmation] Paiement confirmé — ${m.referenceDossier}`);
 
     const isHabite = m.isHabite === 'true';
