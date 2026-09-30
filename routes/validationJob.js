@@ -199,6 +199,22 @@ async function runValidationCheck() {
     });
 
     for (const project of projects) {
+      // « Photos livrées » = images « Après » validées, tenu à jour à chaque passage
+      try {
+        const photosProjet = await queryDatabase(process.env.NOTION_PHOTOS_PRO_DATABASE_ID, {
+          property: 'Projet', relation: { contains: project.id },
+        });
+        const livrees = photosProjet.filter(p =>
+          p.properties['Type']?.select?.name === 'Après' &&
+          ['Validé', 'Envoyé'].includes(p.properties['Statut']?.select?.name)
+        ).length;
+        if ((project.properties['Photos livrées']?.number || 0) !== livrees) {
+          await updatePage(project.id, { 'Photos livrées': { number: livrees } });
+        }
+      } catch (err) {
+        console.error('[ValidationJob] Photos livrées non mises à jour:', err.response?.data || err.message);
+      }
+
       const isComplete = await checkProjectComplete(
         process.env.NOTION_PHOTOS_PRO_DATABASE_ID, 'Projet', project
       );
