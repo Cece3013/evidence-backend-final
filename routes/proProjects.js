@@ -1,12 +1,29 @@
+// backend/routes/proProjects.js
+// Projets PRO — branchés sur les systèmes validés (septembre 2026) :
+//  - bien vide   : pipeline V1 (photo vérifiée AVANT l'envoi, choix cuisine /
+//                  salle de bain, famille de style par projet) ;
+//  - bien habité : pipeline habités PRO validé.
+// La génération n'est plus faite ici : chaque photo « Avant » est déposée
+// dans Notion (Photos PRO) avec « Statut génération : À générer », puis le
+// générateur (generateurJob.js) la traite, et l'image « Après » attend votre
+// validation, exactement comme pour les particuliers.
+//
+// Quota mensuel : photos incluses dans l'offre + « Photos supplémentaires »
+// (colonne nombre de la fiche abonnement, facultative), compté par mois
+// calendaire sur la colonne « Photos reçues » des projets du mois.
 const express = require('express');
 const axios = require('axios');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
-const { Client } = require("@notionhq/client");
-const { buildPrompt } = require('./prompts');
+const Stripe = require('stripe');
+const roomPromptsHabitesPro = require('./roomPromptsHabitesPro');
 const router = express.Router();
 
-const notion = new Client({ auth: process.env.NOTION_API_KEY });
+const NOTION_HEADERS = {
+  Authorization: `Bearer ${process.env.NOTION_API_KEY}`,
+  'Notion-Version': '2022-06-28',
+  'Content-Type': 'application/json',
+};
 
 const OFFER_PHOTOS_LIMIT = {
   pro_starter: 10,
@@ -14,58 +31,17 @@ const OFFER_PHOTOS_LIMIT = {
   pro_agency: 80,
 };
 
-async function uploadToCloudinary(file) {
-  const timestamp = Math.round(Date.now() / 1000);
-  const signature = crypto
-    .createHash('sha256')
-    .update(`timestamp=${timestamp}${process.env.CLOUDINARY_API_SECRET}`)
-    .digest('hex');
-  const res = await axios.post(
-    `https://api.cloudinary.com/v1_1/${process.env.CLOUDINARY_CLOUD_NAME}/image/upload`,
-    { file, timestamp, api_key: process.env.CLOUDINARY_API_KEY, signature }
-  );
-  return res.data.secure_url;
-}
+// Types de pièces acceptés
+const ROOM_TYPES_VIDE = [
+  'salon', 'salon_salle_a_manger', 'cuisine', 'salle_bain', 'chambre_parentale',
+  'chambre_enfant', 'chambre_ado', 'balcon_terrasse', 'entree',
+];
+const ROOM_TYPES_HABITE = Object.keys(roomPromptsHabitesPro);
 
-async function callReplicate(imageUrl, prompt) {
-  const response = await axios.post(
-    'https://api.replicate.com/v1/models/black-forest-labs/flux-kontext-pro/predictions',
-    {
-      input: {
-        prompt,
-        input_image: imageUrl,
-        output_format: 'jpg',
-        output_quality: 95,
-        safety_tolerance: 2,
-        guidance: 7.5,
-        num_inference_steps: 30,
-      },
-    },
-    {
-      headers: {
-        Authorization: `Token ${process.env.REPLICATE_API_TOKEN}`,
-        'Content-Type': 'application/json',
-        'Prefer': 'wait',
-      },
-    }
-  );
-
-  let prediction = response.data;
-  let attempts = 0;
-  while (prediction.status !== 'succeeded' && prediction.status !== 'failed') {
-    if (attempts++ > 60) throw new Error('Replicate timeout.');
-    await new Promise((r) => setTimeout(r, 1500));
-    const poll = await axios.get(
-      `https://api.replicate.com/v1/predictions/${prediction.id}`,
-      { headers: { Authorization: `Token ${process.env.REPLICATE_API_TOKEN}` } }
-    );
-    prediction = poll.data;
-  }
-  if (prediction.status === 'failed') {
-    throw new Error(`Replicate failed: ${JSON.stringify(prediction.error)}`);
-  }
-  return Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
-}
+const FAMILLES_STYLE = ['A', 'B', 'C', 'D', 'E'];
+const ETATS_CUISINE_AVEC_CHOIX = ['CUISINE_EXISTANTE_PRESENTABLE', 'CUISINE_EXISTANTE_DATEE'];
+const ETATS_SDB_AVEC_CHOIX = ['SDB_PRESENTABLE', 'SDB_DATEE'];
+const CHOIX_VALIDES = ['valorisation_douce', 'projection_modernisee'];
 
 function verifyToken(req) {
   const authHeader = req.headers.authorization;
@@ -77,127 +53,203 @@ function verifyToken(req) {
   }
 }
 
-// ─── POST /api/pro/projects/create ─────────────────────────────────────────
+// Même jeton que celui délivré par /api/payments/verifier-photo
+// (preuve que la photo a été vérifiée sur notre serveur).
+function jetonValide(url, roomType, verification, jeton) {
+  if (typeof jeton !== 'string' || jeton.length !== 64) return false;
+  const attendu = crypto
+    .createHmac('sha256', process.env.JWT_SECRET)
+    .update(JSON.stringify([url, roomType, verification]))
+    .digest('hex');
+  return crypto.timingSafeEqual(Buffer.from(attendu), Buffer.from(jeton));
+}
+
+async function trouverAbonnement(email) {
+  const res = await axios.post(
+    `https://api.notion.com/v1/databases/${process.env.NOTION_PRO_DATABASE_ID}/query`,
+    { filter: { property: 'Email', email: { equals: email } } },
+    { headers: NOTION_HEADERS }
+  );
+  return res.data.results[0] || null;
+}
+
+// Abonnement Stripe actif (ou en période d'essai) pour cet email
+async function abonnementActif(email) {
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+  const clients = await stripe.customers.list({ email, limit: 10 });
+  for (const c of clients.data) {
+    const subs = await stripe.subscriptions.list({ customer: c.id, status: 'all', limit: 10 });
+    if (subs.data.some((s) => ['active', 'trialing'].includes(s.status))) return true;
+  }
+  return false;
+}
+
+// Photos déjà envoyées ce mois-ci (mois calendaire) par cet abonnement
+async function photosDuMois(subPageId) {
+  const now = new Date();
+  const debutMois = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
+  let total = 0;
+  let cursor;
+  do {
+    const res = await axios.post(
+      `https://api.notion.com/v1/databases/${process.env.NOTION_PRO_PROJECTS_DATABASE_ID}/query`,
+      {
+        filter: {
+          and: [
+            { property: 'Nom entreprise', relation: { contains: subPageId } },
+            { timestamp: 'created_time', created_time: { on_or_after: debutMois } },
+          ],
+        },
+        start_cursor: cursor,
+      },
+      { headers: NOTION_HEADERS }
+    );
+    for (const p of res.data.results) total += p.properties['Photos reçues']?.number || 0;
+    cursor = res.data.has_more ? res.data.next_cursor : undefined;
+  } while (cursor);
+  return total;
+}
+
+function quotaDe(subPage) {
+  const offre = subPage.properties['Offre']?.select?.name || 'pro_starter';
+  const inclus = OFFER_PHOTOS_LIMIT[offre] || 0;
+  const supplementaires = subPage.properties['Photos supplémentaires']?.number || 0;
+  return { offre, inclus, supplementaires, total: inclus + supplementaires };
+}
+
+// ─── GET /api/pro/projects/quota ────────────────────────────────────────────
+router.get('/quota', async (req, res) => {
+  const decoded = verifyToken(req);
+  if (!decoded) return res.status(401).json({ error: 'Non authentifié.' });
+  try {
+    const subPage = await trouverAbonnement(decoded.email);
+    if (!subPage) return res.status(404).json({ error: 'Abonnement non trouvé.' });
+    const q = quotaDe(subPage);
+    const utilisees = await photosDuMois(subPage.id);
+    res.json({ ...q, utilisees, restantes: Math.max(0, q.total - utilisees) });
+  } catch (err) {
+    console.error('[ProProjects] Erreur quota:', err.response?.data || err.message);
+    res.status(500).json({ error: 'Impossible de lire votre quota.' });
+  }
+});
+
+// Vérifie les photos d'un projet. Retourne null si tout est bon, sinon un message.
+function erreurPhotos(photos, typeBien) {
+  const prefixeCloudinary = `https://res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME}/`;
+  const types = typeBien === 'habite' ? ROOM_TYPES_HABITE : ROOM_TYPES_VIDE;
+
+  for (let i = 0; i < photos.length; i++) {
+    const p = photos[i] || {};
+    const n = i + 1;
+    if (typeof p.url !== 'string' || !p.url.startsWith(prefixeCloudinary)) return `Photo ${n} : photo invalide.`;
+    if (!types.includes(p.roomType)) return `Photo ${n} : type de pièce inconnu.`;
+    if (typeBien === 'habite') continue;
+
+    if (!p.verification || !jetonValide(p.url, p.roomType, p.verification, p.jeton)) {
+      return `Photo ${n} : elle n'a pas été vérifiée. Merci de la renvoyer.`;
+    }
+    const choixCuisine = p.roomType === 'cuisine' && ETATS_CUISINE_AVEC_CHOIX.includes(p.verification.cuisine);
+    const choixSdb = p.roomType === 'salle_bain' && ETATS_SDB_AVEC_CHOIX.includes(p.verification.sdb);
+    if ((choixCuisine || choixSdb) && !CHOIX_VALIDES.includes(p.choixCuisine)) {
+      return `Photo ${n} : merci de choisir le niveau de traitement.`;
+    }
+  }
+  return null;
+}
+
+// ─── POST /api/pro/projects/create ──────────────────────────────────────────
+// Corps : { projectName, typeBien: 'vide' | 'habite',
+//           photos: [{ url, roomType, verification?, jeton?, choixCuisine? }] }
 router.post('/create', async (req, res) => {
   const decoded = verifyToken(req);
   if (!decoded) return res.status(401).json({ error: 'Non authentifié.' });
 
-  const { projectName, photos } = req.body;
-  if (!projectName || !photos || photos.length === 0) {
-    return res.status(400).json({ error: 'Nom du projet et photos requis.' });
+  const { projectName, typeBien, photos } = req.body || {};
+  if (!projectName || !String(projectName).trim()) {
+    return res.status(400).json({ error: 'Nom du projet requis.' });
+  }
+  if (!['vide', 'habite'].includes(typeBien)) {
+    return res.status(400).json({ error: 'Choisissez bien vide ou bien habité.' });
+  }
+  if (!Array.isArray(photos) || photos.length === 0) {
+    return res.status(400).json({ error: 'Ajoutez au moins une photo.' });
   }
 
+  const erreur = erreurPhotos(photos, typeBien);
+  if (erreur) return res.status(400).json({ error: erreur });
+
   try {
-    // 1. Trouver la fiche abonnement PRO
-    const subRes = await axios.post(
-      `https://api.notion.com/v1/databases/${process.env.NOTION_PRO_DATABASE_ID}/query`,
-      { filter: { property: 'Email', email: { equals: decoded.email } } },
-      { headers: { 'Authorization': `Bearer ${process.env.NOTION_API_KEY}`, 'Notion-Version': '2022-06-28', 'Content-Type': 'application/json' } }
-    );
-    if (!subRes.data.results.length) {
-      return res.status(404).json({ error: 'Abonnement non trouvé.' });
+    const subPage = await trouverAbonnement(decoded.email);
+    if (!subPage) return res.status(404).json({ error: 'Abonnement non trouvé.' });
+
+    if (!(await abonnementActif(decoded.email))) {
+      return res.status(403).json({ error: "Votre abonnement n'est pas actif. Vérifiez votre facturation." });
     }
-    const subPage = subRes.data.results[0];
-    const subPageId = subPage.id;
-    const offerId = subPage.properties['Offre']?.select?.name || 'pro_starter';
 
-    res.json({ success: true, message: 'Création du projet en cours.' });
+    const q = quotaDe(subPage);
+    const utilisees = await photosDuMois(subPage.id);
+    const restantes = Math.max(0, q.total - utilisees);
+    if (photos.length > restantes) {
+      return res.status(403).json({
+        error: `Quota atteint : il vous reste ${restantes} photo(s) ce mois-ci. Retirez des photos, ou changez d'offre.`,
+        restantes,
+      });
+    }
 
-    // 2. Créer le projet dans Notion (en arrière-plan)
-    processProject({ subPageId, projectName, photos });
+    // 1. Le projet
+    const famille = FAMILLES_STYLE[crypto.randomInt(FAMILLES_STYLE.length)];
+    const nom = String(projectName).trim();
+    const projetRes = await axios.post(
+      'https://api.notion.com/v1/pages',
+      {
+        parent: { database_id: process.env.NOTION_PRO_PROJECTS_DATABASE_ID },
+        properties: {
+          'Nom du projet': { title: [{ text: { content: nom } }] },
+          'Nom entreprise': { relation: [{ id: subPage.id }] },
+          'Statut': { select: { name: 'Nouveau' } },
+          'Photos reçues': { number: photos.length },
+          'Photos livrées': { number: 0 },
+          'Type de bien': { select: { name: typeBien === 'habite' ? 'Bien habité' : 'Bien vide' } },
+          ...(typeBien === 'vide' ? { 'Famille style': { select: { name: famille } } } : {}),
+        },
+      },
+      { headers: NOTION_HEADERS }
+    );
+    const projetId = projetRes.data.id;
 
+    // 2. Une ligne « Avant » par photo, directement dans la file du générateur
+    for (let i = 0; i < photos.length; i++) {
+      const p = photos[i];
+      const avecChoix = ['cuisine', 'salle_bain'].includes(p.roomType) && CHOIX_VALIDES.includes(p.choixCuisine);
+      await axios.post(
+        'https://api.notion.com/v1/pages',
+        {
+          parent: { database_id: process.env.NOTION_PHOTOS_PRO_DATABASE_ID },
+          properties: {
+            'Titre': { title: [{ text: { content: `${nom} — ${p.roomType} — Avant` } }] },
+            'Projet': { relation: [{ id: projetId }] },
+            'Type': { select: { name: 'Avant' } },
+            'URL photo': { url: p.url },
+            'Pièce': { select: { name: p.roomType } },
+            'Statut': { select: { name: 'En attente' } },
+            'Statut génération': { select: { name: 'À générer' } },
+            ...(typeBien === 'vide'
+              ? { 'Contrôle photo': { rich_text: [{ text: { content: JSON.stringify(p.verification).slice(0, 1900) } }] } }
+              : {}),
+            ...(avecChoix ? { 'Choix cuisine': { select: { name: p.choixCuisine } } } : {}),
+          },
+        },
+        { headers: NOTION_HEADERS }
+      );
+    }
+
+    console.log(`[ProProjects] Projet créé — ${nom} — ${typeBien} — ${photos.length} photo(s)`);
+    res.json({ success: true, restantes: restantes - photos.length });
   } catch (err) {
-    console.error('[ProProjects] Erreur:', err.response?.data || err.message);
+    console.error('[ProProjects] Erreur création:', err.response?.data || err.message);
     res.status(500).json({ error: 'Erreur lors de la création du projet.' });
   }
 });
 
-async function processProject({ subPageId, projectName, photos }) {
-  console.log(`[ProProjects] Début traitement projet: ${projectName}`);
-
-  try {
-    const projectPage = await notion.pages.create({
-     parent: { database_id: process.env.NOTION_PRO_PROJECTS_DATABASE_ID },
-      properties: {
-        "Nom du projet": { title: [{ type: "text", text: { content: projectName } }] },
-        "Nom entreprise": { relation: [{ id: subPageId }] },
-        "Statut": { select: { name: "Nouveau" } },
-        "Photos reçues": { number: photos.length },
-      },
-    });
-
-    const projectPageId = projectPage.id;
-    let deliveredCount = 0;
-
-    for (let i = 0; i < photos.length; i++) {
-      const photo = photos[i];
-      try {
-        const inputUrl = await uploadToCloudinary(`data:image/jpeg;base64,${photo.imageBase64}`);
-        console.log(`[ProProjects] Photo uploadée: ${inputUrl}`);
-
-        const { prompt } = buildPrompt({
-          roomTypeId: photo.roomTypeId || 'salon',
-          roomSubTypeId: photo.roomSubTypeId,
-          roomSize: photo.roomSize || 'medium',
-          variant: 1,
-        });
-
-        let outputUrl = null;
-        try {
-          const replicateUrl = await callReplicate(inputUrl, prompt);
-          outputUrl = await uploadToCloudinary(replicateUrl);
-          deliveredCount++;
-          console.log(`[ProProjects] Proposition générée: ${outputUrl}`);
-        } catch (err) {
-          console.error('[ProProjects] Erreur génération IA:', err.message);
-        }
-
-        const pieceLabel = photo.roomTypeId || `Photo ${i + 1}`;
-
-        if (inputUrl) {
-          await notion.pages.create({
-            parent: { database_id: process.env.NOTION_PHOTOS_PRO_DATABASE_ID },
-            properties: {
-              "Titre": { title: [{ type: "text", text: { content: `${projectName} — ${pieceLabel} — Avant` } }] },
-              "Projet": { relation: [{ id: projectPageId }] },
-              "Type": { select: { name: "Avant" } },
-              "URL photo": { url: inputUrl },
-              "Pièce": { select: { name: pieceLabel } },
-              "Statut": { select: { name: "En attente" } },
-            },
-          });
-        }
-
-        if (outputUrl) {
-          await notion.pages.create({
-            parent: { database_id: process.env.NOTION_PHOTOS_PRO_DATABASE_ID },
-            properties: {
-              "Titre": { title: [{ type: "text", text: { content: `${projectName} — ${pieceLabel} — Après` } }] },
-              "Projet": { relation: [{ id: projectPageId }] },
-              "Type": { select: { name: "Après" } },
-              "URL photo": { url: outputUrl },
-              "Pièce": { select: { name: pieceLabel } },
-              "Statut": { select: { name: "En attente validation" } },
-            },
-          });
-        }
-      } catch (err) {
-        console.error('[ProProjects] Erreur traitement photo:', err.message);
-      }
-    }
-
-    await notion.pages.update({
-      page_id: projectPageId,
-      properties: {
-        "Statut": { select: { name: "En cours" } },
-        "Photos livrées": { number: deliveredCount },
-      },
-    });
-    console.log(`[ProProjects] ✅ Projet ${projectName} terminé`);
-
-  } catch (err) {
-    console.error('[ProProjects] Erreur globale:', err.message);
-  }
-}
-
 module.exports = router;
+module.exports.ROOM_TYPES_HABITE = ROOM_TYPES_HABITE;
