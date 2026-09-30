@@ -321,7 +321,7 @@ router.post('/acheter-photos', async (req, res) => {
         },
         quantity: quantite,
       }],
-      success_url: `${SITE_URL}/dashboard?achat=ok`,
+      success_url: `${SITE_URL}/dashboard?achat={CHECKOUT_SESSION_ID}`,
       cancel_url: `${SITE_URL}/dashboard`,
       metadata: {
         type: 'pro_photos_sup',
@@ -339,14 +339,23 @@ router.post('/acheter-photos', async (req, res) => {
   }
 });
 
-// Crédit du solde après paiement — appelé par le webhook Stripe.
-// Protégé contre un double traitement d'un même paiement.
+// Crédit du solde après paiement — appelé par le webhook Stripe ET au retour
+// du pro sur son tableau de bord (le premier arrivé crédite).
+// Protection contre un double crédit : le paiement Stripe est marqué
+// « credite = oui » (repère permanent, qui survit aux redémarrages).
 const sessionsCreditees = new Set();
 async function crediterPhotosSupplementaires(session) {
   const m = session.metadata || {};
   if (m.type !== 'pro_photos_sup' || session.payment_status !== 'paid') return false;
   if (sessionsCreditees.has(session.id)) return false;
   sessionsCreditees.add(session.id);
+
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+  const paymentIntentId = typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id;
+  if (paymentIntentId) {
+    const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
+    if (pi.metadata?.credite === 'oui') return false;
+  }
 
   const quantite = parseInt(m.quantite, 10) || 0;
   const pageRes = await axios.get(`https://api.notion.com/v1/pages/${m.subPageId}`, { headers: NOTION_HEADERS });
@@ -356,9 +365,40 @@ async function crediterPhotosSupplementaires(session) {
     { properties: { 'Photos supplémentaires': { number: solde + quantite } } },
     { headers: NOTION_HEADERS }
   );
+  if (paymentIntentId) {
+    await stripe.paymentIntents.update(paymentIntentId, { metadata: { credite: 'oui' } });
+  }
   console.log(`[ProProjects] ${quantite} photo(s) supplémentaire(s) créditée(s) — ${m.email} — solde ${solde + quantite}`);
   return true;
 }
+
+// ─── POST /api/pro/projects/confirmer-achat ─────────────────────────────────
+// Retour de Stripe sur le tableau de bord : { sessionId }.
+router.post('/confirmer-achat', async (req, res) => {
+  const decoded = verifyToken(req);
+  if (!decoded) return res.status(401).json({ error: 'Non authentifié.' });
+
+  const { sessionId } = req.body || {};
+  if (typeof sessionId !== 'string' || !sessionId.startsWith('cs_')) {
+    return res.status(400).json({ error: 'Paiement introuvable.' });
+  }
+
+  try {
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    if (session.metadata?.type !== 'pro_photos_sup' || session.metadata?.email !== decoded.email) {
+      return res.status(404).json({ error: 'Paiement introuvable.' });
+    }
+    if (session.payment_status !== 'paid') {
+      return res.status(400).json({ error: "Le paiement n'est pas encore confirmé." });
+    }
+    await crediterPhotosSupplementaires(session);
+    res.json({ success: true, quantite: parseInt(session.metadata.quantite, 10) || 0 });
+  } catch (err) {
+    console.error('[ProProjects] Erreur confirmation achat:', err.response?.data || err.message);
+    res.status(500).json({ error: "Impossible de confirmer l'achat." });
+  }
+});
 
 // ─── GET /api/pro/projects/:id ──────────────────────────────────────────────
 // Détail d'un projet pour son propriétaire : infos + paires avant / après.
