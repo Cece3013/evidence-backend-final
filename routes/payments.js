@@ -393,8 +393,9 @@ router.post('/create-checkout', async (req, res) => {
             "Pièce": { select: { name: photo.roomType } },
             "Statut": { select: { name: 'En attente' } },
             "Type de prestation": { select: { name: isHabite ? 'Bien habité' : 'Bien vide' } },
+            // Bien habité aussi : image générée pour usage interne (rapport PDF)
+            "Statut génération": { select: { name: 'En attente paiement' } },
             ...(isHabite ? {} : {
-              "Statut génération": { select: { name: 'En attente paiement' } },
               "Contrôle photo": { rich_text: [{ text: { content: JSON.stringify(photo.verification).slice(0, 1900) } }] },
               // La colonne « Choix cuisine » porte aussi le choix de niveau d'une salle de bain
               ...(['cuisine', 'salle_bain'].includes(photo.roomType) && CHOIX_CUISINE_VALIDES.includes(photo.choixCuisine)
