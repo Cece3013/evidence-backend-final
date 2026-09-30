@@ -40,14 +40,10 @@ const SOURCES = [
     // L'abonnement et le quota sont vérifiés à la création du projet
     autorise: () => true,
     generer: genererPhotoPro,
-    // Suivi du projet : "En cours" et une photo livrée de plus
+    // Suivi du projet : "En cours" (les photos « livrées » sont comptées à la
+    // validation, par validationJob.js)
     apresGeneration: async (projetId) => {
-      const projet = await getPage(projetId);
-      const livrees = projet.properties['Photos livrées']?.number || 0;
-      await patchPage(projetId, {
-        'Statut': { select: { name: 'En cours' } },
-        'Photos livrées': { number: livrees + 1 },
-      });
+      await patchPage(projetId, { 'Statut': { select: { name: 'En cours' } } });
     },
   },
 ];
