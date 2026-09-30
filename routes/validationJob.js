@@ -67,7 +67,20 @@ async function checkProjectComplete(databaseId, relationProperty, parentPage) {
 
   if (photos.length === 0) return false;
 
-  return photos.every(p => p.properties['Statut']?.select?.name === 'Validé');
+  // Photos générées (bien vide, PRO) : la livraison dépend des seules photos
+  // « Après » — les « Avant » ne sont que les originaux. Sans aucune « Après »
+  // (particulier habité), toutes les photos doivent être validées, comme avant.
+  const apres = photos.filter(p => p.properties['Type']?.select?.name === 'Après');
+  const aValider = apres.length > 0 ? apres : photos;
+
+  // Une photo encore en file du générateur (ou en erreur) bloque la livraison
+  const enCours = photos.some(p => {
+    const g = p.properties['Statut génération']?.select?.name;
+    return p.properties['Type']?.select?.name === 'Avant' && ['À générer', 'En cours', 'Erreur', 'À vérifier'].includes(g);
+  });
+  if (enCours) return false;
+
+  return aValider.every(p => p.properties['Statut']?.select?.name === 'Validé');
 }
 
 async function sendClientEmail(parentPage, type) {
