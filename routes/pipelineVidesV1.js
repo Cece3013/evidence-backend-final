@@ -445,4 +445,4 @@ async function buildPromptBienVideV1({
   };
 }
 
-module.exports = { buildPromptBienVideV1, controlePhoto, classifierCuisine };
+module.exports = { buildPromptBienVideV1, controlePhoto, classifierCuisine, classifierSdb };
