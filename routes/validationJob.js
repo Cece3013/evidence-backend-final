@@ -162,6 +162,21 @@ async function sendClientEmail(parentPage, type) {
   }
 }
 
+// À la livraison, les photos « Avant » (originaux) passent aussi en « Validé »,
+// pour que la commande apparaisse entièrement validée dans Notion.
+async function marquerAvantsValides(databaseId, relationProperty, parentPage) {
+  const photos = await queryDatabase(databaseId, {
+    property: relationProperty,
+    relation: { contains: parentPage.id },
+  });
+  for (const p of photos) {
+    if (p.properties['Type']?.select?.name === 'Avant' &&
+        !['Validé', 'Envoyé'].includes(p.properties['Statut']?.select?.name)) {
+      await updatePage(p.id, { "Statut": { select: { name: "Validé" } } });
+    }
+  }
+}
+
 async function runValidationCheck() {
   console.log('[ValidationJob] Démarrage vérification...');
 
@@ -189,6 +204,7 @@ async function runValidationCheck() {
         process.env.NOTION_PHOTOS_DATABASE_ID, 'Nom du Client', client
       );
       if (isComplete) {
+        await marquerAvantsValides(process.env.NOTION_PHOTOS_DATABASE_ID, 'Nom du Client', client);
         await sendClientEmail(client, 'particulier');
         await updatePage(client.id, { "Statut": { select: { name: "Terminé" } } });
       }
@@ -219,6 +235,7 @@ async function runValidationCheck() {
         process.env.NOTION_PHOTOS_PRO_DATABASE_ID, 'Projet', project
       );
       if (isComplete) {
+        await marquerAvantsValides(process.env.NOTION_PHOTOS_PRO_DATABASE_ID, 'Projet', project);
         await sendClientEmail(project, 'pro');
         await updatePage(project.id, { "Statut": { select: { name: "Livré" } } });
       }
