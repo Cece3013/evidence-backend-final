@@ -200,6 +200,11 @@ async function runValidationCheck() {
     });
 
     for (const client of clients) {
+      // Bien habité : livraison UNIQUEMENT par le rapport PDF (page admin).
+      // Les images générées sont internes : ni email, ni « Terminé » ici.
+      const typePrestation = client.properties['Type de prestation']?.select?.name || '';
+      if (typePrestation.toLowerCase().includes('habité')) continue;
+
       const isComplete = await checkProjectComplete(
         process.env.NOTION_PHOTOS_DATABASE_ID, 'Nom du Client', client
       );
