@@ -2,6 +2,7 @@ const express = require('express');
 const Stripe = require('stripe');
 const axios = require('axios');
 const { confirmerPaiementCommande } = require('../routes/confirmationCommande');
+const { crediterPhotosSupplementaires } = require('../routes/proProjects');
 const router = express.Router();
 
 const stripe = process.env.STRIPE_SECRET_KEY
@@ -78,6 +79,16 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
     const session = event.data.object;
     const sessionId = session.id;
     console.log('[Webhook] ✅ Paiement réussi pour session:', sessionId);
+
+    // Achat de photos supplémentaires PRO
+    if (session.metadata?.type === 'pro_photos_sup') {
+      try {
+        await crediterPhotosSupplementaires(session);
+      } catch (err) {
+        console.error('[Webhook] Erreur crédit photos supplémentaires:', err.response?.data || err.message);
+      }
+      return;
+    }
 
     // Commande particulier du site : elle porte notionPageId dans ses métadonnées
     if (session.metadata?.notionPageId) {
