@@ -100,16 +100,11 @@ async function createNotionRecord(clientData, commandeData, photosData) {
         "Email": { email: clientData.email || null },
         "Téléphone": { phone_number: clientData.telephone || null },
         "Adresse du bien": { rich_text: [{ type: "text", text: { content: clientData.adresse || "—" } }] },
-        "Type de bien": { select: { name: clientData.type_bien || "Autre" } },
-        "Nombre de pièces": { select: { name: clientData.nombre_pieces || "—" } },
-        "Extérieurs": {
-          multi_select: (clientData.exterieurs && clientData.exterieurs.length > 0)
-            ? clientData.exterieurs.map(e => ({ name: e }))
-            : []
-        },
+        // « Type de bien », « Nombre de pièces » et « Extérieurs » : colonnes
+        // supprimées de Notion le 30/09/2026, ne plus les écrire.
         "Type de prestation": { select: { name: commandeData.type_prestation || "—" } },
         "Formule": { select: { name: commandeData.formula || "—" } },
-        "Statut": { select: { name: "Nouveau client" } }, // colonne de type Sélection (comme dans validationJob.js)
+        "Statut": { select: { name: "Nouveau" } }, // même statut que les commandes du site
         "Date de commande": { date: { start: new Date().toISOString() } },
         "Paiement réussi": { checkbox: true },
       },
