@@ -7,7 +7,8 @@ const multer = require('multer');
 const FormData = require('form-data');
 const axios = require('axios');
 const rateLimit = require('express-rate-limit');
-const { controlePhoto, classifierCuisine } = require('./pipelineVidesV1');
+const { controlePhoto, classifierCuisine, classifierSdb } = require('./pipelineVidesV1');
+const { ETATS_SDB_AVEC_CHOIX, OPTIONS_SDB, recommandationSdb } = require('./salleDeBainV4');
 const { confirmerPaiementCommande } = require('./confirmationCommande');
 const upload = multer({ storage: multer.memoryStorage() });
 const router = express.Router();
@@ -176,7 +177,9 @@ router.post('/upload-photo', upload.single('photo'), async (req, res) => {
 });
 
 // ─── POST /api/payments/verifier-photo ───────────────────────────────────────────
-// Bien vide, AVANT paiement : Contrôle Photo V1 (+ classification si cuisine).
+// Bien vide, AVANT paiement : Contrôle Photo V1 (+ classification si cuisine
+// ou salle de bain). Pour une salle de bain, le choix du niveau est renvoyé
+// avec le même statut 'CHOIX_CUISINE' (même écran de choix côté site).
 // Réponses possibles :
 //  { statut: 'ACCEPTEE', verification, jeton }
 //  { statut: 'CHOIX_CUISINE', verification, jeton, recommandation, options }
@@ -209,6 +212,7 @@ router.post('/verifier-photo', verificationLimiter, async (req, res) => {
       allow_generation: true,
       reason: controle.reason || null,
       cuisine: null,
+      sdb: null,
     };
 
     if (roomType === 'cuisine') {
@@ -227,6 +231,35 @@ router.post('/verifier-photo', verificationLimiter, async (req, res) => {
             { id: 'valorisation_douce', label: 'Valorisation douce', description: "Moderniser légèrement l'existant : désencombrement, harmonisation et rafraîchissement, tout en conservant fortement l'aspect actuel de la cuisine." },
             { id: 'projection_modernisee', label: 'Projection modernisée', description: "Montrer le potentiel d'une cuisine plus actuelle : modernisation cohérente des façades, du plan de travail, de la crédence et des murs, en conservant l'implantation et les contraintes réelles." },
           ],
+        });
+      }
+    }
+
+    if (roomType === 'salle_bain') {
+      const classification = await classifierSdb(url);
+
+      if (classification.status === 'PHOTO_A_REPRENDRE') {
+        return res.json({
+          statut: 'REFUSEE',
+          raison: classification.reason || "Cette photo ne permet pas de projeter la salle de bain de façon fiable.",
+          conseil: "Reprenez la photo en montrant clairement la pièce et ses arrivées d'eau.",
+        });
+      }
+
+      verification.sdb = classification.status || null;
+
+      if (ETATS_SDB_AVEC_CHOIX.includes(classification.status)) {
+        return res.json({
+          statut: 'CHOIX_CUISINE',
+          piece: 'salle_bain',
+          verification,
+          jeton: signerVerification(url, roomType, verification),
+          recommandation: recommandationSdb(classification.status),
+          options: OPTIONS_SDB.map((o) => ({
+            id: o.id,
+            label: o.id === 'valorisation_douce' ? 'Valorisation douce' : 'Projection modernisée',
+            description: o.label,
+          })),
         });
       }
     }
@@ -260,6 +293,10 @@ function erreurPhotosBienVide(photos, formula, options) {
     const choixRequis = p.roomType === 'cuisine' && ETATS_CUISINE_AVEC_CHOIX.includes(p.verification.cuisine);
     if (choixRequis && !CHOIX_CUISINE_VALIDES.includes(p.choixCuisine)) {
       return `Photo ${n} : merci de choisir le niveau de transformation de la cuisine.`;
+    }
+    const choixSdbRequis = p.roomType === 'salle_bain' && ETATS_SDB_AVEC_CHOIX.includes(p.verification.sdb);
+    if (choixSdbRequis && !CHOIX_CUISINE_VALIDES.includes(p.choixCuisine)) {
+      return `Photo ${n} : merci de choisir le niveau de traitement de la salle de bain.`;
     }
   }
   return null;
@@ -359,7 +396,8 @@ router.post('/create-checkout', async (req, res) => {
             ...(isHabite ? {} : {
               "Statut génération": { select: { name: 'En attente paiement' } },
               "Contrôle photo": { rich_text: [{ text: { content: JSON.stringify(photo.verification).slice(0, 1900) } }] },
-              ...(photo.roomType === 'cuisine' && CHOIX_CUISINE_VALIDES.includes(photo.choixCuisine)
+              // La colonne « Choix cuisine » porte aussi le choix de niveau d'une salle de bain
+              ...(['cuisine', 'salle_bain'].includes(photo.roomType) && CHOIX_CUISINE_VALIDES.includes(photo.choixCuisine)
                 ? { "Choix cuisine": { select: { name: photo.choixCuisine } } }
                 : {}),
             }),
