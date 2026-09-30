@@ -8,9 +8,12 @@
 // générateur (generateurJob.js) la traite, et l'image « Après » attend votre
 // validation, exactement comme pour les particuliers.
 //
-// Quota mensuel : photos incluses dans l'offre + « Photos supplémentaires »
-// (colonne nombre de la fiche abonnement, facultative), compté par mois
-// calendaire sur la colonne « Photos reçues » des projets du mois.
+// Quota :
+//  - photos INCLUSES dans l'offre : remises à zéro chaque mois calendaire ;
+//  - photos SUPPLÉMENTAIRES achetées : un solde (colonne « Photos
+//    supplémentaires » de la fiche abonnement), valable sans limite de durée.
+// Un projet consomme d'abord les photos incluses du mois, puis le solde.
+// La part prise sur le solde est notée dans « Photos sur supplément » du projet.
 const express = require('express');
 const axios = require('axios');
 const crypto = require('crypto');
@@ -23,6 +26,15 @@ const NOTION_HEADERS = {
   Authorization: `Bearer ${process.env.NOTION_API_KEY}`,
   'Notion-Version': '2022-06-28',
   'Content-Type': 'application/json',
+};
+
+const SITE_URL = 'https://evidence-platform-pied.vercel.app';
+
+// Prix d'une photo supplémentaire selon l'offre, en centimes
+const PRIX_PHOTO_SUP = {
+  pro_starter: 1200,
+  pro_business: 900,
+  pro_agency: 700,
 };
 
 const OFFER_PHOTOS_LIMIT = {
@@ -84,7 +96,7 @@ async function abonnementActif(email) {
   return false;
 }
 
-// Photos déjà envoyées ce mois-ci (mois calendaire) par cet abonnement
+// Photos INCLUSES déjà utilisées ce mois-ci (mois calendaire) par cet abonnement
 async function photosDuMois(subPageId) {
   const now = new Date();
   const debutMois = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
@@ -104,17 +116,32 @@ async function photosDuMois(subPageId) {
       },
       { headers: NOTION_HEADERS }
     );
-    for (const p of res.data.results) total += p.properties['Photos reçues']?.number || 0;
+    for (const p of res.data.results) {
+      const recues = p.properties['Photos reçues']?.number || 0;
+      const surSupplement = p.properties['Photos sur supplément']?.number || 0;
+      total += Math.max(0, recues - surSupplement);
+    }
     cursor = res.data.has_more ? res.data.next_cursor : undefined;
   } while (cursor);
   return total;
 }
 
-function quotaDe(subPage) {
+async function quotaDe(subPage) {
   const offre = subPage.properties['Offre']?.select?.name || 'pro_starter';
   const inclus = OFFER_PHOTOS_LIMIT[offre] || 0;
-  const supplementaires = subPage.properties['Photos supplémentaires']?.number || 0;
-  return { offre, inclus, supplementaires, total: inclus + supplementaires };
+  const supplementaires = Math.max(0, subPage.properties['Photos supplémentaires']?.number || 0);
+  const utilisees = await photosDuMois(subPage.id);
+  const inclusRestantes = Math.max(0, inclus - utilisees);
+  return {
+    offre,
+    inclus,
+    utilisees,
+    inclusRestantes,
+    supplementaires,
+    restantes: inclusRestantes + supplementaires,
+    total: inclus + supplementaires,
+    prixPhotoSup: (PRIX_PHOTO_SUP[offre] || PRIX_PHOTO_SUP.pro_starter) / 100,
+  };
 }
 
 // ─── GET /api/pro/projects/quota ────────────────────────────────────────────
@@ -124,9 +151,7 @@ router.get('/quota', async (req, res) => {
   try {
     const subPage = await trouverAbonnement(decoded.email);
     if (!subPage) return res.status(404).json({ error: 'Abonnement non trouvé.' });
-    const q = quotaDe(subPage);
-    const utilisees = await photosDuMois(subPage.id);
-    res.json({ ...q, utilisees, restantes: Math.max(0, q.total - utilisees) });
+    res.json(await quotaDe(subPage));
   } catch (err) {
     console.error('[ProProjects] Erreur quota:', err.response?.data || err.message);
     res.status(500).json({ error: 'Impossible de lire votre quota.' });
@@ -186,15 +211,16 @@ router.post('/create', async (req, res) => {
       return res.status(403).json({ error: "Votre abonnement n'est pas actif. Vérifiez votre facturation." });
     }
 
-    const q = quotaDe(subPage);
-    const utilisees = await photosDuMois(subPage.id);
-    const restantes = Math.max(0, q.total - utilisees);
+    const q = await quotaDe(subPage);
+    const restantes = q.restantes;
     if (photos.length > restantes) {
       return res.status(403).json({
-        error: `Quota atteint : il vous reste ${restantes} photo(s) ce mois-ci. Retirez des photos, ou changez d'offre.`,
+        error: `Quota atteint : il vous reste ${restantes} photo(s). Retirez des photos, achetez des photos supplémentaires ou changez d'offre.`,
         restantes,
       });
     }
+    // D'abord les photos incluses du mois, puis le solde de photos supplémentaires
+    const surSupplement = Math.max(0, photos.length - q.inclusRestantes);
 
     // 1. Le projet
     const famille = FAMILLES_STYLE[crypto.randomInt(FAMILLES_STYLE.length)];
@@ -209,6 +235,7 @@ router.post('/create', async (req, res) => {
           'Statut': { select: { name: 'Nouveau' } },
           'Photos reçues': { number: photos.length },
           'Photos livrées': { number: 0 },
+          'Photos sur supplément': { number: surSupplement },
           'Type de bien': { select: { name: typeBien === 'habite' ? 'Bien habité' : 'Bien vide' } },
           ...(typeBien === 'vide' ? { 'Famille style': { select: { name: famille } } } : {}),
         },
@@ -216,6 +243,15 @@ router.post('/create', async (req, res) => {
       { headers: NOTION_HEADERS }
     );
     const projetId = projetRes.data.id;
+
+    // Le solde de photos supplémentaires est débité de la part utilisée
+    if (surSupplement > 0) {
+      await axios.patch(
+        `https://api.notion.com/v1/pages/${subPage.id}`,
+        { properties: { 'Photos supplémentaires': { number: q.supplementaires - surSupplement } } },
+        { headers: NOTION_HEADERS }
+      );
+    }
 
     // 2. Une ligne « Avant » par photo, directement dans la file du générateur
     for (let i = 0; i < photos.length; i++) {
@@ -250,6 +286,79 @@ router.post('/create', async (req, res) => {
     res.status(500).json({ error: 'Erreur lors de la création du projet.' });
   }
 });
+
+// ─── POST /api/pro/projects/acheter-photos ──────────────────────────────────
+// Corps : { quantite } — crée un paiement Stripe ponctuel. Le solde est
+// crédité par le webhook Stripe à la confirmation du paiement.
+router.post('/acheter-photos', async (req, res) => {
+  const decoded = verifyToken(req);
+  if (!decoded) return res.status(401).json({ error: 'Non authentifié.' });
+
+  const quantite = parseInt(req.body?.quantite, 10);
+  if (!Number.isInteger(quantite) || quantite < 1 || quantite > 100) {
+    return res.status(400).json({ error: 'Choisissez entre 1 et 100 photos.' });
+  }
+
+  try {
+    const subPage = await trouverAbonnement(decoded.email);
+    if (!subPage) return res.status(404).json({ error: 'Abonnement non trouvé.' });
+    if (!(await abonnementActif(decoded.email))) {
+      return res.status(403).json({ error: "Votre abonnement n'est pas actif. Vérifiez votre facturation." });
+    }
+
+    const offre = subPage.properties['Offre']?.select?.name || 'pro_starter';
+    const prix = PRIX_PHOTO_SUP[offre] || PRIX_PHOTO_SUP.pro_starter;
+
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      customer_email: decoded.email,
+      line_items: [{
+        price_data: {
+          currency: 'eur',
+          unit_amount: prix,
+          product_data: { name: 'Photos supplémentaires — Evidence PRO' },
+        },
+        quantity: quantite,
+      }],
+      success_url: `${SITE_URL}/dashboard?achat=ok`,
+      cancel_url: `${SITE_URL}/dashboard`,
+      metadata: {
+        type: 'pro_photos_sup',
+        subPageId: subPage.id,
+        quantite: String(quantite),
+        email: decoded.email,
+      },
+    });
+
+    console.log(`[ProProjects] Achat photos sup. — ${decoded.email} — ${quantite} photo(s)`);
+    res.json({ checkoutUrl: session.url });
+  } catch (err) {
+    console.error('[ProProjects] Erreur achat photos:', err.response?.data || err.message);
+    res.status(500).json({ error: "Impossible de lancer l'achat." });
+  }
+});
+
+// Crédit du solde après paiement — appelé par le webhook Stripe.
+// Protégé contre un double traitement d'un même paiement.
+const sessionsCreditees = new Set();
+async function crediterPhotosSupplementaires(session) {
+  const m = session.metadata || {};
+  if (m.type !== 'pro_photos_sup' || session.payment_status !== 'paid') return false;
+  if (sessionsCreditees.has(session.id)) return false;
+  sessionsCreditees.add(session.id);
+
+  const quantite = parseInt(m.quantite, 10) || 0;
+  const pageRes = await axios.get(`https://api.notion.com/v1/pages/${m.subPageId}`, { headers: NOTION_HEADERS });
+  const solde = pageRes.data.properties['Photos supplémentaires']?.number || 0;
+  await axios.patch(
+    `https://api.notion.com/v1/pages/${m.subPageId}`,
+    { properties: { 'Photos supplémentaires': { number: solde + quantite } } },
+    { headers: NOTION_HEADERS }
+  );
+  console.log(`[ProProjects] ${quantite} photo(s) supplémentaire(s) créditée(s) — ${m.email} — solde ${solde + quantite}`);
+  return true;
+}
 
 // ─── GET /api/pro/projects/:id ──────────────────────────────────────────────
 // Détail d'un projet pour son propriétaire : infos + paires avant / après.
@@ -323,3 +432,4 @@ router.get('/:id', async (req, res) => {
 
 module.exports = router;
 module.exports.ROOM_TYPES_HABITE = ROOM_TYPES_HABITE;
+module.exports.crediterPhotosSupplementaires = crediterPhotosSupplementaires;
