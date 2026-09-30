@@ -251,5 +251,75 @@ router.post('/create', async (req, res) => {
   }
 });
 
+// ─── GET /api/pro/projects/:id ──────────────────────────────────────────────
+// Détail d'un projet pour son propriétaire : infos + paires avant / après.
+// Seules les images « Après » VALIDÉES par l'équipe sont visibles.
+router.get('/:id', async (req, res) => {
+  const decoded = verifyToken(req);
+  if (!decoded) return res.status(401).json({ error: 'Non authentifié.' });
+
+  try {
+    const subPage = await trouverAbonnement(decoded.email);
+    if (!subPage) return res.status(404).json({ error: 'Abonnement non trouvé.' });
+
+    const projetRes = await axios.get(`https://api.notion.com/v1/pages/${req.params.id}`, { headers: NOTION_HEADERS });
+    const projet = projetRes.data;
+    const proprietaire = (projet.properties['Nom entreprise']?.relation || []).some((r) => r.id === subPage.id);
+    if (!proprietaire) return res.status(404).json({ error: 'Projet introuvable.' });
+
+    // Toutes les photos du projet, dans l'ordre de création
+    const photos = [];
+    let cursor;
+    do {
+      const r = await axios.post(
+        `https://api.notion.com/v1/databases/${process.env.NOTION_PHOTOS_PRO_DATABASE_ID}/query`,
+        {
+          filter: { property: 'Projet', relation: { contains: projet.id } },
+          sorts: [{ timestamp: 'created_time', direction: 'ascending' }],
+          start_cursor: cursor,
+        },
+        { headers: NOTION_HEADERS }
+      );
+      photos.push(...r.data.results);
+      cursor = r.data.has_more ? r.data.next_cursor : undefined;
+    } while (cursor);
+
+    const lire = (ph) => ({
+      piece: (ph.properties['Pièce']?.select?.name || '').toLowerCase(),
+      url: ph.properties['URL photo']?.url || null,
+      statut: ph.properties['Statut']?.select?.name || '',
+    });
+    const avants = photos.filter((ph) => ph.properties['Type']?.select?.name === 'Avant').map(lire);
+    const apresValides = photos
+      .filter((ph) => ph.properties['Type']?.select?.name === 'Après')
+      .map(lire)
+      .filter((a) => ['Validé', 'Envoyé'].includes(a.statut));
+
+    // Chaque « Après » validée est associée à une « Avant » de la même pièce
+    const utilisees = new Set();
+    const paires = apresValides.map((apres) => {
+      const i = avants.findIndex((av, idx) => !utilisees.has(idx) && av.piece === apres.piece);
+      if (i >= 0) utilisees.add(i);
+      return { piece: apres.piece, avant: i >= 0 ? avants[i].url : null, apres: apres.url };
+    });
+
+    const pp = projet.properties;
+    res.json({
+      id: projet.id,
+      name: pp['Nom du projet']?.title?.[0]?.plain_text || '—',
+      projectId: pp['ID projet']?.unique_id ? `${pp['ID projet'].unique_id.prefix}-${pp['ID projet'].unique_id.number}` : '—',
+      status: pp['Statut']?.select?.name || '—',
+      typeBien: pp['Type de bien']?.select?.name || null,
+      createdDate: pp['Date de création']?.date?.start || projet.created_time,
+      photosReceived: avants.length,
+      photosDelivered: paires.length,
+      paires,
+    });
+  } catch (err) {
+    console.error('[ProProjects] Erreur détail:', err.response?.data || err.message);
+    res.status(500).json({ error: 'Impossible de charger le projet.' });
+  }
+});
+
 module.exports = router;
 module.exports.ROOM_TYPES_HABITE = ROOM_TYPES_HABITE;
