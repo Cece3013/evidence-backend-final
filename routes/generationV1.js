@@ -12,8 +12,8 @@ const { createPage, lireTexte, lireReference } = require('./notionHelpers');
 // ─── INTERRUPTEUR STYLE_VARIANT EN PRODUCTION ─────────────────────────────────
 // false : génération avec le style du Noyau seul (comme avant STYLE_VARIANT).
 // true  : la famille de la commande (colonne "Famille style") est appliquée.
-// À passer à true après validation définitive de STYLE_VARIANT V2.
-const STYLE_VARIANT_PRODUCTION_ACTIF = false;
+// Activé le 29/09/2026 : familles validées pour salon, chambres, cuisine et entrée.
+const STYLE_VARIANT_PRODUCTION_ACTIF = true;
 
 // Même modèle que les tests ; modifiable depuis Railway (variable OPENAI_IMAGE_MODEL).
 const MODELE_IMAGE = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-2.5-sunburst';
@@ -82,7 +82,9 @@ async function genererPhotoCommande(photoPage, clientPage) {
 
   const imageUrl = pp['URL photo']?.url;
   const roomType = pp['Pièce']?.select?.name;
-  const choixCuisine = pp['Choix cuisine']?.select?.name || null;
+  // La colonne « Choix cuisine » porte le choix de niveau de la cuisine
+  // ou de la salle de bain, selon la pièce.
+  const choixNiveau = pp['Choix cuisine']?.select?.name || null;
   const famille = cp['Famille style']?.select?.name || null;
   if (!imageUrl || !roomType) throw new Error('Photo sans URL ou sans type de pièce.');
 
@@ -98,7 +100,8 @@ async function genererPhotoCommande(photoPage, clientPage) {
   const parametres = {
     photoPrincipale: imageUrl,
     roomType,
-    choixCuisine,
+    choixCuisine: roomType === 'cuisine' ? choixNiveau : null,
+    choixSdb: roomType === 'salle_bain' ? choixNiveau : null,
     utiliserStyleVariant: STYLE_VARIANT_PRODUCTION_ACTIF && Boolean(famille),
     familleForcee: famille,
     controleDejaEffectue,
