@@ -7,6 +7,7 @@ const axios = require('axios');
 const crypto = require('crypto');
 const FormData = require('form-data');
 const { buildPromptBienVideV1 } = require('./pipelineVidesV1');
+const { buildPromptHabitesPro } = require('./promptsHabitesPro');
 const { createPage, lireTexte, lireReference } = require('./notionHelpers');
 
 // ─── INTERRUPTEUR STYLE_VARIANT EN PRODUCTION ─────────────────────────────────
@@ -152,4 +153,80 @@ async function genererPhotoCommande(photoPage, clientPage) {
   return { statut: 'GENERE', url: generatedUrl, familleUtilisee: resultat.styleVariantId || null };
 }
 
-module.exports = { genererPhotoCommande, STYLE_VARIANT_PRODUCTION_ACTIF };
+/**
+ * PRO : génère l'image "Après" d'une photo "Avant" d'un projet PRO et la
+ * dépose dans Photos PRO, en attente de validation humaine.
+ * Bien vide → pipeline V1 (choix cuisine / SDB, famille du projet).
+ * Bien habité → pipeline habités PRO validé.
+ */
+async function genererPhotoPro(photoPage, projetPage) {
+  const pp = photoPage.properties;
+  const prj = projetPage.properties;
+
+  const imageUrl = pp['URL photo']?.url;
+  const roomType = pp['Pièce']?.select?.name;
+  if (!imageUrl || !roomType) throw new Error('Photo sans URL ou sans type de pièce.');
+
+  const habite = prj['Type de bien']?.select?.name === 'Bien habité';
+  let prompt;
+  let familleUtilisee = null;
+
+  if (habite) {
+    ({ prompt } = await buildPromptHabitesPro(roomType, imageUrl));
+  } else {
+    const choixNiveau = pp['Choix cuisine']?.select?.name || null;
+    const famille = prj['Famille style']?.select?.name || null;
+
+    let controleDejaEffectue = null;
+    try {
+      const texte = lireTexte(pp['Contrôle photo']);
+      if (texte) controleDejaEffectue = JSON.parse(texte);
+    } catch {
+      controleDejaEffectue = null;
+    }
+
+    const parametres = {
+      photoPrincipale: imageUrl,
+      roomType,
+      choixCuisine: roomType === 'cuisine' ? choixNiveau : null,
+      choixSdb: roomType === 'salle_bain' ? choixNiveau : null,
+      utiliserStyleVariant: STYLE_VARIANT_PRODUCTION_ACTIF && Boolean(famille),
+      familleForcee: famille,
+      controleDejaEffectue,
+    };
+
+    let resultat = await buildPromptBienVideV1(parametres);
+    if (resultat.status === 'CHOIX_CUISINE_REQUIS') {
+      resultat = await buildPromptBienVideV1({ ...parametres, choixCuisine: resultat.recommandation });
+    }
+    if (resultat.status === 'CHOIX_SDB_REQUIS') {
+      resultat = await buildPromptBienVideV1({ ...parametres, choixSdb: resultat.recommandation });
+    }
+    if (resultat.status === 'PHOTO_A_REPRENDRE') {
+      return { statut: 'A_VERIFIER', raison: resultat.raison || 'Photo refusée par le contrôle.' };
+    }
+    prompt = resultat.prompt;
+    familleUtilisee = resultat.styleVariantId || null;
+  }
+
+  const generatedUrl = await genererImage(prompt, imageUrl);
+  const nomProjet = prj['Nom du projet']?.title?.[0]?.plain_text || '—';
+
+  const proprietes = {
+    'Titre': { title: [{ text: { content: `${nomProjet} — ${roomType} — Après` } }] },
+    'Projet': { relation: [{ id: projetPage.id }] },
+    'Type': { select: { name: 'Après' } },
+    'URL photo': { url: generatedUrl },
+    'Pièce': { select: { name: roomType } },
+    'Statut': { select: { name: 'En attente' } },
+    'Statut génération': { select: { name: 'Généré' } },
+  };
+  if (familleUtilisee) proprietes['Famille style'] = { select: { name: familleUtilisee } };
+
+  await createPage(process.env.NOTION_PHOTOS_PRO_DATABASE_ID, proprietes);
+  console.log(`[GenerationV1] PRO Après créé — ${nomProjet} — ${roomType} — ${habite ? 'habité' : 'vide'}`);
+
+  return { statut: 'GENERE', url: generatedUrl, familleUtilisee };
+}
+
+module.exports = { genererPhotoCommande, genererPhotoPro, STYLE_VARIANT_PRODUCTION_ACTIF };
