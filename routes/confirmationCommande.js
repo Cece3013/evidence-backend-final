@@ -94,8 +94,10 @@ async function confirmerPaiementCommande(session) {
 
     const isHabite = m.isHabite === 'true';
 
-    // Bien vide : les photos "Avant" passent dans la file d'attente du générateur
-    if (!isHabite) {
+    // Les photos "Avant" passent dans la file d'attente du générateur.
+    // Bien habité : les images générées servent UNIQUEMENT au rapport PDF
+    // (jamais envoyées au client, jamais comptées dans la livraison).
+    {
       const photos = await queryAll(process.env.NOTION_PHOTOS_DATABASE_ID, {
         filter: {
           and: [
