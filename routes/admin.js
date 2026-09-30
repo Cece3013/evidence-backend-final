@@ -335,6 +335,8 @@ router.post('/send-pdf', requireAdmin, async (req, res) => {
             files: [{ name: fileName || 'rapport.pdf', external: { url: pdfUrl } }],
           },
           'PDF livré': { checkbox: true },
+          // Le rapport PDF est la livraison d'une commande habitée
+          'Statut': { select: { name: 'Terminé' } },
         },
       },
       { headers: NOTION_HEADERS }
