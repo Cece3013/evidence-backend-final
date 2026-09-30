@@ -91,6 +91,13 @@ async function genererPhotoCommande(photoPage, clientPage) {
   const famille = cp['Famille style']?.select?.name || null;
   if (!imageUrl || !roomType) throw new Error('Photo sans URL ou sans type de pièce.');
 
+  // Bien habité : même parcours IA que les habités PRO. L'image est réservée
+  // à l'usage interne (rapport PDF) : jamais envoyée au client.
+  const typePrestation = cp['Type de prestation']?.select?.name || '';
+  if (typePrestation.toLowerCase().includes('habité')) {
+    return genererPhotoHabiteParticulier(photoPage, clientPage, imageUrl, roomType);
+  }
+
   // Contrôle photo déjà fait avant paiement : on le réutilise (pas de second contrôle)
   let controleDejaEffectue = null;
   try {
@@ -153,6 +160,35 @@ async function genererPhotoCommande(photoPage, clientPage) {
   console.log(`[GenerationV1] Après créé — ${reference} — ${roomType}${resultat.styleVariantId ? ` — famille ${resultat.styleVariantId}` : ''}`);
 
   return { statut: 'GENERE', url: generatedUrl, familleUtilisee: resultat.styleVariantId || null };
+}
+
+/**
+ * Particulier habité : pipeline habités PRO validé. L'image « Après » est
+ * déposée dans Photos Particuliers pour USAGE INTERNE (rapport PDF).
+ * validationJob.js ne livre jamais ces commandes : le client reçoit
+ * uniquement le PDF, envoyé depuis la page admin.
+ */
+async function genererPhotoHabiteParticulier(photoPage, clientPage, imageUrl, roomType) {
+  const cp = clientPage.properties;
+  const { prompt } = await buildPromptHabitesPro(roomType, imageUrl);
+  const generatedUrl = await genererImage(prompt, imageUrl);
+
+  const clientName = cp['Nom du Client']?.title?.[0]?.plain_text || '—';
+  const reference = lireReference(cp) || '—';
+
+  await createPage(process.env.NOTION_PHOTOS_DATABASE_ID, {
+    'Titre': { title: [{ text: { content: `${clientName} — ${roomType} — Après (usage interne PDF) — ${reference}` } }] },
+    'Nom du Client': { relation: [{ id: clientPage.id }] },
+    'Type': { select: { name: 'Après' } },
+    'URL photo': { url: generatedUrl },
+    'Pièce': { select: { name: roomType } },
+    'Statut': { select: { name: 'En attente' } },
+    'Type de prestation': { select: { name: 'Bien habité' } },
+    'Statut génération': { select: { name: 'Généré' } },
+  });
+  console.log(`[GenerationV1] Après habité (usage interne) créé — ${reference} — ${roomType}`);
+
+  return { statut: 'GENERE', url: generatedUrl, familleUtilisee: null };
 }
 
 /**
