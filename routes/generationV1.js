@@ -82,7 +82,9 @@ async function genererPhotoCommande(photoPage, clientPage) {
   const cp = clientPage.properties;
 
   const imageUrl = pp['URL photo']?.url;
-  const roomType = pp['Pièce']?.select?.name;
+  // Notion peut renvoyer « Cuisine » au lieu de « cuisine » quand une ancienne
+  // option avec majuscule existe déjà dans la colonne : on normalise.
+  const roomType = (pp['Pièce']?.select?.name || '').trim().toLowerCase() || null;
   // La colonne « Choix cuisine » porte le choix de niveau de la cuisine
   // ou de la salle de bain, selon la pièce.
   const choixNiveau = pp['Choix cuisine']?.select?.name || null;
@@ -164,7 +166,9 @@ async function genererPhotoPro(photoPage, projetPage) {
   const prj = projetPage.properties;
 
   const imageUrl = pp['URL photo']?.url;
-  const roomType = pp['Pièce']?.select?.name;
+  // Notion peut renvoyer « Cuisine » au lieu de « cuisine » quand une ancienne
+  // option avec majuscule existe déjà dans la colonne : on normalise.
+  const roomType = (pp['Pièce']?.select?.name || '').trim().toLowerCase() || null;
   if (!imageUrl || !roomType) throw new Error('Photo sans URL ou sans type de pièce.');
 
   const habite = prj['Type de bien']?.select?.name === 'Bien habité';
