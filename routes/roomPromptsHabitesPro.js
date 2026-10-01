@@ -954,6 +954,7 @@ extrêmement photoréaliste ;
 
 Le résultat doit donner l’impression qu’un home stager immobilier professionnel est intervenu uniquement par le désencombrement, l’harmonisation des textiles, la simplification de la décoration et la mise en valeur des volumes, sans modifier l’architecture ni l’identité de la chambre.`,
 
+  // Correctif 01/10/2026 : la neutralisation ne passe plus par les meubles ni les murs.
   chambre_enfant: `MODULE H4 PRO V5.2 — CHAMBRE ENFANT
 HABITÉE
 
@@ -1054,12 +1055,26 @@ La chambre ne doit jamais sembler vide.
 
 NEUTRALISATION DE LA PERSONNALISATION
 
-Réduire discrètement les éléments trop marqués :
-• personnages de dessins animés ;
-• licences ;
-• affiches très personnalisées ;
-• couleurs très vives ;
-• objets très spécifiques.
+Réduire discrètement les éléments trop marqués
+(personnages de dessins animés, licences, affiches très personnalisées,
+couleurs très vives, objets très spécifiques)
+UNIQUEMENT par :
+• le linge de lit ;
+• les coussins ;
+• les accessoires ;
+• les jouets et objets visibles ;
+• les affiches et la décoration personnelle ;
+• le désencombrement.
+
+Ne jamais recolorer, remplacer ou transformer les meubles existants,
+même s’ils sont très colorés ou portent un motif marqué :
+lit et tête de lit, coffre, fauteuil, bureau, chaise,
+rangements et tous les autres meubles restent strictement identiques
+(forme, couleur, motif, matière).
+
+Conserver les murs, peintures, papiers peints et revêtements
+exactement tels qu’ils sont, même foncés ou très colorés.
+La neutralisation ne passe jamais par les meubles ni par les murs.
 
 Conserver uniquement quelques éléments neutres permettant de comprendre qu’il s’agit bien d’une chambre d’enfant.
 La chambre doit pouvoir convenir aussi bien à une fille qu’à un garçon.
