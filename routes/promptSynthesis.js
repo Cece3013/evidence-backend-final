@@ -11,6 +11,8 @@ Les meubles présents sur la photo ne doivent subir AUCUNE transformation :
 ne jamais ajouter de tiroir, de poignée, d'étagère ou de porte à un meuble existant ;
 ne jamais changer ses dimensions, ses matériaux, sa finition ou sa couleur.
 Un meuble conservé doit rester strictement identique à l'original.
+Conserver la couleur et la teinte exactes des murs, peintures et papiers peints,
+même foncés : ne jamais les éclaircir ni les repeindre.
 
 2. DÉPERSONNALISATION COMPLÈTE
 Retirer systématiquement de la scène : photographies de famille, portraits encadrés,
@@ -28,6 +30,8 @@ Lorsqu'une fenêtre ou une porte-fenêtre est assombrie par un volet, un store o
 rideaux fermés, les présenter ouverts ou dégagés lorsque cela est physiquement plausible
 afin de maximiser la lumière naturelle. Ne jamais modifier la taille, la position ou la
 forme de l'ouverture.
+Appliquer à CHAQUE fenêtre et porte-fenêtre visible, y compris secondaire ou en
+arrière-plan : volet roulant baissé ou store descendu, présenté relevé.
 
 5. DÉFAUTS RÉELS DU BÂTI
 Ne jamais réparer, masquer ou effacer numériquement un défaut réel visible du bâti ou
@@ -96,6 +100,8 @@ ${microTexts.length ? '=== AJUSTEMENTS SPÉCIFIQUES DÉTECTÉS ===\n' + microTex
 
     const prompt = response.data.choices[0].message.content.trim();
     console.log(`[PromptSynthesis] Prompt synthétisé : ${prompt.length} caractères`);
+    // Diagnostic : prompt final exact envoyé au modèle d'image
+    console.log(`[PromptSynthesis] PROMPT FINAL (${roomType}) :\n${prompt}`);
     return prompt;
   } catch (err) {
     console.error('[PromptSynthesis] Erreur:', err.response?.data || err.message);
