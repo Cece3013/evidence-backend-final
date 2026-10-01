@@ -22,6 +22,17 @@ Les murs peuvent recevoir une décoration neutre et impersonnelle à la place.
 Chaque espace doit être immédiatement identifiable par son usage.
 Pour un salon : la présence d'une table basse devant l'assise principale est
 OBLIGATOIRE, même de petite taille. Sans elle, l'espace n'est pas lisible comme un salon.
+
+4. LUMIÈRE NATURELLE
+Lorsqu'une fenêtre ou une porte-fenêtre est assombrie par un volet, un store ou des
+rideaux fermés, les présenter ouverts ou dégagés lorsque cela est physiquement plausible
+afin de maximiser la lumière naturelle. Ne jamais modifier la taille, la position ou la
+forme de l'ouverture.
+
+5. DÉFAUTS RÉELS DU BÂTI
+Ne jamais réparer, masquer ou effacer numériquement un défaut réel visible du bâti ou
+d'un élément fixe : fissure, trace, dégradation, poutre abîmée, défaut de mur, etc.
+Le home staging valorise le bien mais ne masque pas son état réel.
 `.trim();
 
 /**
@@ -34,7 +45,7 @@ async function synthesizePrompt({ analysis, referenceRules, roomPrompt, microTex
 Ta mission : transformer une documentation de home staging très détaillée en UN SEUL prompt d'exécution compact, destiné au modèle gpt-image-2 via l'API d'édition d'image.
 
 CONTRAINTES DE SORTIE :
-- Entre 1400 et 2400 caractères maximum.
+- Entre 1800 et 3200 caractères maximum.
 - Rédigé en français, à l'impératif, en instructions directes.
 - Structuré par priorités décroissantes, dans cet ordre strict :
   PRIORITÉ 1 — conserver l'architecture, les volumes, la perspective et les meubles principaux identifiés, SANS AUCUNE MODIFICATION de ces meubles.
@@ -46,7 +57,7 @@ CONTRAINTES DE SORTIE :
 - N'invente aucun élément absent de la documentation ou de l'analyse.
 
 OBLIGATION ABSOLUE :
-Les trois règles ci-dessous doivent être reprises intégralement et explicitement dans le prompt final.
+Les cinq règles ci-dessous doivent être reprises intégralement et explicitement dans le prompt final.
 Elles priment sur toute autre considération et ne doivent jamais être résumées ni omises.
 
 === RÈGLES NON NÉGOCIABLES ===
@@ -71,7 +82,7 @@ ${microTexts.length ? '=== AJUSTEMENTS SPÉCIFIQUES DÉTECTÉS ===\n' + microTex
       'https://api.openai.com/v1/chat/completions',
       {
         model: 'gpt-4o',
-        max_tokens: 1400,
+        max_tokens: 1800,
         messages: [{ role: 'user', content: instructions }],
       },
       {
