@@ -178,7 +178,20 @@ async function createNotionRecord(clientData, commandeData, photosData) {
 }
 
 // ─── POST /api/staging/submit ─────────────────────────────────────────────────
-router.post('/submit', async (req, res) => {
+// ─── FERMÉE le 01/10/2026 ─────────────────────────────────────────────────────
+// Cette route (ancienne application mobile) créait des commandes marquées
+// « Paiement réussi » SANS paiement Stripe et générait avec l'ancien système.
+// Les commandes passent désormais uniquement par le site (/api/payments).
+// L'application mobile ouvrira les pages du site (alignement V1).
+router.post('/submit', (req, res) => {
+  console.warn('[Staging] Tentative sur /submit (route fermée) — refusée.');
+  return res.status(410).json({
+    error: "Les commandes se font désormais sur notre site : https://evidence-platform-pied.vercel.app/commande",
+  });
+});
+
+// Ancienne version, conservée pour mémoire mais plus jamais appelée.
+router.post('/submit-ancien-desactive', requireAdmin, async (req, res) => {
   const {
     photos, clientName, clientEmail, clientPhone, propertyAddress,
     propertyType, propertySize, exteriorFeatures, isHabite,
