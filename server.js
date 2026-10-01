@@ -6,7 +6,6 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const stripeWebhook = require('./webhooks/stripeWebhook');
 const paymentsRouter = require('./routes/payments');
-const aiRouter = require('./routes/ai');
 const invoicesRouter = require('./routes/invoices');
 const adminRouter = require('./routes/admin');
 const authRouter = require('./routes/auth');
@@ -64,12 +63,12 @@ app.use('/api', apiLimiter);
 
 // ─── Routes ──────────────────────────────────────────────────────────────────────
 // Retirées : routes/orders.js et routes/notion.js (anciennes routes inactives)
+// Débranchées le 01/10/2026 : /api/ai (ancien système de génération) et
+// /api/test-staging (ancienne page de test) — publiques et plus utilisées.
 app.use('/api/payments', paymentsRouter);
 const clientAuthRouter = require('./routes/clientAuth');
 app.use('/api', clientAuthRouter);
-app.use('/api/ai', aiRouter);
 app.use('/api/staging', stagingRouter);
-app.use('/api/ai/free-trial', freeTrialLimiter);
 app.use('/api/invoices', invoicesRouter);
 app.use('/admin', adminRouter);
 app.use('/api/auth', authRouter);
@@ -77,8 +76,6 @@ app.use('/api/orders/client', authRouter);
 app.use('/api/pro', proSubscriptionRouter);
 app.use('/api/pro/auth', require('./routes/proAuth'));
 app.use('/api/pro/projects', require('./routes/proProjects'));
-const testStagingRouter = require('./routes/testStaging');
-app.use('/api/test-staging', testStagingRouter);
 const testStagingV1Router = require('./routes/testStagingV1');
 app.use('/api/test-staging-v1', testStagingV1Router);
 
