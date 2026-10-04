@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@notionhq/client": "^5.22.0",
+    "@pdf-lib/fontkit": "^1.1.1",
     "@sendgrid/mail": "^8.1.3",
     "aws-sdk": "^2.1624.0",
     "axios": "^1.7.2",
@@ -16,17 +17,17 @@
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "express-rate-limit": "^7.3.1",
+    "form-data": "^4.0.0",
     "helmet": "^7.1.0",
     "ioredis": "^5.4.1",
     "jsonwebtoken": "^9.0.3",
     "multer": "^1.4.5-lts.1",
+    "pdf-lib": "^1.17.1",
     "pdfkit": "^0.15.0",
     "resend": "^6.10.0",
     "sharp": "^0.33.4",
     "stripe": "^15.7.0",
     "uuid": "^10.0.0",
-    "form-data": "^4.0.0",
-    "multer": "^1.4.5-lts.1",
     "winston": "^3.13.0"
   }
 }
