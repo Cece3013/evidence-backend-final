@@ -2,11 +2,27 @@ const express = require('express');
 const axios = require('axios');
 const router = express.Router();
 
-router.post('/subscribe', async (req, res) => {
-  const { priceId, companyName, siret, email, phone, address, offerId, subscriptionDate } = req.body;
+// Prix Stripe des abonnements, choisis par le SERVEUR à partir de l'offre
+// (la page web ne peut plus imposer un prix). Pour passer en mode réel :
+// créer les 3 abonnements dans Stripe en mode live, puis renseigner ces
+// 3 variables dans Railway (aucune modification de code).
+const PRIX_PRO = {
+  pro_starter: process.env.STRIPE_PRICE_PRO_STARTER || 'price_1TjdIzBtigY0O7pljXLznLIs',
+  pro_business: process.env.STRIPE_PRICE_PRO_BUSINESS || 'price_1TjdJIBtigY0O7plmAViGr2c',
+  pro_agency: process.env.STRIPE_PRICE_PRO_AGENCY || 'price_1TjdJbBtigY0O7plhTK1GXe4',
+};
+const SITE_URL = 'https://evidence-platform-pied.vercel.app';
 
-  if (!priceId || !companyName || !siret || !email || !phone || !address || !offerId) {
+router.post('/subscribe', async (req, res) => {
+  const { companyName, siret, email, phone, address, offerId, subscriptionDate, cgvAcceptees } = req.body;
+  const priceId = PRIX_PRO[offerId];
+
+  if (!priceId || !companyName || !siret || !email || !phone || !address) {
     return res.status(400).json({ error: 'Données manquantes' });
+  }
+  // Acceptation des CGV obligatoire (case cochée sur la page d'inscription)
+  if (cgvAcceptees !== true) {
+    return res.status(400).json({ error: 'Merci d\'accepter les conditions générales de vente.' });
   }
 
   try {
@@ -33,8 +49,11 @@ router.post('/subscribe', async (req, res) => {
         'line_items[0][quantity]': '1',
         mode: 'subscription',
         customer: customerId,
-       success_url: 'https://evidence-platform-pied.vercel.app/dashboard?session_id={CHECKOUT_SESSION_ID}',
-        cancel_url: 'https://evidence-platform-pied.vercel.app/offers',
+        success_url: `${SITE_URL}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${SITE_URL}/inscription`,
+        // Preuve de l'acceptation des CGV, conservée dans Stripe
+        'metadata[cgvAcceptees]': new Date().toISOString(),
+        'subscription_data[metadata][cgvAcceptees]': new Date().toISOString(),
       }),
       {
         headers: {
