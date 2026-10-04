@@ -43,6 +43,11 @@ const ROOM_TYPES_V1 = [
   'chambre_enfant', 'chambre_ado', 'balcon_terrasse', 'entree',
 ];
 
+// Commandes PARTICULIERS (vide et habité) : pas d'« Entrée » (décision du
+// 01/10/2026). L'Entrée reste disponible pour les PRO : le contrôle photo
+// (/verifier-photo), commun aux deux, garde la liste complète ci-dessus.
+const ROOM_TYPES_PARTICULIERS = ROOM_TYPES_V1.filter((r) => r !== 'entree');
+
 // Familles STYLE_VARIANT : une par commande, en rotation d'un client à l'autre
 const FAMILLES_STYLE = ['A', 'B', 'C', 'D', 'E'];
 
@@ -286,7 +291,7 @@ function erreurPhotosBienVide(photos, formula, options) {
   for (let i = 0; i < photos.length; i++) {
     const p = photos[i] || {};
     const n = i + 1;
-    if (!ROOM_TYPES_V1.includes(p.roomType)) return `Photo ${n} : type de pièce inconnu.`;
+    if (!ROOM_TYPES_PARTICULIERS.includes(p.roomType)) return `Photo ${n} : type de pièce non proposé.`;
     if (!p.verification || !jetonValide(p.url, p.roomType, p.verification, p.jeton)) {
       return `Photo ${n} : elle n'a pas été vérifiée. Merci de la renvoyer.`;
     }
@@ -317,6 +322,13 @@ router.post('/create-checkout', async (req, res) => {
 
     if (!Array.isArray(photos) || photos.length === 0) {
       return res.status(400).json({ error: 'Ajoutez au moins une photo.' });
+    }
+    // Bien habité : seules les pièces proposées aux particuliers sont acceptées
+    if (isHabite) {
+      const inconnue = photos.findIndex((p) => !ROOM_TYPES_PARTICULIERS.includes(p?.roomType));
+      if (inconnue !== -1) {
+        return res.status(400).json({ error: `Photo ${inconnue + 1} : type de pièce non proposé.` });
+      }
     }
     if (!isHabite) {
       const erreur = erreurPhotosBienVide(photos, formula, options);
