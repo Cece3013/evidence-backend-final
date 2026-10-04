@@ -311,10 +311,15 @@ function erreurPhotosBienVide(photos, formula, options) {
 // Crée la commande dans Notion, puis redirige vers Stripe Checkout (parcours web)
 router.post('/create-checkout', async (req, res) => {
   try {
-    const { formulaId, options = [], clientEmail, metadata = {}, photos = [] } = req.body;
+    const { formulaId, options = [], clientEmail, metadata = {}, photos = [], cgvAcceptees } = req.body;
     const formula = FORMULA_PRICES[formulaId];
     if (!formula) {
       return res.status(400).json({ error: 'Formule inconnue.' });
+    }
+    // Acceptation des CGV et renonciation au droit de rétractation obligatoires
+    // (case cochée sur la page de commande, avant le paiement)
+    if (cgvAcceptees !== true) {
+      return res.status(400).json({ error: 'Merci d\'accepter les conditions générales de vente.' });
     }
 
     const orderId = `ORD-${uuidv4().split('-')[0].toUpperCase()}`;
@@ -440,6 +445,8 @@ router.post('/create-checkout', async (req, res) => {
         isHabite: String(isHabite),
         photoCount: String(photos.length),
         suiviCode,
+        // Preuve de l'acceptation des CGV, conservée dans Stripe
+        cgvAcceptees: new Date().toISOString(),
       },
     });
 
