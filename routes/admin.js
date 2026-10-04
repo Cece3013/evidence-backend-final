@@ -3,6 +3,7 @@ const express = require('express');
 const axios = require('axios');
 const crypto = require('crypto');
 const FormData = require('form-data');
+const { genererDossierCommande } = require('./dossierPdf');
 const router = express.Router();
 
 const ADMIN_KEY = process.env.ADMIN_SECRET_KEY;
@@ -48,6 +49,8 @@ router.get('/', requireAdmin, (req, res) => {
     .badge { font-size: 9px; padding: 3px 8px; border-radius: 20px; font-weight: 600; }
     .badge-wait { background: #fdf6ec; color: #b8892e; }
     .badge-done { background: #edf7ee; color: #3a7a3e; }
+    .btn-dossier { font-size: 11px; padding: 7px 10px; border-radius: 8px; border: 0.5px solid #C8A96E; background: #fdf8f0; color: #8a6420; cursor: pointer; white-space: nowrap; }
+    .btn-dossier:disabled { opacity: 0.5; cursor: wait; }
     .upload-zone { border: 1.5px dashed #d0d0c8; border-radius: 10px; padding: 32px; text-align: center; background: #fafaf8; cursor: pointer; transition: border-color 0.2s; }
     .upload-zone:hover, .upload-zone.drag { border-color: #C8A96E; background: #fdf8f0; }
     .upload-zone p { font-size: 13px; color: #888; margin-top: 8px; }
@@ -169,6 +172,7 @@ router.get('/', requireAdmin, (req, res) => {
               <div class="order-name">\${esc(o.clientName || 'Client')}</div>
               <div class="order-meta">\${esc(o.reference)} · \${esc(o.formule || '')} · \${esc(formatDate(o.dateCommande))}</div>
             </div>
+            <button class="btn-dossier" onclick="preparerDossier(this, '\${esc(o.pageId)}', '\${esc(o.reference)}')">Préparer le dossier</button>
             <span class="badge \${o.pdfLivre ? 'badge-done' : 'badge-wait'}">\${o.pdfLivre ? 'Livré' : 'En attente'}</span>
           </div>\`;
         }).join('');
@@ -219,6 +223,40 @@ router.get('/', requireAdmin, (req, res) => {
         btn.textContent = 'Envoyer au client';
       };
       reader.readAsDataURL(selectedFile);
+    }
+
+    // Génère le dossier PDF pré-rempli (infos client, plan, photos) et le
+    // télécharge. Il suffit ensuite de le relire, puis de l'envoyer ci-dessous.
+    async function preparerDossier(btn, pageId, reference, forcer) {
+      btn.disabled = true;
+      const texte = btn.textContent;
+      btn.textContent = 'Préparation… (≈ 30 s)';
+      try {
+        const url = '/admin/dossier/' + encodeURIComponent(pageId) + '?key=' + ADMIN_KEY + (forcer ? '&forcer=1' : '');
+        const res = await fetch(url);
+        if (res.status === 409) {
+          const data = await res.json();
+          if (confirm(data.error + '\\n\\nPréparer quand même le dossier (cadres photo vides pour ces pièces) ?')) {
+            btn.disabled = false; btn.textContent = texte;
+            return preparerDossier(btn, pageId, reference, true);
+          }
+        } else if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          alert('Erreur : ' + (data.error || 'préparation impossible.'));
+        } else {
+          const blob = await res.blob();
+          const lien = document.createElement('a');
+          lien.href = URL.createObjectURL(blob);
+          lien.download = 'Dossier-' + reference + '.pdf';
+          document.body.appendChild(lien);
+          lien.click();
+          lien.remove();
+        }
+      } catch (e) {
+        alert('Erreur réseau : ' + e.message);
+      }
+      btn.disabled = false;
+      btn.textContent = texte;
     }
 
     function formatDate(iso) {
@@ -282,6 +320,29 @@ router.get('/orders', requireAdmin, async (req, res) => {
   } catch (err) {
     console.error('[Admin] Erreur orders:', err.response?.data || err.message);
     res.status(500).json({ error: 'Erreur lors du chargement des commandes.' });
+  }
+});
+
+// ─── GET /admin/dossier/:pageId — Dossier PDF pré-rempli ─────────────────────
+// Remplit le modèle Canva avec les informations client, le plan et les photos
+// (photo du client + projection générée pour usage interne) de chaque pièce.
+// Si une projection manque encore, répond 409 (sauf ?forcer=1).
+router.get('/dossier/:pageId', requireAdmin, async (req, res) => {
+  try {
+    const { pdf, reference, manquantes } = await genererDossierCommande(req.params.pageId, {
+      forcer: req.query.forcer === '1',
+    });
+    if (!pdf) {
+      return res.status(409).json({
+        error: `Projection pas encore générée pour : ${[...new Set(manquantes)].join(', ')}.`,
+      });
+    }
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="Dossier-${reference || 'client'}.pdf"`);
+    res.send(pdf);
+  } catch (err) {
+    console.error('[Admin] Erreur dossier:', err.response?.data || err.message);
+    res.status(500).json({ error: err.message || 'Erreur lors de la préparation du dossier.' });
   }
 });
 
