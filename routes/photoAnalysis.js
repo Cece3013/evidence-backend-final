@@ -1,5 +1,20 @@
-
 const axios = require('axios');
+
+// Correction du 13/10/2026 (validée) :
+// 1. La photo envoyée à l'analyse est une version allégée en JPG de 1 200 px
+//    (même méthode que les biens vides), pour éviter les échecs de
+//    téléchargement côté OpenAI (« Error while downloading file »).
+// 2. En cas d'échec : une nouvelle tentative, puis ARRÊT (erreur levée) au lieu
+//    de continuer avec une analyse vide. Le générateur passe alors la photo en
+//    « Erreur » dans Notion (après ses propres essais).
+// Le texte de l'analyse, le modèle (gpt-4o) et le reste du pipeline sont inchangés.
+const NOMBRE_TENTATIVES = 2;
+const PAUSE_ENTRE_TENTATIVES_MS = 3000;
+
+function versionAllegee(url) {
+  if (typeof url !== 'string' || !url.includes('/upload/')) return url;
+  return url.replace('/upload/', '/upload/w_1200,q_auto:good,f_jpg/');
+}
 
 /**
  * Analyse riche d'une photo de pièce habitée.
@@ -32,53 +47,56 @@ Règles :
 - microModules : n'inclus un critère que s'il est nettement visible.
 - Sois précis et concret dans les listes, pas générique.`;
 
-  try {
-    const response = await axios.post(
-      'https://api.openai.com/v1/chat/completions',
-      {
-        model: 'gpt-4o',
-        max_tokens: 900,
-        messages: [
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: instructions },
-              { type: 'image_url', image_url: { url: imageUrl } },
-            ],
-          },
-        ],
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-          'Content-Type': 'application/json',
+  const urlAnalyse = versionAllegee(imageUrl);
+  let derniereErreur = null;
+
+  for (let tentative = 1; tentative <= NOMBRE_TENTATIVES; tentative++) {
+    try {
+      const response = await axios.post(
+        'https://api.openai.com/v1/chat/completions',
+        {
+          model: 'gpt-4o',
+          max_tokens: 900,
+          messages: [
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: instructions },
+                { type: 'image_url', image_url: { url: urlAnalyse } },
+              ],
+            },
+          ],
         },
-        timeout: 60000,
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          timeout: 60000,
+        }
+      );
+
+      const raw = response.data.choices[0].message.content;
+      const clean = raw.replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(clean);
+
+      console.log(`[PhotoAnalysis] Pièce: ${parsed.typePieceObserve} — micro-modules: ${(parsed.microModules || []).join(', ') || 'aucun'} — risque spatial: ${parsed.risqueErreurSpatiale}`);
+      // Diagnostic (journal uniquement) : analyse complète, pour vérifier les meubles repérés
+      console.log(`[PhotoAnalysis] ANALYSE COMPLÈTE (${roomType}) :\n${JSON.stringify(parsed, null, 2)}`);
+      return parsed;
+    } catch (err) {
+      derniereErreur = err;
+      console.error(`[PhotoAnalysis] Erreur (tentative ${tentative}/${NOMBRE_TENTATIVES}):`, err.response?.data || err.message);
+      if (tentative < NOMBRE_TENTATIVES) {
+        await new Promise((r) => setTimeout(r, PAUSE_ENTRE_TENTATIVES_MS));
       }
-    );
-
-    const raw = response.data.choices[0].message.content;
-    const clean = raw.replace(/```json|```/g, '').trim();
-    const parsed = JSON.parse(clean);
-
-    console.log(`[PhotoAnalysis] Pièce: ${parsed.typePieceObserve} — micro-modules: ${(parsed.microModules || []).join(', ') || 'aucun'} — risque spatial: ${parsed.risqueErreurSpatiale}`);
-    return parsed;
-  } catch (err) {
-    console.error('[PhotoAnalysis] Erreur:', err.response?.data || err.message);
-    // Analyse minimale de secours : la génération continue sans blocage
-    return {
-      typePieceObserve: roomType,
-      photoExploitable: true,
-      meublesPrincipauxAConserver: [],
-      objetsASupprimer: [],
-      coinRepas: 'non_pertinent',
-      contraintesSpatiales: [],
-      atoutsAMettreEnValeur: [],
-      risqueErreurSpatiale: 'moyen',
-      standingObserve: 'intermediaire',
-      microModules: [],
-    };
+    }
   }
+
+  // Plus d'analyse de secours vide : sans analyse, on ne génère pas
+  // (sinon les meubles existants ne sont plus protégés).
+  const detail = derniereErreur?.response?.data?.error?.message || derniereErreur?.message || 'erreur inconnue';
+  throw new Error(`Analyse de la photo impossible après ${NOMBRE_TENTATIVES} tentatives : ${detail}`);
 }
 
 module.exports = { analyzePhotoRich };
