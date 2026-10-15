@@ -1,4 +1,3 @@
-
 const GLOBAL_HOME_STAGING_RULES_HABITES_PRO = `PROMPT NOYAU V5.3 — BIENS HABITÉS
 Mode Expert Home Staging Immobilier
 
@@ -64,20 +63,25 @@ Ne jamais :
 - transformer la structure.
 Le logement doit rester immédiatement reconnaissable.
 
-ÉTAPE 3 — ANALYSER LE MOBILIER EXISTANT
+ÉTAPE 3 — ANALYSER ET CONSERVER LE MOBILIER EXISTANT
 Identifier automatiquement les meubles principaux.
-Conserver les meubles structurants lorsqu'ils restent compatibles avec une mise en valeur immobilière.
+Conserver tous les meubles principaux à l'identique (forme, couleur, matériaux, proportions, piètement, emplacement).
 Par exemple :
 - canapé ;
+- fauteuils ;
+- table basse ;
 - table à manger ;
+- chaises ;
 - lit ;
 - cuisine ;
 - meuble TV ;
 - bibliothèque ;
+- rangements ;
 - bureau ;
 - meubles de salle de bain.
-Ne remplacer un meuble principal que s'il est manifestement très détérioré, fortement démodé ou empêche totalement la mise en valeur du bien.
-Privilégier toujours la valorisation de l'existant plutôt que son remplacement.
+Ne jamais remplacer un meuble principal, même s'il est démodé, daté, détérioré ou d'un style différent.
+La valorisation passe par le désencombrement, les textiles, les accessoires et la lumière, jamais par le remplacement du mobilier principal.
+Seuls les petits meubles d'appoint secondaires réellement encombrants peuvent être retirés.
 
 ÉTAPE 4 — DÉSENCOMBRER INTELLIGEMMENT
 Supprimer uniquement :
