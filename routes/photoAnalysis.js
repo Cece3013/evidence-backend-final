@@ -7,7 +7,10 @@ const axios = require('axios');
 // 2. En cas d'échec : une nouvelle tentative, puis ARRÊT (erreur levée) au lieu
 //    de continuer avec une analyse vide. Le générateur passe alors la photo en
 //    « Erreur » dans Notion (après ses propres essais).
-// Le texte de l'analyse, le modèle (gpt-4o) et le reste du pipeline sont inchangés.
+// Correction du 15/10/2026 (validée, étape 2 — point B5) :
+// l'analyse liste TOUS les meubles principaux (dont les chaises : nombre exact
+// et modèles) avec une courte description, et ne met jamais un meuble
+// principal dans les objets à supprimer. Modèle (gpt-4o) et réglages inchangés.
 const NOMBRE_TENTATIVES = 2;
 const PAUSE_ENTRE_TENTATIVES_MS = 3000;
 
@@ -32,8 +35,8 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, sans balises m
   "typePieceObserve": "ce que tu vois réellement (peut différer du type annoncé)",
   "photoExploitable": true/false,
   "raisonNonExploitable": "vide si exploitable",
-  "meublesPrincipauxAConserver": ["liste courte des meubles structurants à garder tels quels"],
-  "objetsASupprimer": ["objets personnels, encombrants ou démodés à retirer"],
+  "meublesPrincipauxAConserver": ["TOUS les meubles principaux visibles : canapés, fauteuils, tables basses, tables à manger, chaises, meubles TV, bibliothèques, rangements — chacun avec une courte description (couleur, matière, piètement). Pour les chaises : nombre exact, et préciser si elles sont différentes, ex. « 2 chaises différentes : 1 en velours bleu, 1 en bois cintré »"],
+  "objetsASupprimer": ["objets personnels, accessoires et petits meubles d'appoint encombrants à retirer — jamais un meuble principal"],
   "coinRepas": "conserver" | "creer" | "non_pertinent",
   "contraintesSpatiales": ["circulations, radiateurs, ouvertures à ne pas bloquer"],
   "atoutsAMettreEnValeur": ["cheminée, parquet, grandes fenêtres, vue, hauteur sous plafond..."],
@@ -45,6 +48,8 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, sans balises m
 Règles :
 - photoExploitable = false uniquement si la photo est floue, trop sombre pour distinguer la pièce, ou cadrée de façon inutilisable.
 - microModules : n'inclus un critère que s'il est nettement visible.
+- meublesPrincipauxAConserver : liste chaque meuble principal séparément ; n'oublie aucune chaise, même partiellement visible ou au premier plan.
+- Un meuble principal ne figure jamais dans objetsASupprimer.
 - Sois précis et concret dans les listes, pas générique.`;
 
   const urlAnalyse = versionAllegee(imageUrl);
