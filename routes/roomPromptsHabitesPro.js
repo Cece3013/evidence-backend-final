@@ -27,8 +27,8 @@ Désencombrer visuellement la pièce :
 • conserver uniquement une décoration harmonieuse et cohérente
 
 Moderniser subtilement le salon :
-• conserver les meubles principaux lorsqu'ils sont cohérents
-• remplacer visuellement certains meubles trop datés par des équivalents plus modernes et réalistes adaptés à l'espace
+• conserver à l'identique tous les meubles principaux existants : canapés, fauteuils, table basse, meuble TV, bibliothèques et rangements (forme, couleur, matériaux, proportions, piètement, emplacement)
+• moderniser uniquement grâce aux textiles, aux accessoires, aux luminaires et à la décoration, jamais en remplaçant le mobilier principal
 • harmoniser les matières et les couleurs
 • créer une ambiance chaleureuse, lumineuse et raffinée
 
@@ -84,7 +84,7 @@ Conserver impérativement sans modification :
 • la disposition générale de la pièce
 • les perspectives et proportions réelles
 • la lumière naturelle d'origine
-• les principaux meubles structurants lorsque cela reste cohérent
+• tous les meubles principaux à l'identique : canapés, fauteuils, table basse, table à manger, chaises, meuble TV, bibliothèques et rangements (forme, couleur, matériaux, proportions, piètement, emplacement)
 
 Ne pas transformer la pièce.
 Ne pas modifier l'architecture.
@@ -97,14 +97,14 @@ Créer deux espaces harmonieux et bien définis :
 
 Désencombrer visuellement la pièce :
 • supprimer les objets personnels inutiles
-• retirer les petits meubles encombrants ou démodés
+• retirer uniquement les petits meubles d'appoint secondaires réellement encombrants
 • alléger les surfaces trop chargées
 • simplifier la décoration tout en gardant une ambiance vivante et réaliste
 • conserver uniquement les éléments utiles à la mise en valeur des volumes
 
 Moderniser et harmoniser la décoration existante :
-• conserver les meubles principaux lorsque cela reste cohérent
-• moderniser visuellement le mobilier grâce à une décoration plus élégante et contemporaine
+• conserver à l'identique tous les meubles principaux existants
+• moderniser l'ambiance uniquement par les textiles, les accessoires, les luminaires et la décoration, jamais en remplaçant le mobilier
 • créer une palette lumineuse, chaleureuse et intemporelle
 
 Palette de couleurs :
@@ -117,23 +117,25 @@ Palette de couleurs :
 • touches de noir mat discret
 • fibres naturelles et tons minéraux chaleureux
 
-Créer un coin salon élégant et réaliste :
-• canapé chaleureux beige, lin ou crème
+Mettre en valeur le coin salon :
+• canapé existant conservé à l'identique (forme, couleur, tissu), simplement habillé de coussins texturés et d'un plaid naturel
+• fauteuils existants conservés à l'identique
+• table basse : conserver à l'identique celle qui existe ; en ajouter une (bois, rotin ou matière minérale) uniquement si aucune n'est présente et si l'espace le permet
+• meuble TV, bibliothèques et rangements existants conservés à l'identique, simplement désencombrés
+• aucun canapé, fauteuil ni meuble TV ajouté si la pièce en possède déjà
 • coussins texturés harmonieux dans des tons naturels
 • plaid naturel avec un tombé fluide
 • grand tapis rectangulaire chaleureux et réaliste
-• table basse élégante en bois, rotin ou matière minérale
-• meuble TV discret et moderne si pertinent
-• fauteuil assorti si l'espace le permet
 • quelques plantes vertes élégantes et réalistes
 • voilages blancs ou lin du sol au plafond avec un tombé naturel
 • luminaires chaleureux avec différentes hauteurs
 • miroir décoratif discret apportant de la luminosité
 • quelques objets décoratifs minimalistes : livres, bougies, céramiques, vase sobre
 
-Créer un coin salle à manger harmonieux :
-• table à manger élégante en bois clair ou finition naturelle
-• 4 à 6 chaises modernes et chaleureuses selon l'espace disponible
+Mettre en valeur le coin salle à manger :
+• table à manger existante conservée à l'identique (forme, plateau, couleur, piètement, emplacement)
+• chaises existantes conservées à l'identique : même nombre, mêmes modèles, même si elles sont différentes entre elles ; ne pas les remplacer par un ensemble assorti et ne pas en ajouter
+• uniquement s'il n'existe aucun coin repas et que l'espace le permet : table en bois clair ou finition naturelle avec des chaises en nombre adapté à sa taille
 • suspension décorative chaleureuse au-dessus de la table
 • décoration de table minimaliste et raffinée
 • conserver une circulation fluide et naturelle autour de la table
@@ -278,11 +280,8 @@ Chaque élément ajouté doit participer à l’équilibre visuel.
 
 COIN REPAS
 Si un coin repas existe :
-Le conserver.
+Conserver la table et les chaises à l'identique (même nombre, mêmes modèles, même s'ils sont différents).
 Moderniser uniquement :
-
-les chaises ;
-
 • les textiles ;
 • le luminaire ;
 • la décoration de table.
@@ -1844,57 +1843,7 @@ Créer une image :
 
 parfaitement adaptée à une annonce immobilière professionnelle.
 
-Le résultat doit donner l’impression qu’un home stager immobilier professionnel est intervenu uniquement par le désencombrement, l’organisation, l’harmonisation de la décoration et la mise en valeur des volumes, sans modifier l’architecture ni l’identité du bureau.
-
-PRO Habité salon et salle à manger
-GPT
-Créer un home staging haut de gamme, chaleureux et réaliste dans ce salon et cette salle à manger habités tout en conservant exactement l’architecture, les volumes, les ouvertures, les murs, le sol, le plafond, les meubles principaux et l’angle de vue d’origine.
-Conserver impérativement sans modification :
-- les fenêtres et portes existantes - les murs, plafonds et sols - la disposition générale de la pièce - les perspectives et proportions réelles - la lumière naturelle d’origine - les principaux meubles structurants lorsque cela reste cohérent Ne pas transformer la pièce.
-Ne pas modifier l’architecture.
-Ne pas créer un intérieur irréaliste ou trop luxueux.
-Créer un rendu crédible destiné à une annonce immobilière professionnelle.
-Créer deux espaces harmonieux et bien définis :
-- un coin salon chaleureux et élégant - un coin salle à manger fluide et accueillant Désencombrer visuellement la pièce :
-- supprimer les objets personnels inutiles - retirer les petits meubles encombrants ou démodés - alléger les surfaces trop chargées
-
-- simplifier la décoration tout en gardant une ambiance vivante et réaliste - conserver uniquement les éléments utiles à la mise en valeur des volumes Moderniser et harmoniser la décoration existante :
-- conserver les meubles principaux lorsque cela reste cohérent - moderniser visuellement le mobilier grâce à une décoration plus élégante et contemporaine - créer une palette lumineuse, chaleureuse et intemporelle Palette de couleurs :
-- beige chaud - lin - crème - blanc cassé - bois clair - touches de terracotta douce - touches de noir mat discret - fibres naturelles et tons minéraux chaleureux Créer un coin salon élégant et réaliste :
-- canapé chaleureux beige, lin ou crème - coussins texturés harmonieux dans des tons naturels - plaid naturel avec un tombé fluide - grand tapis rectangulaire chaleureux et réaliste - table basse élégante en bois, rotin ou matière minérale - meuble TV discret et moderne si pertinent - fauteuil assorti si l’espace le permet - quelques plantes vertes élégantes et réalistes - voilages blancs ou lin du sol au plafond avec un tombé naturel - luminaires chaleureux avec différentes hauteurs - miroir décoratif discret apportant de la luminosité
-
-- quelques objets décoratifs minimalistes : livres, bougies, céramiques, vase sobre Créer un coin salle à manger harmonieux :
-- table à manger élégante en bois clair ou finition naturelle - 4 à 6 chaises modernes et chaleureuses selon l’espace disponible - suspension décorative chaleureuse au-dessus de la table - décoration de table minimaliste et raffinée - conserver une circulation fluide et naturelle autour de la table Créer une ambiance :
-- chaleureuse - lumineuse - cocooning - élégante - minimaliste - méditerranéenne bohème chic contemporaine - raffinée mais réaliste Important :
-- respecter les volumes réels de la pièce - conserver une circulation fluide et crédible - ne pas surcharger la décoration - éviter les couleurs trop vives ou agressives - éviter le rendu “catalogue IA” - conserver un aspect authentique et réaliste adapté au home staging immobilier professionnel Lumière :
-conserver la lumière naturelle d’origine tout en créant une ambiance plus chaleureuse, lumineuse et accueillante avec des ombres réalistes et une exposition équilibrée.
-
-Rendu souhaité :
-photoréaliste très réaliste, image nette, textures naturelles crédibles, détails précis, décoration élégante et intemporelle adaptée aux photos d’agence immobilière haut de gamme.
-
-PRO Habité salon Créer un home staging haut de gamme, chaleureux et réaliste dans ce salon habité destiné à des photos d’agence immobilière, tout en conservant exactement l’architecture, les volumes, les ouvertures, les murs, le sol, le plafond et l’angle de vue d’origine.
-Conserver impérativement sans modification :
-- l’architecture et les volumes réels de la pièce - les murs, plafonds, sols et matériaux existants - les fenêtres, portes et ouvertures - les perspectives et la lumière naturelle d’origine - la disposition générale du salon - les meubles principaux présents dans la pièce lorsque leur conservation reste cohérente Ne pas transformer le salon.
-Ne pas déplacer les ouvertures ni modifier la structure.
-Ne pas créer une pièce irréaliste ou trop luxueuse.
-Conserver un rendu crédible et fidèle au bien immobilier.
-Objectif :
-valoriser le salon afin de créer un coup de cœur immédiat auprès des acheteurs tout en gardant un rendu naturel, élégant et réaliste adapté à une annonce immobilière professionnelle.
-Désencombrer visuellement la pièce :
-- supprimer les objets personnels trop visibles - retirer les petits meubles inutiles ou encombrants - alléger les surfaces chargées - supprimer les éléments visuellement perturbants : câbles, papiers, objets disparates, décoration vieillissante
-
-- conserver uniquement une décoration harmonieuse et cohérente Moderniser subtilement le salon :
-- conserver les meubles principaux lorsqu’ils sont cohérents - remplacer visuellement certains meubles trop datés par des équivalents plus modernes et réalistes adaptés à l’espace - harmoniser les matières et les couleurs - créer une ambiance chaleureuse, lumineuse et raffinée Créer une décoration élégante et minimaliste comprenant uniquement :
-- coussins texturés dans des tons beige, lin, crème et blanc cassé - plaid naturel avec un tombé souple et réaliste - tapis chaleureux et harmonieux adapté à la taille de la pièce - voilages blancs ou lin du sol au plafond avec un tombé fluide et naturel - quelques plantes vertes élégantes et réalistes parfaitement proportionnées à l’espace - objets décoratifs sobres et raffinés : vase en céramique, bougies, livres, plateaux, paniers naturels - luminaires chaleureux et cohérents avec le style de la pièce - miroir décoratif discret si pertinent pour apporter davantage de lumière et de profondeur Créer une ambiance :
-- chaleureuse - lumineuse - élégante - apaisante - cocooning - minimaliste chaleureuse - méditerranéenne bohème chic contemporaine
-
-Palette de couleurs recommandée :
-beige, lin, crème, blanc cassé, taupe clair, bois naturel, greige, quelques touches végétales discrètes.
-Éviter absolument :
-- les couleurs trop vives - les contrastes agressifs - la décoration excessive - les motifs trop marqués - les objets personnels visibles - les rendus artificiels ou trop parfaits Lumière :
-conserver la lumière naturelle d’origine tout en créant une ambiance plus chaleureuse, douce et accueillante avec des ombres réalistes et une exposition équilibrée.
-Important :
-- respecter les proportions réelles du salon - conserver une circulation fluide et naturelle - ne pas surcharger la décoration - conserver l’identité architecturale du bien - créer un rendu photoréaliste très réaliste, net et harmonieux - textures naturelles crédibles - décoration élégante, intemporelle et réaliste adaptée au home staging immobilier professionnel.`,
+Le résultat doit donner l’impression qu’un home stager immobilier professionnel est intervenu uniquement par le désencombrement, l’organisation, l’harmonisation de la décoration et la mise en valeur des volumes, sans modifier l’architecture ni l’identité du bureau.`,
 
   entree: `MODULE H8 PRO V5.4 — ENTRÉE HABITÉE
 
@@ -2281,10 +2230,9 @@ Le futur acquéreur doit immédiatement comprendre :
 ESPACE REPAS
 
 Si une table existe :
-La conserver.
-L’harmoniser.
+La conserver à l'identique, avec ses chaises existantes (même nombre, mêmes modèles).
+Ajouter des chaises uniquement s'il n'y en a aucune : 2 à 6 selon les dimensions.
 Ajouter uniquement :
-• 2 à 6 chaises selon les dimensions ;
 • une décoration de table minimaliste ;
 • quelques coussins si cela est pertinent.
 
