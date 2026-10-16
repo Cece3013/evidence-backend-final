@@ -11,6 +11,9 @@ const axios = require('axios');
 // l'analyse liste TOUS les meubles principaux (dont les chaises : nombre exact
 // et modèles) avec une courte description, et ne met jamais un meuble
 // principal dans les objets à supprimer. Modèle (gpt-4o) et réglages inchangés.
+// Correction du 16/10/2026 (validée — table basse) : nouveau champ
+// « tableBasseDevantCanape » ; un guéridon ou une table d'appoint n'est jamais
+// considéré comme une table basse.
 const NOMBRE_TENTATIVES = 2;
 const PAUSE_ENTRE_TENTATIVES_MS = 3000;
 
@@ -35,8 +38,9 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, sans balises m
   "typePieceObserve": "ce que tu vois réellement (peut différer du type annoncé)",
   "photoExploitable": true/false,
   "raisonNonExploitable": "vide si exploitable",
-  "meublesPrincipauxAConserver": ["TOUS les meubles principaux visibles : canapés, fauteuils, tables basses, tables à manger, chaises, meubles TV, bibliothèques, rangements — chacun avec une courte description (couleur, matière, piètement). Pour les chaises : nombre exact, et préciser si elles sont différentes, ex. « 2 chaises différentes : 1 en velours bleu, 1 en bois cintré »"],
+  "meublesPrincipauxAConserver": ["TOUS les meubles principaux visibles : canapés, fauteuils, tables basses (uniquement celles posées devant le canapé), guéridons et tables d'appoint (nommés comme tels, avec leur position, ex. « guéridon rond en bois foncé, à côté du fauteuil »), tables à manger, chaises, meubles TV, bibliothèques, rangements — chacun avec une courte description (couleur, matière, piètement). Pour les chaises : nombre exact, et préciser si elles sont différentes, ex. « 2 chaises différentes : 1 en velours bleu, 1 en bois cintré »"],
   "objetsASupprimer": ["objets personnels, accessoires et petits meubles d'appoint encombrants à retirer — jamais un meuble principal"],
+  "tableBasseDevantCanape": "presente" | "absente" | "non_pertinent",
   "coinRepas": "conserver" | "creer" | "non_pertinent",
   "contraintesSpatiales": ["circulations, radiateurs, ouvertures à ne pas bloquer"],
   "atoutsAMettreEnValeur": ["cheminée, parquet, grandes fenêtres, vue, hauteur sous plafond..."],
@@ -50,6 +54,8 @@ Règles :
 - microModules : n'inclus un critère que s'il est nettement visible.
 - meublesPrincipauxAConserver : liste chaque meuble principal séparément ; n'oublie aucune chaise, même partiellement visible ou au premier plan.
 - Un meuble principal ne figure jamais dans objetsASupprimer.
+- tableBasseDevantCanape : « presente » uniquement si une table est posée devant le canapé principal, au centre de l'espace d'assise. « absente » s'il y a un canapé sans table devant lui. « non_pertinent » s'il n'y a ni canapé ni coin salon.
+- Un guéridon, une table d'appoint, une sellette ou une petite table placée à côté d'un fauteuil ou au bout d'un canapé n'est JAMAIS une table basse : nomme-la « guéridon » ou « table d'appoint » dans meublesPrincipauxAConserver, jamais « table basse ».
 - Sois précis et concret dans les listes, pas générique.`;
 
   const urlAnalyse = versionAllegee(imageUrl);
