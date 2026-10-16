@@ -9,6 +9,14 @@ const axios = require('axios');
 // B3. Consignes de conservation renforcées pour la rédaction.
 // B4. Contrôle automatique des contradictions : une nouvelle rédaction si
 //     besoin ; si la contradiction persiste, la génération est BLOQUÉE (erreur).
+// Correction du 16/10/2026 (validée — table basse des salons) :
+// - Règle 3 réécrite : un guéridon / une table d'appoint n'est jamais une table
+//   basse ; table basse ajoutée devant le canapé si absente, style adapté au
+//   logement, jamais forcée dans un espace manifestement trop petit.
+// - La rédaction et le contrôle s'appuient sur le champ d'analyse
+//   « tableBasseDevantCanape » (presente / absente / non_pertinent).
+// - Table basse oubliée alors qu'elle est « absente » : une nouvelle rédaction ;
+//   si l'oubli persiste, la génération continue (règle 3) et le journal le signale.
 // Le modèle (gpt-4o) et les réglages de génération sont inchangés.
 
 /**
@@ -33,8 +41,12 @@ Les murs peuvent recevoir une décoration neutre et impersonnelle à la place.
 
 3. MATÉRIALISER LA FONCTION DE LA PIÈCE
 Chaque espace doit être immédiatement identifiable par son usage.
-Salon : si une table basse est présente sur la photo, elle est conservée à l'identique (forme, couleur, matériau, piètement, emplacement) ; ne jamais la remplacer ni en ajouter une seconde.
-Si aucune table basse n'est présente, en ajouter une, de taille adaptée, devant l'assise principale, uniquement si l'espace et la circulation le permettent.
+Salon — table basse :
+- Une table basse est une table placée devant le canapé principal, au centre de l'espace d'assise. Un guéridon, une table d'appoint ou une petite table placée à côté d'un fauteuil ou au bout d'un canapé n'est jamais une table basse.
+- Si une table basse existe déjà devant le canapé, la conserver strictement à l'identique (forme, couleur, matériau, piètement, emplacement) ; ne jamais la remplacer ni en ajouter une seconde.
+- Si aucune table basse n'existe devant le canapé principal, en ajouter une devant ce canapé, élégante, dont le style et le matériau s'accordent au logement, adaptée aux dimensions de la pièce.
+- La table ajoutée doit être proportionnée, ne pas gêner les circulations et renforcer la mise en valeur du coin salon. Ne jamais forcer cet ajout dans un espace manifestement trop petit.
+- Ne jamais déplacer, modifier ou retirer un meuble principal existant, guéridons et tables d'appoint compris, pour permettre cet ajout.
 
 4. LUMIÈRE NATURELLE
 Lorsqu'une fenêtre ou une porte-fenêtre est assombrie par un volet, un store ou des
@@ -94,8 +106,15 @@ function detecterContradictions(texteRedige, analysis) {
   const texte = normaliser(texteRedige);
   const trouvees = [];
 
+  const etatTableBasse = analysis?.tableBasseDevantCanape;
+
   for (const f of FAMILLES) {
-    if (!f.analyse.test(meubles)) continue; // meuble absent de la photo : l'ajouter est permis
+    let present = f.analyse.test(meubles);
+    // Table basse : le champ dédié de l'analyse fait foi (un guéridon n'est pas une table basse)
+    if (f.nom === 'table basse' && ['presente', 'absente', 'non_pertinent'].includes(etatTableBasse)) {
+      present = etatTableBasse === 'presente';
+    }
+    if (!present) continue; // meuble absent de la photo : l'ajouter est permis
 
     const motifs = [
       // « ajoute une table basse », « intègre une nouvelle table à manger », « remplace les chaises »…
@@ -126,6 +145,39 @@ function detecterContradictions(texteRedige, analysis) {
   return [...new Set(trouvees)];
 }
 
+const PIECES_SALON = ['salon', 'salon_salle_a_manger'];
+
+/**
+ * Table basse oubliée : l'analyse dit « absente » (salon, hors petit espace)
+ * mais le texte rédigé ne mentionne aucune table basse.
+ */
+function tableBasseOubliee(texteRedige, analysis, roomType) {
+  if (!PIECES_SALON.includes(roomType)) return false;
+  if (analysis?.tableBasseDevantCanape !== 'absente') return false;
+  if ((analysis?.microModules || []).includes('petit_espace')) return false; // ne jamais forcer dans un petit espace
+  return !/tables? basses?/.test(normaliser(texteRedige));
+}
+
+function consigneTableBasse(analysis, roomType) {
+  if (!PIECES_SALON.includes(roomType)) return '';
+  const etat = analysis?.tableBasseDevantCanape;
+  if (etat === 'presente') {
+    return `
+TABLE BASSE (analyse : présente) :
+- La table basse posée devant le canapé est conservée strictement à l'identique. N'en ajoute pas d'autre.
+`;
+  }
+  if (etat === 'absente') {
+    return `
+TABLE BASSE (analyse : absente devant le canapé) :
+- En PRIORITÉ 3, écris une consigne explicite : ajouter une table basse devant le canapé principal (nomme-le), élégante, proportionnée, dont le style et le matériau s'accordent au logement (bois, rotin, matière minérale… selon le module et l'ambiance), sans gêner les circulations.
+- Les guéridons et tables d'appoint existants restent à leur place, à l'identique : ils ne remplacent pas la table basse.
+- Ne force jamais cet ajout si l'espace devant le canapé est manifestement trop petit (tiens compte des contraintes spatiales de l'analyse).
+`;
+  }
+  return '';
+}
+
 // ---------------------------------------------------------------------------
 
 function construireInstructions({ analysis, referenceRules, roomPrompt, microTexts, roomType, commentaireClient }) {
@@ -150,7 +202,7 @@ CONSERVATION DU MOBILIER (impératif) :
 - Les suggestions de mobilier des modules (canapé, fauteuil, table basse, table à manger, chaises, meuble TV, bibliothèque) ne s'appliquent QUE si ce meuble est absent de la photo. S'il est présent, seuls des textiles et accessoires peuvent l'accompagner.
 - N'emploie pas de formules comme « nouvelle table », « chaises modernes », « 4 à 6 chaises » ou « ajoute une table basse » pour un meuble déjà présent.
 - Tu peux retirer les petits meubles d'appoint réellement encombrants et ajouter des accessoires décoratifs cohérents.
-
+${consigneTableBasse(analysis, roomType)}
 AMBITION ESTHÉTIQUE (à conserver) :
 La conservation porte uniquement sur l'architecture et les meubles principaux. Reste ambitieux et précis sur tout le reste : désencombrement net, harmonisation des couleurs et matières, textiles (coussins, plaids), voilages, tapis, luminaires, plantes, décoration soignée et luminosité naturelle mise en valeur. Le résultat doit rester une transformation home staging nettement visible et valorisante.
 
@@ -213,28 +265,53 @@ async function synthesizePrompt(params) {
     return [referenceRules, roomPrompt, ...microTexts, TITRE_REGLES, REGLES_IMPERATIVES].join('\n\n');
   }
 
-  // B4 — contrôle des contradictions, une nouvelle rédaction si nécessaire
+  // B4 — contrôle des contradictions (+ table basse oubliée), une nouvelle rédaction si nécessaire
   let contradictions = detecterContradictions(texteRedige, analysis);
-  if (contradictions.length) {
-    console.warn(`[PromptSynthesis] CONTRADICTION DÉTECTÉE (${roomType}) — nouvelle rédaction demandée :\n- ${contradictions.join('\n- ')}`);
+  let oubli = tableBasseOubliee(texteRedige, analysis, roomType);
+  if (contradictions.length || oubli) {
+    if (contradictions.length) {
+      console.warn(`[PromptSynthesis] CONTRADICTION DÉTECTÉE (${roomType}) — nouvelle rédaction demandée :\n- ${contradictions.join('\n- ')}`);
+    }
+    if (oubli) {
+      console.warn(`[PromptSynthesis] TABLE BASSE OUBLIÉE (${roomType}) — analyse « absente » mais aucune table basse prévue — nouvelle rédaction demandée.`);
+    }
+    const points = [];
+    if (contradictions.length) {
+      points.push(`Ta version précédente contenait des instructions qui contredisent la conservation du mobilier existant :\n- ${contradictions.join('\n- ')}\nSupprime ces instructions : ces meubles sont présents sur la photo et doivent être conservés à l'identique.`);
+    }
+    if (oubli) {
+      points.push(`Ta version précédente oubliait la table basse : l'analyse indique qu'il n'y en a aucune devant le canapé. Ajoute en PRIORITÉ 3 une consigne explicite d'ajout d'une table basse devant le canapé principal, proportionnée, au style accordé au logement, sans gêner les circulations ; les guéridons et tables d'appoint restent à l'identique.`);
+    }
     const correction = `${instructions}
 
 === CORRECTION OBLIGATOIRE ===
-Ta version précédente contenait des instructions qui contredisent la conservation du mobilier existant :
-- ${contradictions.join('\n- ')}
-Réécris le prompt complet sans ces instructions : ces meubles sont présents sur la photo et doivent être conservés à l'identique.`;
+${points.join('\n\n')}
+Réécris le prompt complet en tenant compte de ces corrections.`;
     try {
       texteRedige = await appelerGpt4o(correction);
     } catch (err) {
       console.error('[PromptSynthesis] Erreur (nouvelle rédaction):', err.response?.data || err.message);
-      throw new Error(`Rédaction du prompt impossible après une contradiction : ${contradictions.join(' ; ')}`);
+      if (contradictions.length) {
+        throw new Error(`Rédaction du prompt impossible après une contradiction : ${contradictions.join(' ; ')}`);
+      }
+      // Oubli seul : on garde la première rédaction (règle 3 ajoutée à la fin)
+      console.warn(`[PromptSynthesis] TABLE BASSE OUBLIÉE PERSISTANTE (${roomType}) — nouvelle rédaction impossible, génération poursuivie (règle 3).`);
     }
     contradictions = detecterContradictions(texteRedige, analysis);
     if (contradictions.length) {
       console.error(`[PromptSynthesis] CONTRADICTION PERSISTANTE (${roomType}) — génération bloquée :\n- ${contradictions.join('\n- ')}\n${texteRedige}`);
       throw new Error(`Prompt contradictoire après 2 rédactions (génération bloquée) : ${contradictions.join(' ; ')}`);
     }
-    console.log(`[PromptSynthesis] Contradiction corrigée à la 2e rédaction (${roomType}).`);
+    if (oubli) {
+      oubli = tableBasseOubliee(texteRedige, analysis, roomType);
+      if (oubli) {
+        console.warn(`[PromptSynthesis] TABLE BASSE OUBLIÉE PERSISTANTE (${roomType}) — génération poursuivie grâce à la règle 3 (à surveiller).`);
+      } else {
+        console.log(`[PromptSynthesis] Table basse ajoutée à la 2e rédaction (${roomType}).`);
+      }
+    } else {
+      console.log(`[PromptSynthesis] Contradiction corrigée à la 2e rédaction (${roomType}).`);
+    }
   }
 
   const prompt = assemblerPromptFinal(texteRedige);
@@ -244,4 +321,4 @@ Réécris le prompt complet sans ces instructions : ces meubles sont présents s
   return prompt;
 }
 
-module.exports = { synthesizePrompt, detecterContradictions, assemblerPromptFinal, REGLES_IMPERATIVES };
+module.exports = { synthesizePrompt, detecterContradictions, tableBasseOubliee, assemblerPromptFinal, REGLES_IMPERATIVES };
