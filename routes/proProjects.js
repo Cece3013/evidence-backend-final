@@ -256,7 +256,10 @@ router.post('/create', async (req, res) => {
     // 2. Une ligne « Avant » par photo, directement dans la file du générateur
     for (let i = 0; i < photos.length; i++) {
       const p = photos[i];
-      const avecChoix = ['cuisine', 'salle_bain'].includes(p.roomType) && CHOIX_VALIDES.includes(p.choixCuisine);
+      // Bien vide : choix cuisine / SDB. Bien habité (24/10/2026) : choix « conserver » ou
+      // « projection modernisée » pour le salon et le salon / salle à manger.
+      const piecesAvecChoix = typeBien === 'habite' ? ['salon', 'salon_salle_a_manger'] : ['cuisine', 'salle_bain'];
+      const avecChoix = piecesAvecChoix.includes(p.roomType) && CHOIX_VALIDES.includes(p.choixCuisine);
       await axios.post(
         'https://api.notion.com/v1/pages',
         {
