@@ -212,7 +212,14 @@ async function genererPhotoPro(photoPage, projetPage) {
   let familleUtilisee = null;
 
   if (habite) {
-    ({ prompt } = await buildPromptHabitesPro(roomType, imageUrl));
+    // Option PRO « Projection modernisée » (salon, salon / salle à manger) : choix de l'agent,
+    // enregistré dans la colonne « Choix cuisine ». Absente ou autre valeur → version validée.
+    const choixMobilier = pp['Choix cuisine']?.select?.name || null;
+    const mode = choixMobilier === 'projection_modernisee' && ['salon', 'salon_salle_a_manger'].includes(roomType)
+      ? 'projection_modernisee'
+      : null;
+    if (mode) console.log(`[GenerationV1] PRO habité — ${roomType} — option projection modernisée`);
+    ({ prompt } = await buildPromptHabitesPro(roomType, imageUrl, mode ? { mode } : {}));
   } else {
     const choixNiveau = pp['Choix cuisine']?.select?.name || null;
     const famille = prj['Famille style']?.select?.name || null;
