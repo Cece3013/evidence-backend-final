@@ -253,6 +253,9 @@ async function appelerGpt4o(contenu) {
  * puis ajoute les cinq règles impératives mot pour mot.
  */
 async function synthesizePrompt(params) {
+  // Option PRO « Projection modernisée » (salon, salon / salle à manger) : chemin séparé.
+  // Sans cette option, le code ci-dessous (version validée) s'applique tel quel.
+  if (params.mode === MODE_MODERNISE) return synthesizePromptModernise(params);
   const { analysis, referenceRules, roomPrompt, microTexts, roomType } = params;
   const instructions = construireInstructions(params);
 
@@ -321,4 +324,143 @@ Réécris le prompt complet en tenant compte de ces corrections.`;
   return prompt;
 }
 
-module.exports = { synthesizePrompt, detecterContradictions, tableBasseOubliee, assemblerPromptFinal, REGLES_IMPERATIVES };
+// ===========================================================================
+// OPTION PRO « PROJECTION MODERNISÉE » (validée le 24/10/2026)
+// Biens habités PRO, salon et salon / salle à manger, sur choix de l'agent.
+// Règles 1 et 3 remplacées ; règles 2, 4 et 5 reprises mot pour mot.
+// ===========================================================================
+
+const MODE_MODERNISE = 'projection_modernisee';
+
+const REGLE_1_MODERNISEE = `1. MOBILIER — PROJECTION MODERNISÉE
+Les meubles principaux (canapés, fauteuils, tables basses, table à manger, chaises, meuble TV, rangements mobiles) sont remplacés par un mobilier contemporain, chaleureux et réaliste.
+Chaque meuble de remplacement garde la fonction et l'emplacement du meuble d'origine, avec des proportions adaptées à la pièce ; l'organisation de l'espace (coin salon, coin repas) reste la même.
+Ne jamais encombrer les circulations, ni masquer une fenêtre, une porte ou un radiateur.
+Conserver les éléments intégrés et fixes : bibliothèques et placards intégrés, cuisine, cheminée, radiateurs.
+Les murs peuvent recevoir une peinture neutre (blanc cassé, beige, greige) sans jamais masquer un défaut réel ; les sols, plafonds et menuiseries restent inchangés.`;
+
+const REGLE_3_MODERNISEE = `3. MATÉRIALISER LA FONCTION DE LA PIÈCE
+Chaque espace doit être immédiatement identifiable par son usage.
+Salon : une table basse contemporaine, proportionnée, devant le canapé principal, sans gêner les circulations. Ne jamais forcer cet ajout dans un espace manifestement trop petit.`;
+
+// Règles 2, 4 et 5 : extraites telles quelles de REGLES_IMPERATIVES (aucune réécriture)
+const BLOCS_REGLES = REGLES_IMPERATIVES.split(/\n\n(?=\d\. )/);
+const REGLES_IMPERATIVES_MODERNISEES = [
+  REGLE_1_MODERNISEE,
+  BLOCS_REGLES.find((b) => b.startsWith('2. ')),
+  REGLE_3_MODERNISEE,
+  BLOCS_REGLES.find((b) => b.startsWith('4. ')),
+  BLOCS_REGLES.find((b) => b.startsWith('5. ')),
+].join('\n\n');
+
+function construireInstructionsModernisees({ analysis, referenceRules, roomPrompt, microTexts, roomType, commentaireClient }) {
+  return `Tu es un ingénieur prompt spécialisé en génération d'image immobilière.
+
+Ta mission : transformer une documentation de home staging très détaillée en UN SEUL prompt d'exécution compact, destiné au modèle gpt-image-2 via l'API d'édition d'image.
+
+L'agent immobilier a choisi l'option « PROJECTION MODERNISÉE » : le mobilier et la décoration actuels sont remplacés par un aménagement contemporain, dans le logement réel.
+
+CONTRAINTES DE SORTIE :
+- Entre 1200 et 2400 caractères.
+- Rédigé en français, à l'impératif, en instructions directes.
+- Structuré par priorités décroissantes, dans cet ordre strict :
+  PRIORITÉ 1 — conserver l'architecture, les volumes, la perspective, les ouvertures, les sols, les plafonds et les éléments intégrés ; les murs peuvent recevoir une peinture neutre.
+  PRIORITÉ 2 — désencombrer et dépersonnaliser : ce qu'il faut retirer précisément.
+  PRIORITÉ 3 — remplacer chaque meuble principal actuel par un équivalent contemporain, à la même place et pour la même fonction (nomme le meuble d'origine et son remplaçant), et matérialiser la fonction de la pièce.
+  PRIORITÉ 4 — style, textiles, voilages, tapis, luminaires, plantes, accessoires, ambiance et lumière.
+- Intègre les éléments concrets de l'analyse (meubles actuels et leur position, objets à retirer, atouts) plutôt que des formules génériques.
+- Termine par une courte ligne sur le rendu attendu (photoréaliste, lumière naturelle conservée).
+- N'invente aucun élément d'architecture absent de la photo.
+
+PROJECTION MODERNISÉE (impératif) :
+- Le champ « meublesPrincipauxAConserver » de l'analyse décrit ici le mobilier ACTUEL : chacun de ces meubles est remplacé par un équivalent contemporain, chaleureux et réaliste, même fonction, même emplacement, proportions adaptées.
+- L'organisation de la pièce ne change pas : coin salon et coin repas restent aux mêmes endroits. Ne bloque ni les circulations, ni les fenêtres, ni les portes, ni les radiateurs.
+- Conserve les éléments intégrés et fixes (bibliothèques et placards intégrés, cuisine, cheminée, radiateurs).
+- Les murs peuvent recevoir une peinture neutre (blanc cassé, beige, greige), sans masquer un défaut réel.
+- Coin repas : une table contemporaine avec un nombre de chaises adapté à sa taille et à l'espace.
+- Salon : une table basse contemporaine devant le canapé, sauf si l'espace est manifestement trop petit.
+
+AMBITION ESTHÉTIQUE :
+Le résultat doit être une projection modernisée nettement visible, chaleureuse et vendeuse : mobilier contemporain cohérent, harmonie des couleurs et matières, textiles, voilages, tapis, luminaires, plantes, décoration soignée et luminosité naturelle mise en valeur, tout en restant crédible dans le logement réel.
+
+RÈGLES NON NÉGOCIABLES :
+Les cinq règles ci-dessous seront AJOUTÉES AUTOMATIQUEMENT, mot pour mot, à la fin de ton texte.
+Ne les recopie pas. Ton texte ne doit jamais les contredire.
+
+=== RÈGLES NON NÉGOCIABLES (pour information) ===
+${REGLES_IMPERATIVES_MODERNISEES}
+
+Réponds UNIQUEMENT avec le texte du prompt, sans guillemets, sans titre, sans commentaire.
+
+=== ANALYSE DE LA PHOTO ===
+${JSON.stringify(analysis, null, 2)}
+${commentaireClient ? `\n=== DEMANDE PARTICULIÈRE DU CLIENT ===\n${commentaireClient}\n(À prendre en compte si elle reste compatible avec les règles non négociables et l'esprit du home staging.)` : ''}
+
+=== RÈGLES GÉNÉRALES (référence) ===
+${referenceRules}
+
+=== MODULE DE LA PIÈCE : ${roomType} — PROJECTION MODERNISÉE (référence) ===
+${roomPrompt}
+
+${microTexts.length ? '=== AJUSTEMENTS SPÉCIFIQUES DÉTECTÉS ===\n' + microTexts.join('\n\n') : ''}`;
+}
+
+/** Table basse oubliée en mode modernisé (salon, hors petit espace). */
+function tableBasseOublieeModernise(texteRedige, analysis, roomType) {
+  if (!PIECES_SALON.includes(roomType)) return false;
+  if ((analysis?.microModules || []).includes('petit_espace')) return false;
+  return !/tables? basses?/.test(normaliser(texteRedige));
+}
+
+async function synthesizePromptModernise(params) {
+  const { analysis, referenceRules, roomPrompt, microTexts, roomType } = params;
+  const instructions = construireInstructionsModernisees(params);
+  console.log(`[PromptSynthesis] Option PROJECTION MODERNISÉE (${roomType})`);
+
+  let texteRedige;
+  try {
+    const response = await axios.post(
+      'https://api.openai.com/v1/chat/completions',
+      { model: 'gpt-4o', max_tokens: 1800, messages: [{ role: 'user', content: instructions }] },
+      { headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}`, 'Content-Type': 'application/json' }, timeout: 90000 }
+    );
+    texteRedige = response.data.choices[0].message.content.trim();
+  } catch (err) {
+    console.error('[PromptSynthesis] Erreur (modernisé):', err.response?.data || err.message);
+    return [referenceRules, roomPrompt, ...microTexts, TITRE_REGLES, REGLES_IMPERATIVES_MODERNISEES].join('\n\n');
+  }
+
+  // Seul contrôle propre à ce mode : la table basse du salon.
+  if (tableBasseOublieeModernise(texteRedige, analysis, roomType)) {
+    console.warn(`[PromptSynthesis] TABLE BASSE OUBLIÉE (modernisé, ${roomType}) — nouvelle rédaction demandée.`);
+    try {
+      const response = await axios.post(
+        'https://api.openai.com/v1/chat/completions',
+        { model: 'gpt-4o', max_tokens: 1800, messages: [{ role: 'user', content: `${instructions}\n\n=== CORRECTION OBLIGATOIRE ===\nTa version précédente oubliait la table basse contemporaine devant le canapé. Réécris le prompt complet en l'ajoutant en PRIORITÉ 3.` }] },
+        { headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}`, 'Content-Type': 'application/json' }, timeout: 90000 }
+      );
+      const corrige = response.data.choices[0].message.content.trim();
+      if (tableBasseOublieeModernise(corrige, analysis, roomType)) {
+        console.warn(`[PromptSynthesis] TABLE BASSE OUBLIÉE PERSISTANTE (modernisé, ${roomType}) — génération poursuivie grâce à la règle 3 (à surveiller).`);
+      }
+      texteRedige = corrige;
+    } catch (err) {
+      console.warn('[PromptSynthesis] Nouvelle rédaction impossible (modernisé) — 1re rédaction conservée :', err.response?.data || err.message);
+    }
+  }
+
+  const prompt = `${texteRedige.trim()}\n\n${TITRE_REGLES}\n${REGLES_IMPERATIVES_MODERNISEES}`;
+  console.log(`[PromptSynthesis] Prompt synthétisé : ${texteRedige.length} caractères rédigés + règles = ${prompt.length} caractères`);
+  console.log(`[PromptSynthesis] PROMPT FINAL (${roomType}, modernisé) :\n${prompt}`);
+  return prompt;
+}
+
+module.exports = {
+  synthesizePrompt,
+  detecterContradictions,
+  tableBasseOubliee,
+  assemblerPromptFinal,
+  REGLES_IMPERATIVES,
+  REGLES_IMPERATIVES_MODERNISEES,
+  MODE_MODERNISE,
+};
