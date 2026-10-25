@@ -8,6 +8,12 @@ const crypto = require('crypto');
 const FormData = require('form-data');
 const { buildPromptBienVideV1 } = require('./pipelineVidesV1');
 const { buildPromptHabitesPro } = require('./promptsHabitesPro');
+const { incrusterMention } = require('./mentionImage');
+const { MENTION_RENOVATION } = require('./promptSynthesis');
+
+// Pièces habitées PRO proposant le choix « Conserver » / « Projection » (24/10/2026)
+const PIECES_OPTION_PROJECTION = ['salon', 'salon_salle_a_manger', 'chambre_parentale', 'chambre_enfant', 'chambre_ado', 'cuisine', 'salle_bain'];
+const PIECES_RENOVATION = ['cuisine', 'salle_bain'];
 const { createPage, lireTexte, lireReference } = require('./notionHelpers');
 
 // ─── INTERRUPTEUR STYLE_VARIANT EN PRODUCTION ─────────────────────────────────
@@ -41,7 +47,9 @@ async function uploadBufferToCloudinary(buffer, filename) {
 }
 
 // Copie à l'identique de genererImage() de testStagingV1.js
-async function genererImage(prompt, imageUrl, model = MODELE_IMAGE) {
+// options.mention (24/10/2026) : texte incrusté sur l'image avant son envoi (projection rénovée).
+// Sans option : comportement strictement identique.
+async function genererImage(prompt, imageUrl, model = MODELE_IMAGE, options = {}) {
   const imageNormalisee = imageUrl.includes('/upload/')
     ? imageUrl.replace('/upload/', '/upload/w_1536,c_limit,f_png,fl_force_strip/')
     : imageUrl;
@@ -68,7 +76,11 @@ async function genererImage(prompt, imageUrl, model = MODELE_IMAGE) {
 
   const b64 = openaiRes.data.data[0].b64_json;
   if (!b64) throw new Error('Aucune image générée par OpenAI.');
-  return uploadBufferToCloudinary(Buffer.from(b64, 'base64'), 'generated.png');
+  let imageFinale = Buffer.from(b64, 'base64');
+  // Si l'incrustation échoue, l'erreur remonte : le générateur refait un essai, et l'image
+  // n'est jamais livrée sans la mention.
+  if (options.mention) imageFinale = await incrusterMention(imageFinale, options.mention);
+  return uploadBufferToCloudinary(imageFinale, 'generated.png');
 }
 
 /**
@@ -210,15 +222,17 @@ async function genererPhotoPro(photoPage, projetPage) {
   const habite = prj['Type de bien']?.select?.name === 'Bien habité';
   let prompt;
   let familleUtilisee = null;
+  let mentionImage = null; // projection rénovée (cuisine, salle de bain) : mention incrustée
 
   if (habite) {
-    // Option PRO « Projection modernisée » (salon, salon / salle à manger) : choix de l'agent,
-    // enregistré dans la colonne « Choix cuisine ». Absente ou autre valeur → version validée.
+    // Option PRO « Projection modernisée / rénovée » : choix de l'agent, enregistré dans la
+    // colonne « Choix cuisine ». Absente ou autre valeur → version validée.
     const choixMobilier = pp['Choix cuisine']?.select?.name || null;
-    const mode = choixMobilier === 'projection_modernisee' && ['salon', 'salon_salle_a_manger'].includes(roomType)
+    const mode = choixMobilier === 'projection_modernisee' && PIECES_OPTION_PROJECTION.includes(roomType)
       ? 'projection_modernisee'
       : null;
-    if (mode) console.log(`[GenerationV1] PRO habité — ${roomType} — option projection modernisée`);
+    if (mode) console.log(`[GenerationV1] PRO habité — ${roomType} — option projection ${PIECES_RENOVATION.includes(roomType) ? 'rénovée' : 'modernisée'}`);
+    mentionImage = mode && PIECES_RENOVATION.includes(roomType) ? MENTION_RENOVATION : null;
     ({ prompt } = await buildPromptHabitesPro(roomType, imageUrl, mode ? { mode } : {}));
   } else {
     const choixNiveau = pp['Choix cuisine']?.select?.name || null;
@@ -256,7 +270,9 @@ async function genererPhotoPro(photoPage, projetPage) {
     familleUtilisee = resultat.styleVariantId || null;
   }
 
-  const generatedUrl = await genererImage(prompt, imageUrl);
+  const generatedUrl = mentionImage
+    ? await genererImage(prompt, imageUrl, MODELE_IMAGE, { mention: mentionImage })
+    : await genererImage(prompt, imageUrl);
   const nomProjet = prj['Nom du projet']?.title?.[0]?.plain_text || '—';
 
   const proprietes = {
