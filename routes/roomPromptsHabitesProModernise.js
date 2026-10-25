@@ -1,4 +1,5 @@
-// Modules « PROJECTION MODERNISÉE » — biens habités PRO, salon et salon / salle à manger.
+// Modules « PROJECTION MODERNISÉE / RÉNOVÉE » — biens habités PRO.
+// Salon, salon / salle à manger (24/10/2026), puis chambres, cuisine et salle de bain (24/10/2026).
 // Option choisie par l'agent à l'envoi de la photo (validée le 24/10/2026).
 // Repris des modules PRO d'origine (avant le 15/10/2026), adaptés UNIQUEMENT sur :
 //   - les meubles principaux sont remplacés par un mobilier contemporain, à la même place ;
@@ -168,4 +169,222 @@ conserver la lumière naturelle d'origine tout en créant une ambiance plus chal
 
 Rendu souhaité :
 photoréaliste très réaliste, image nette, textures naturelles crédibles, détails précis, décoration élégante et intemporelle adaptée aux photos d'agence immobilière haut de gamme.`,
+
+  // ── Ajout du 24/10/2026 : chambres (projection modernisée), cuisine et salle de bain (projection rénovée)
+
+  chambre_parentale: `PRO HABITÉ — CHAMBRE PARENTALE — PROJECTION MODERNISÉE
+
+Créer un home staging haut de gamme, apaisant et réaliste dans cette chambre parentale habitée, en proposant une projection modernisée du mobilier et de la décoration, tout en conservant exactement l'architecture, les volumes, les ouvertures, le sol, le plafond et l'angle de vue d'origine.
+
+Conserver impérativement sans modification :
+• l'architecture et les volumes réels de la pièce
+• les plafonds, sols et matériaux existants
+• les murs (seule leur couleur peut être rafraîchie par une peinture neutre : blanc cassé, beige, greige)
+• les fenêtres, portes et ouvertures
+• les perspectives et la lumière naturelle d'origine
+• l'emplacement et l'orientation du lit
+• les éléments intégrés et fixes : placards et dressings intégrés, cheminée, radiateurs
+
+Ne pas transformer la structure de la chambre.
+Ne pas créer une pièce irréaliste ou trop luxueuse.
+
+Désencombrer visuellement la pièce :
+• supprimer les objets personnels, vêtements apparents, piles d'objets et cartons
+• retirer les petits meubles inutiles ou encombrants
+• dégager les surfaces et les circulations autour du lit
+
+Moderniser la chambre (projection modernisée) :
+• remplacer le lit et sa tête de lit, les tables de chevet, la commode, l'armoire non intégrée, le bureau, la chaise ou le fauteuil par un mobilier contemporain, chaleureux et réaliste, placé au même endroit et proportionné à l'espace
+• habiller le lit d'un linge de lit soigné : housse de couette en lin ou coton lavé, 2 à 4 coussins sobres, plaid naturel avec un tombé souple
+• lampes de chevet élégantes, un livre, une petite céramique ou un vase discret
+• voilages blancs ou lin du sol au plafond
+• tapis doux et harmonieux, adapté à la taille de la pièce
+• une ou deux plantes vertes proportionnées
+• décoration murale neutre et apaisante au-dessus du lit si pertinent
+
+Palette :
+blanc cassé, crème, beige, lin, sable, taupe clair, bois naturel.
+
+Créer une ambiance :
+• apaisante
+• lumineuse
+• élégante
+• cocooning
+• hôtel de charme discret, jamais ostentatoire
+
+Éviter absolument :
+• les couleurs trop vives et les motifs trop marqués
+• la multiplication des coussins décoratifs
+• les objets personnels visibles
+• les rendus artificiels ou trop parfaits
+
+Lumière :
+conserver la lumière naturelle d'origine tout en créant une ambiance douce et chaleureuse avec des ombres réalistes.
+
+Rendu souhaité :
+photoréaliste très réaliste, net, textures naturelles crédibles, décoration élégante et intemporelle adaptée aux photos d'agence immobilière.`,
+
+  chambre_enfant: `PRO HABITÉ — CHAMBRE ENFANT — PROJECTION MODERNISÉE
+
+Créer un home staging doux, lumineux et réaliste dans cette chambre d'enfant habitée, en proposant une projection modernisée du mobilier et de la décoration : une chambre d'enfant contemporaine, apaisante et évolutive, dans laquelle de futurs acquéreurs peuvent se projeter. Conserver exactement l'architecture, les volumes, les ouvertures, le sol, le plafond et l'angle de vue d'origine.
+
+Conserver impérativement sans modification :
+• l'architecture et les volumes réels de la pièce
+• les plafonds, sols et matériaux existants
+• les murs (seule leur couleur peut être rafraîchie par une peinture neutre : blanc cassé, beige, greige)
+• les fenêtres, portes et ouvertures
+• les perspectives et la lumière naturelle d'origine
+• l'emplacement et l'orientation du lit
+• les éléments intégrés et fixes : placards intégrés, radiateurs
+
+Désencombrer visuellement la pièce :
+• supprimer les jouets éparpillés, dessins, affiches, objets personnels et piles d'objets
+• retirer les petits meubles inutiles ou encombrants
+• dégager le sol et les circulations
+
+Moderniser la chambre (projection modernisée) :
+• remplacer le lit, la table de chevet, le bureau, la chaise, la commode et les rangements mobiles par un mobilier contemporain, simple et chaleureux, placé au même endroit et proportionné à l'espace
+• linge de lit doux et harmonieux, un coussin discret, un plaid léger
+• quelques jouets en bois ou peluches rangés dans un panier, en petit nombre
+• voilages blancs ou lin, tapis doux et chaleureux
+• lampe douce, une plante si pertinent
+• décoration murale neutre et douce, jamais personnelle
+
+Palette :
+blanc cassé, crème, beige, sable, vert sauge très clair, bleu grisé discret, bois clair.
+
+Créer une ambiance :
+• douce
+• lumineuse
+• apaisante
+• évolutive et intemporelle
+
+Éviter absolument :
+• les couleurs vives et les motifs très marqués
+• les thèmes trop typés (personnages, licences)
+• l'accumulation de jouets ou d'objets
+• les rendus artificiels ou trop parfaits
+
+Lumière :
+conserver la lumière naturelle d'origine avec une ambiance douce et des ombres réalistes.
+
+Rendu souhaité :
+photoréaliste très réaliste, net, textures naturelles crédibles, adapté aux photos d'agence immobilière.`,
+
+  chambre_ado: `PRO HABITÉ — CHAMBRE ADOLESCENT — PROJECTION MODERNISÉE
+
+Créer un home staging lumineux, sobre et réaliste dans cette chambre d'adolescent habitée, en proposant une projection modernisée du mobilier et de la décoration : une chambre contemporaine et polyvalente (adolescent, jeune adulte, chambre d'amis), dans laquelle de futurs acquéreurs peuvent se projeter. Conserver exactement l'architecture, les volumes, les ouvertures, le sol, le plafond et l'angle de vue d'origine.
+
+Conserver impérativement sans modification :
+• l'architecture et les volumes réels de la pièce
+• les plafonds, sols et matériaux existants
+• les murs (seule leur couleur peut être rafraîchie par une peinture neutre : blanc cassé, beige, greige)
+• les fenêtres, portes et ouvertures
+• les perspectives et la lumière naturelle d'origine
+• l'emplacement et l'orientation du lit
+• les éléments intégrés et fixes : placards intégrés, radiateurs
+
+Désencombrer visuellement la pièce :
+• supprimer les affiches, posters, objets personnels, vêtements apparents et piles d'objets
+• retirer les petits meubles inutiles ou encombrants
+• dégager le bureau, les surfaces et les circulations
+
+Moderniser la chambre (projection modernisée) :
+• remplacer le lit, la table de chevet, le bureau, la chaise, la commode et les rangements mobiles par un mobilier contemporain, sobre et chaleureux, placé au même endroit et proportionné à l'espace
+• linge de lit harmonieux, quelques coussins sobres, un plaid
+• bureau mis en scène simplement : une lampe élégante, quelques livres, une boîte de rangement discrète
+• voilages blancs ou lin, tapis chaleureux
+• une plante, une décoration murale neutre et graphique
+
+Palette :
+blanc cassé, crème, beige, sable, gris chaud, bleu grisé, vert sauge, bois naturel.
+
+Créer une ambiance :
+• lumineuse
+• sobre
+• chaleureuse
+• contemporaine et polyvalente
+
+Éviter absolument :
+• les couleurs trop vives et les motifs très marqués
+• les objets personnels visibles
+• l'accumulation d'objets
+• les rendus artificiels ou trop parfaits
+
+Lumière :
+conserver la lumière naturelle d'origine avec une ambiance chaleureuse et des ombres réalistes.
+
+Rendu souhaité :
+photoréaliste très réaliste, net, textures naturelles crédibles, adapté aux photos d'agence immobilière.`,
+
+  cuisine: `PRO HABITÉ — CUISINE — PROJECTION RÉNOVÉE
+
+Montrer à quoi pourrait ressembler cette cuisine entièrement refaite, à implantation identique, pour aider de futurs acquéreurs à se projeter. La rénovation doit être crédible, réalisable et cohérente avec le standing du logement : une vraie cuisine rénovée, pas une cuisine de catalogue.
+
+Conserver impérativement :
+• l'architecture, les volumes et l'angle de vue d'origine
+• les fenêtres, portes et ouvertures : même taille, même forme, même position
+• l'implantation de la cuisine : évier, plaques de cuisson, four, réfrigérateur et meubles aux mêmes emplacements, mêmes linéaires, mêmes volumes
+• la lumière naturelle d'origine
+
+Rénover entièrement (projection rénovée) :
+• façades et poignées des meubles bas et hauts : finitions contemporaines (laqué mat, bois clair, teintes douces)
+• plan de travail : bois clair, quartz ou matière minérale claire
+• crédence : carrelage contemporain, zellige clair, ou crédence unie
+• électroménager visible : moderne, intégré ou inox
+• robinetterie contemporaine
+• murs et plafond repeints, sol refait (carrelage ou parquet contemporain clair)
+• luminaires actuels : suspensions et éclairage sous meubles
+• coin repas éventuel : table et chaises contemporaines au même emplacement, en nombre adapté à l'espace
+
+Mise en scène :
+• plan de travail dégagé, avec quelques accessoires choisis : planche à découper en bois, bocaux en verre, plante aromatique, coupe de fruits
+• torchon en lin, quelques céramiques sobres
+
+Palette :
+blanc cassé, crème, beige, lin, sable, bois clair, touches de noir mat ou de laiton brossé discrètes.
+
+Éviter absolument :
+• toute modification de l'implantation ou des ouvertures
+• le luxe ostentatoire et l'effet catalogue
+• l'accumulation d'objets sur les plans de travail
+• les rendus artificiels ou trop parfaits
+
+Rendu souhaité :
+photoréaliste très réaliste, lumineux, textures crédibles, adapté aux photos d'agence immobilière.`,
+
+  salle_bain: `PRO HABITÉ — SALLE DE BAIN — PROJECTION RÉNOVÉE
+
+Montrer à quoi pourrait ressembler cette salle de bain entièrement refaite, à implantation identique, pour aider de futurs acquéreurs à se projeter. La rénovation doit être crédible, réalisable et cohérente avec le standing du logement : une vraie salle de bain rénovée, pas une salle de bain neuve de catalogue.
+
+Conserver impérativement :
+• l'architecture, les volumes et l'angle de vue d'origine
+• les fenêtres, portes et ouvertures : même taille, même forme, même position
+• l'implantation : baignoire ou douche, vasque, WC et bidet éventuel aux mêmes emplacements
+• UNE BAIGNOIRE RESTE UNE BAIGNOIRE. UNE DOUCHE RESTE UNE DOUCHE. Ne jamais transformer l'une en l'autre.
+• la lumière naturelle d'origine
+
+Rénover entièrement (projection rénovée) :
+• revêtements muraux et sol : grands carreaux clairs, joints fins, ou zellige clair
+• meuble vasque contemporain à l'emplacement du lavabo existant
+• sanitaires et robinetterie actualisés (chromé, inox brossé ou laiton brossé discret)
+• paroi vitrée sobre pour la douche ou la baignoire existante
+• miroir et éclairage actualisés
+• plafond repeint
+
+Mise en scène :
+• linge de toilette blanc ou écru soigneusement plié
+• quelques accessoires choisis : distributeur en céramique, petite plante, bougie
+
+Palette :
+blanc, écru, beige très clair, gris doux, bois clair.
+
+Éviter absolument :
+• toute modification de l'implantation, du type de sanitaire ou des ouvertures
+• le luxe ostentatoire et l'effet catalogue
+• l'accumulation d'objets
+• les rendus artificiels ou trop parfaits
+
+Rendu souhaité :
+photoréaliste très réaliste, lumineux, textures crédibles, adapté aux photos d'agence immobilière.`,
 };
