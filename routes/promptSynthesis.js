@@ -255,7 +255,11 @@ async function appelerGpt4o(contenu) {
 async function synthesizePrompt(params) {
   // Option PRO « Projection modernisée » (salon, salon / salle à manger) : chemin séparé.
   // Sans cette option, le code ci-dessous (version validée) s'applique tel quel.
-  if (params.mode === MODE_MODERNISE) return synthesizePromptModernise(params);
+  if (params.mode === MODE_MODERNISE) {
+    return PIECES_SALON.includes(params.roomType)
+      ? synthesizePromptModernise(params) // salons : version validée le 24/10/2026, inchangée
+      : synthesizePromptProjection(params); // chambres, cuisine, salle de bain (ajout du 24/10/2026)
+  }
   const { analysis, referenceRules, roomPrompt, microTexts, roomType } = params;
   const instructions = construireInstructions(params);
 
@@ -455,8 +459,176 @@ async function synthesizePromptModernise(params) {
   return prompt;
 }
 
+// ===========================================================================
+// AJOUT DU 24/10/2026 — CHAMBRES (projection modernisée),
+// CUISINE et SALLE DE BAIN (projection rénovée), biens habités PRO.
+// Les salons gardent leur version ci-dessus, inchangée.
+// ===========================================================================
+
+const PIECES_CHAMBRE = ['chambre_parentale', 'chambre_enfant', 'chambre_ado'];
+const PIECES_RENOVATION = ['cuisine', 'salle_bain'];
+
+// Mention incrustée sur les images de projection rénovée (décision du 24/10/2026)
+const MENTION_RENOVATION = 'Projection de rénovation – travaux non inclus';
+
+const REGLE_1_CHAMBRE = `1. MOBILIER — PROJECTION MODERNISÉE
+Les meubles principaux de la chambre (lit et tête de lit, tables de chevet, commode, armoire non intégrée, bureau, chaise, fauteuil) sont remplacés par un mobilier contemporain, chaleureux et réaliste.
+Chaque meuble de remplacement garde la fonction et l'emplacement du meuble d'origine, avec des proportions adaptées à la pièce ; le lit reste au même endroit, dans la même orientation.
+Ne jamais encombrer les circulations, ni masquer une fenêtre, une porte ou un radiateur.
+Conserver les éléments intégrés et fixes : placards et dressings intégrés, cheminée, radiateurs.
+Les murs peuvent recevoir une peinture neutre (blanc cassé, beige, greige) sans jamais masquer un défaut réel ; les sols, plafonds et menuiseries restent inchangés.`;
+
+const REGLE_3_CHAMBRE = `3. MATÉRIALISER LA FONCTION DE LA PIÈCE
+Chaque espace doit être immédiatement identifiable par son usage.
+Chambre : un lit contemporain fait avec soin, au linge harmonieux, avec des chevets de part et d'autre lorsque l'espace le permet.`;
+
+const REGLE_1_CUISINE = `1. CUISINE — PROJECTION RÉNOVÉE
+Montrer la cuisine entièrement refaite, à implantation identique : évier, plaques de cuisson, four, réfrigérateur et meubles restent aux mêmes emplacements, avec les mêmes linéaires et les mêmes volumes.
+Sont rénovés : façades, poignées, plan de travail, crédence, électroménager visible, robinetterie, luminaires, murs, sol et plafond.
+Coin repas éventuel : table et chaises contemporaines au même emplacement, en nombre adapté à l'espace.
+Ne jamais déplacer, agrandir ni créer de fenêtre, de porte ou d'ouverture ; ne jamais modifier les volumes ni l'angle de vue.
+La rénovation reste réaliste, réalisable et cohérente avec le standing du logement : pas une cuisine de catalogue.`;
+
+const REGLE_1_SDB = `1. SALLE DE BAIN — PROJECTION RÉNOVÉE
+Montrer la salle de bain entièrement refaite, à implantation identique : baignoire ou douche, vasque, WC et bidet éventuel restent aux mêmes emplacements.
+UNE BAIGNOIRE RESTE UNE BAIGNOIRE. UNE DOUCHE RESTE UNE DOUCHE. Ne jamais transformer l'une en l'autre.
+Sont rénovés : revêtements muraux et sol, meuble vasque, sanitaires, robinetterie, paroi, miroir, luminaires et plafond.
+Ne jamais déplacer, agrandir ni créer de fenêtre, de porte ou d'ouverture ; ne jamais modifier les volumes ni l'angle de vue.
+La rénovation reste réaliste, réalisable et cohérente avec le standing du logement : pas une salle de bain de catalogue.`;
+
+const REGLE_3_RENOVATION = {
+  cuisine: `3. MATÉRIALISER LA FONCTION DE LA PIÈCE
+Chaque espace doit être immédiatement identifiable par son usage.
+Cuisine : plan de travail dégagé, mis en scène avec quelques accessoires choisis.`,
+  salle_bain: `3. MATÉRIALISER LA FONCTION DE LA PIÈCE
+Chaque espace doit être immédiatement identifiable par son usage.
+Salle de bain : linge de toilette soigné et quelques accessoires choisis.`,
+};
+
+// « On rénove tout » (décision du 24/10/2026) : la règle 5 devient « rénovation complète ».
+const REGLE_5_RENOVATION = `5. RÉNOVATION COMPLÈTE
+Tous les éléments rénovés (murs, sol, plafond, crédence, revêtements, équipements) sont présentés refaits à neuf, sans trace d'usure ni de dégradation.
+Les fenêtres et les portes gardent exactement leur taille, leur forme et leur position ; seul leur état peut être rafraîchi.`;
+
+const BLOC_REGLE = (n) => BLOCS_REGLES.find((b) => b.startsWith(`${n}. `));
+
+/** Les cinq règles de l'option, selon la pièce. Règles 2 et 4 toujours reprises mot pour mot. */
+function reglesProjection(roomType) {
+  if (PIECES_CHAMBRE.includes(roomType)) {
+    return [REGLE_1_CHAMBRE, BLOC_REGLE(2), REGLE_3_CHAMBRE, BLOC_REGLE(4), BLOC_REGLE(5)].join('\n\n');
+  }
+  const regle1 = roomType === 'cuisine' ? REGLE_1_CUISINE : REGLE_1_SDB;
+  return [regle1, BLOC_REGLE(2), REGLE_3_RENOVATION[roomType], BLOC_REGLE(4), REGLE_5_RENOVATION].join('\n\n');
+}
+
+function construireInstructionsProjection({ analysis, referenceRules, roomPrompt, microTexts, roomType, commentaireClient }) {
+  const renovation = PIECES_RENOVATION.includes(roomType);
+  const regles = reglesProjection(roomType);
+  const nomPiece = { cuisine: 'la cuisine', salle_bain: 'la salle de bain' }[roomType] || 'la chambre';
+
+  const option = renovation
+    ? `L'agent immobilier a choisi l'option « PROJECTION RÉNOVÉE » : montrer ${nomPiece} entièrement refaite, à implantation identique, pour aider les acheteurs à se projeter dans les travaux.`
+    : `L'agent immobilier a choisi l'option « PROJECTION MODERNISÉE » : le mobilier et la décoration actuels de la chambre sont remplacés par un aménagement contemporain, dans le logement réel.`;
+
+  const priorite1 = renovation
+    ? `PRIORITÉ 1 — conserver l'architecture, les volumes, la perspective, les fenêtres et les portes, et l'IMPLANTATION exacte de ${nomPiece} (chaque équipement à sa place).`
+    : `PRIORITÉ 1 — conserver l'architecture, les volumes, la perspective, les ouvertures, les sols, les plafonds, les éléments intégrés, et l'emplacement et l'orientation du lit ; les murs peuvent recevoir une peinture neutre.`;
+
+  const priorite3 = renovation
+    ? `PRIORITÉ 3 — décrire précisément la rénovation : ce qui est refait et avec quelles finitions, équipement par équipement, à la même place.`
+    : `PRIORITÉ 3 — remplacer chaque meuble principal actuel par un équivalent contemporain, à la même place et pour la même fonction (nomme le meuble d'origine et son remplaçant).`;
+
+  const imperatif = renovation
+    ? `PROJECTION RÉNOVÉE (impératif) :
+- Tout est rénové : ${roomType === 'cuisine' ? 'façades, poignées, plan de travail, crédence, électroménager visible, robinetterie, luminaires, murs, sol et plafond' : 'revêtements muraux et sol, meuble vasque, sanitaires, robinetterie, paroi, miroir, luminaires et plafond'}. Aucune trace d'usure ni de dégradation sur les éléments rénovés.
+- L'implantation ne change pas : chaque équipement reste exactement à sa place, mêmes linéaires, mêmes volumes.${roomType === 'salle_bain' ? '\n- Une baignoire reste une baignoire, une douche reste une douche.' : '\n- Coin repas éventuel : table et chaises contemporaines au même emplacement.'}
+- Ne déplace, n'agrandis et ne crée aucune fenêtre, porte ou ouverture.
+- La rénovation reste réaliste, réalisable et cohérente avec le standing du logement.`
+    : `PROJECTION MODERNISÉE (impératif) :
+- Le champ « meublesPrincipauxAConserver » de l'analyse décrit ici le mobilier ACTUEL : chacun de ces meubles est remplacé par un équivalent contemporain, chaleureux et réaliste, même fonction, même emplacement, proportions adaptées.
+- Le lit reste au même endroit, dans la même orientation. Ne bloque ni les circulations, ni les fenêtres, ni les portes, ni les radiateurs.
+- Conserve les éléments intégrés et fixes (placards et dressings intégrés, cheminée, radiateurs).
+- Les murs peuvent recevoir une peinture neutre (blanc cassé, beige, greige), sans masquer un défaut réel.`;
+
+  return `Tu es un ingénieur prompt spécialisé en génération d'image immobilière.
+
+Ta mission : transformer une documentation de home staging très détaillée en UN SEUL prompt d'exécution compact, destiné au modèle gpt-image-2 via l'API d'édition d'image.
+
+${option}
+
+CONTRAINTES DE SORTIE :
+- Entre 1200 et 2400 caractères.
+- Rédigé en français, à l'impératif, en instructions directes.
+- Structuré par priorités décroissantes, dans cet ordre strict :
+  ${priorite1}
+  PRIORITÉ 2 — désencombrer et dépersonnaliser : ce qu'il faut retirer précisément.
+  ${priorite3}
+  PRIORITÉ 4 — style, textiles, luminaires, plantes, accessoires, ambiance et lumière.
+- Intègre les éléments concrets de l'analyse plutôt que des formules génériques.
+- Termine par une courte ligne sur le rendu attendu (photoréaliste, lumière naturelle conservée).
+- N'invente aucun élément d'architecture absent de la photo.
+
+${imperatif}
+
+PRIORITÉ DE L'OPTION :
+Dans les règles générales de référence ci-dessous, les passages qui demandent de conserver le mobilier, la cuisine, la salle de bain ou les revêtements ne s'appliquent PAS à cette option. Leurs consignes d'architecture, de lumière, de circulation, de style et de réalisme restent valables.
+
+AMBITION ESTHÉTIQUE :
+Le résultat doit être une projection nettement visible, chaleureuse et vendeuse, tout en restant crédible dans le logement réel.
+
+RÈGLES NON NÉGOCIABLES :
+Les cinq règles ci-dessous seront AJOUTÉES AUTOMATIQUEMENT, mot pour mot, à la fin de ton texte.
+Ne les recopie pas. Ton texte ne doit jamais les contredire.
+
+=== RÈGLES NON NÉGOCIABLES (pour information) ===
+${regles}
+
+Réponds UNIQUEMENT avec le texte du prompt, sans guillemets, sans titre, sans commentaire.
+
+=== ANALYSE DE LA PHOTO ===
+${JSON.stringify(analysis, null, 2)}
+${commentaireClient ? `\n=== DEMANDE PARTICULIÈRE DU CLIENT ===\n${commentaireClient}\n(À prendre en compte si elle reste compatible avec les règles non négociables.)` : ''}
+
+=== RÈGLES GÉNÉRALES (référence) ===
+${referenceRules}
+
+=== MODULE DE LA PIÈCE : ${roomType} — ${renovation ? 'PROJECTION RÉNOVÉE' : 'PROJECTION MODERNISÉE'} (référence) ===
+${roomPrompt}
+
+${microTexts.length ? '=== AJUSTEMENTS SPÉCIFIQUES DÉTECTÉS ===\n' + microTexts.join('\n\n') : ''}`;
+}
+
+async function synthesizePromptProjection(params) {
+  const { referenceRules, roomPrompt, microTexts, roomType } = params;
+  const regles = reglesProjection(roomType);
+  const instructions = construireInstructionsProjection(params);
+  console.log(`[PromptSynthesis] Option ${PIECES_RENOVATION.includes(roomType) ? 'PROJECTION RÉNOVÉE' : 'PROJECTION MODERNISÉE'} (${roomType})`);
+
+  let texteRedige;
+  try {
+    const response = await axios.post(
+      'https://api.openai.com/v1/chat/completions',
+      { model: 'gpt-4o', max_tokens: 1800, messages: [{ role: 'user', content: instructions }] },
+      { headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}`, 'Content-Type': 'application/json' }, timeout: 90000 }
+    );
+    texteRedige = response.data.choices[0].message.content.trim();
+  } catch (err) {
+    console.error('[PromptSynthesis] Erreur (projection):', err.response?.data || err.message);
+    return [referenceRules, roomPrompt, ...microTexts, TITRE_REGLES, regles].join('\n\n');
+  }
+
+  const prompt = `${texteRedige.trim()}\n\n${TITRE_REGLES}\n${regles}`;
+  console.log(`[PromptSynthesis] Prompt synthétisé : ${texteRedige.length} caractères rédigés + règles = ${prompt.length} caractères`);
+  console.log(`[PromptSynthesis] PROMPT FINAL (${roomType}, projection) :\n${prompt}`);
+  return prompt;
+}
+
 module.exports = {
   synthesizePrompt,
+  reglesProjection,
+  MENTION_RENOVATION,
+  PIECES_RENOVATION,
+  PIECES_CHAMBRE,
   detecterContradictions,
   tableBasseOubliee,
   assemblerPromptFinal,
