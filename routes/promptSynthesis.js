@@ -482,9 +482,34 @@ const REGLE_3_CHAMBRE = `3. MATÉRIALISER LA FONCTION DE LA PIÈCE
 Chaque espace doit être immédiatement identifiable par son usage.
 Chambre : un lit contemporain fait avec soin, au linge harmonieux, avec des chevets de part et d'autre lorsque l'espace le permet.`;
 
+// 25/10/2026 : chambres enfant et ado — identité de la pièce et taille du lit adaptée
+const LIGNES_COMMUNES_CHAMBRE = `Chaque autre meuble garde la fonction et l'emplacement du meuble d'origine, avec des proportions adaptées à la pièce.
+Ne jamais encombrer les circulations, ni masquer une fenêtre, une porte ou un radiateur.
+Conserver les éléments intégrés et fixes : placards et dressings intégrés, cheminée, radiateurs.
+Les murs peuvent recevoir une peinture neutre (blanc cassé, beige, greige) ou douce, sans jamais masquer un défaut réel ; les sols, plafonds et menuiseries restent inchangés.`;
+
+const REGLE_1_ENFANT = `1. MOBILIER — PROJECTION MODERNISÉE (CHAMBRE D'ENFANT)
+Les meubles principaux (lit, tables de chevet, commode, armoire non intégrée, bureau, chaise) sont remplacés par un mobilier d'enfant contemporain, chaleureux et réaliste.
+Le lit reste au même emplacement et dans la même orientation ; il est adapté à une chambre d'enfant : lit simple ou lit cabane, même si la photo montre un lit double.
+${LIGNES_COMMUNES_CHAMBRE}`;
+
+const REGLE_1_ADO = `1. MOBILIER — PROJECTION MODERNISÉE (CHAMBRE D'ADOLESCENT)
+Les meubles principaux (lit, tables de chevet, commode, armoire non intégrée, bureau, chaise) sont remplacés par un mobilier contemporain adapté à un adolescent, chaleureux et réaliste.
+Le lit reste au même emplacement et dans la même orientation ; lit simple, ou lit de 140 cm si la place le permet.
+${LIGNES_COMMUNES_CHAMBRE}`;
+
+const REGLE_3_ENFANT = `3. MATÉRIALISER LA FONCTION DE LA PIÈCE
+Chaque espace doit être immédiatement identifiable par son usage.
+Chambre d'enfant : la pièce doit être immédiatement reconnaissable comme une chambre d'enfant (lit d'enfant, rangements à jouets, livres d'enfants, décoration douce et ludique), jamais comme une chambre d'adulte.`;
+
+const REGLE_3_ADO = `3. MATÉRIALISER LA FONCTION DE LA PIÈCE
+Chaque espace doit être immédiatement identifiable par son usage.
+Chambre d'adolescent : la pièce doit être immédiatement reconnaissable comme une chambre d'adolescent (bureau d'étude bien visible, rangements, décoration jeune et graphique), jamais comme une chambre parentale.`;
+
 const REGLE_1_CUISINE = `1. CUISINE — PROJECTION RÉNOVÉE
 Montrer la cuisine entièrement refaite, à implantation identique : évier, plaques de cuisson, four, réfrigérateur et meubles restent aux mêmes emplacements, avec les mêmes linéaires et les mêmes volumes.
 Sont rénovés : façades, poignées, plan de travail, crédence, électroménager visible, robinetterie, luminaires, murs, sol et plafond.
+Évier, robinetterie et électroménager (plaques, four, hotte, réfrigérateur) sont remplacés par des modèles neufs et contemporains, au même emplacement.
 Coin repas éventuel : table et chaises contemporaines au même emplacement, en nombre adapté à l'espace.
 Ne jamais déplacer, agrandir ni créer de fenêtre, de porte ou d'ouverture ; ne jamais modifier les volumes ni l'angle de vue.
 La rénovation reste réaliste, réalisable et cohérente avec le standing du logement : pas une cuisine de catalogue.`;
@@ -492,6 +517,7 @@ La rénovation reste réaliste, réalisable et cohérente avec le standing du lo
 const REGLE_1_SDB = `1. SALLE DE BAIN — PROJECTION RÉNOVÉE
 Montrer la salle de bain entièrement refaite, à implantation identique : baignoire ou douche, vasque, WC et bidet éventuel restent aux mêmes emplacements.
 UNE BAIGNOIRE RESTE UNE BAIGNOIRE. UNE DOUCHE RESTE UNE DOUCHE. Ne jamais transformer l'une en l'autre.
+Les sanitaires (baignoire, receveur de douche, WC, lavabo, bidet) sont remplacés par des modèles neufs, blancs et contemporains, de même type et au même emplacement. Aucun sanitaire coloré ou daté ne doit subsister.
 Sont rénovés : revêtements muraux et sol, meuble vasque, sanitaires, robinetterie, paroi, miroir, luminaires et plafond.
 Ne jamais déplacer, agrandir ni créer de fenêtre, de porte ou d'ouverture ; ne jamais modifier les volumes ni l'angle de vue.
 La rénovation reste réaliste, réalisable et cohérente avec le standing du logement : pas une salle de bain de catalogue.`;
@@ -514,12 +540,26 @@ const BLOC_REGLE = (n) => BLOCS_REGLES.find((b) => b.startsWith(`${n}. `));
 
 /** Les cinq règles de l'option, selon la pièce. Règles 2 et 4 toujours reprises mot pour mot. */
 function reglesProjection(roomType) {
+  if (roomType === 'chambre_enfant') {
+    return [REGLE_1_ENFANT, BLOC_REGLE(2), REGLE_3_ENFANT, BLOC_REGLE(4), BLOC_REGLE(5)].join('\n\n');
+  }
+  if (roomType === 'chambre_ado') {
+    return [REGLE_1_ADO, BLOC_REGLE(2), REGLE_3_ADO, BLOC_REGLE(4), BLOC_REGLE(5)].join('\n\n');
+  }
   if (PIECES_CHAMBRE.includes(roomType)) {
     return [REGLE_1_CHAMBRE, BLOC_REGLE(2), REGLE_3_CHAMBRE, BLOC_REGLE(4), BLOC_REGLE(5)].join('\n\n');
   }
   const regle1 = roomType === 'cuisine' ? REGLE_1_CUISINE : REGLE_1_SDB;
   return [regle1, BLOC_REGLE(2), REGLE_3_RENOVATION[roomType], BLOC_REGLE(4), REGLE_5_RENOVATION].join('\n\n');
 }
+
+// Consignes ajoutées uniquement pour les chambres enfant et ado (25/10/2026)
+const CONSIGNES_AGE = {
+  chambre_enfant: `
+- CHAMBRE D'ENFANT : la pièce doit être immédiatement reconnaissable comme une chambre d'enfant, jamais comme une chambre d'adulte. Lit d'enfant (lit simple ou lit cabane) au même emplacement et dans la même orientation, même si la photo montre un lit double. Linge de lit doux à motifs discrets, coussins ludiques, étagère avec livres d'enfants et jouets en bois, panier à jouets, tapis rond doux, coin lecture ou petit bureau, guirlande lumineuse ou suspension ludique, illustrations douces (animaux, nature). Palette pastel : sauge, bleu poudré, rose poudré, ocre doux, bois clair. Jamais de personnages ni de licences.`,
+  chambre_ado: `
+- CHAMBRE D'ADOLESCENT : la pièce doit être immédiatement reconnaissable comme une chambre d'adolescent, jamais comme une chambre parentale. Lit simple, ou lit de 140 cm si la place le permet, au même emplacement et dans la même orientation. Bureau d'étude bien visible avec chaise de bureau, lampe et étagères de livres ; décoration jeune et graphique (affiches graphiques neutres, tableau d'affichage, tapis graphique) ; un objet de loisir discret (casque audio, guitare ou skateboard mural). Palette plus affirmée : bleu canard, vert sapin, terracotta, gris anthracite, bois naturel.`,
+};
 
 function construireInstructionsProjection({ analysis, referenceRules, roomPrompt, microTexts, roomType, commentaireClient }) {
   const renovation = PIECES_RENOVATION.includes(roomType);
@@ -541,14 +581,14 @@ function construireInstructionsProjection({ analysis, referenceRules, roomPrompt
   const imperatif = renovation
     ? `PROJECTION RÉNOVÉE (impératif) :
 - Tout est rénové : ${roomType === 'cuisine' ? 'façades, poignées, plan de travail, crédence, électroménager visible, robinetterie, luminaires, murs, sol et plafond' : 'revêtements muraux et sol, meuble vasque, sanitaires, robinetterie, paroi, miroir, luminaires et plafond'}. Aucune trace d'usure ni de dégradation sur les éléments rénovés.
-- L'implantation ne change pas : chaque équipement reste exactement à sa place, mêmes linéaires, mêmes volumes.${roomType === 'salle_bain' ? '\n- Une baignoire reste une baignoire, une douche reste une douche.' : '\n- Coin repas éventuel : table et chaises contemporaines au même emplacement.'}
+- L'implantation ne change pas : chaque équipement reste exactement à sa place, mêmes linéaires, mêmes volumes.${roomType === 'salle_bain' ? '\n- Une baignoire reste une baignoire, une douche reste une douche.\n- Les sanitaires (baignoire, receveur de douche, WC, lavabo, bidet) sont REMPLACÉS par des modèles neufs, blancs et contemporains, de même type et au même emplacement : aucun sanitaire coloré ou daté ne subsiste.' : '\n- Évier, robinetterie et électroménager (plaques, four, hotte, réfrigérateur) sont REMPLACÉS par des modèles neufs et contemporains, au même emplacement.\n- Coin repas éventuel : table et chaises contemporaines au même emplacement.'}
 - Ne déplace, n'agrandis et ne crée aucune fenêtre, porte ou ouverture.
 - La rénovation reste réaliste, réalisable et cohérente avec le standing du logement.`
     : `PROJECTION MODERNISÉE (impératif) :
 - Le champ « meublesPrincipauxAConserver » de l'analyse décrit ici le mobilier ACTUEL : chacun de ces meubles est remplacé par un équivalent contemporain, chaleureux et réaliste, même fonction, même emplacement, proportions adaptées.
 - Le lit reste au même endroit, dans la même orientation. Ne bloque ni les circulations, ni les fenêtres, ni les portes, ni les radiateurs.
 - Conserve les éléments intégrés et fixes (placards et dressings intégrés, cheminée, radiateurs).
-- Les murs peuvent recevoir une peinture neutre (blanc cassé, beige, greige), sans masquer un défaut réel.`;
+- Les murs peuvent recevoir une peinture neutre (blanc cassé, beige, greige), sans masquer un défaut réel.${CONSIGNES_AGE[roomType] || ''}`;
 
   return `Tu es un ingénieur prompt spécialisé en génération d'image immobilière.
 
