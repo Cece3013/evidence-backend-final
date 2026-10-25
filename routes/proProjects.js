@@ -258,7 +258,9 @@ router.post('/create', async (req, res) => {
       const p = photos[i];
       // Bien vide : choix cuisine / SDB. Bien habité (24/10/2026) : choix « conserver » ou
       // « projection modernisée » pour le salon et le salon / salle à manger.
-      const piecesAvecChoix = typeBien === 'habite' ? ['salon', 'salon_salle_a_manger'] : ['cuisine', 'salle_bain'];
+      const piecesAvecChoix = typeBien === 'habite'
+        ? ['salon', 'salon_salle_a_manger', 'chambre_parentale', 'chambre_enfant', 'chambre_ado', 'cuisine', 'salle_bain']
+        : ['cuisine', 'salle_bain'];
       const avecChoix = piecesAvecChoix.includes(p.roomType) && CHOIX_VALIDES.includes(p.choixCuisine);
       await axios.post(
         'https://api.notion.com/v1/pages',
