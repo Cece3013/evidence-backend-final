@@ -226,43 +226,45 @@ photoréaliste très réaliste, net, textures naturelles crédibles, décoration
 
   chambre_enfant: `PRO HABITÉ — CHAMBRE ENFANT — PROJECTION MODERNISÉE
 
-Créer un home staging doux, lumineux et réaliste dans cette chambre d'enfant habitée, en proposant une projection modernisée du mobilier et de la décoration : une chambre d'enfant contemporaine, apaisante et évolutive, dans laquelle de futurs acquéreurs peuvent se projeter. Conserver exactement l'architecture, les volumes, les ouvertures, le sol, le plafond et l'angle de vue d'origine.
+Créer un home staging doux, lumineux et réaliste dans cette chambre d'enfant habitée, en proposant une projection modernisée du mobilier et de la décoration. La pièce doit être IMMÉDIATEMENT RECONNAISSABLE COMME UNE CHAMBRE D'ENFANT, jamais comme une chambre d'adulte, même si la photo d'origine montre un lit double ou un mobilier d'adulte. Conserver exactement l'architecture, les volumes, les ouvertures, le sol, le plafond et l'angle de vue d'origine.
 
 Conserver impérativement sans modification :
 • l'architecture et les volumes réels de la pièce
 • les plafonds, sols et matériaux existants
-• les murs (seule leur couleur peut être rafraîchie par une peinture neutre : blanc cassé, beige, greige)
+• les murs (seule leur couleur peut être rafraîchie par une peinture neutre ou douce)
 • les fenêtres, portes et ouvertures
 • les perspectives et la lumière naturelle d'origine
 • l'emplacement et l'orientation du lit
 • les éléments intégrés et fixes : placards intégrés, radiateurs
 
 Désencombrer visuellement la pièce :
-• supprimer les jouets éparpillés, dessins, affiches, objets personnels et piles d'objets
+• supprimer les objets personnels, dessins, affiches, vêtements et piles d'objets
 • retirer les petits meubles inutiles ou encombrants
 • dégager le sol et les circulations
 
 Moderniser la chambre (projection modernisée) :
-• remplacer le lit, la table de chevet, le bureau, la chaise, la commode et les rangements mobiles par un mobilier contemporain, simple et chaleureux, placé au même endroit et proportionné à l'espace
-• linge de lit doux et harmonieux, un coussin discret, un plaid léger
-• quelques jouets en bois ou peluches rangés dans un panier, en petit nombre
-• voilages blancs ou lin, tapis doux et chaleureux
-• lampe douce, une plante si pertinent
-• décoration murale neutre et douce, jamais personnelle
+• lit d'enfant contemporain au même emplacement : lit simple, lit cabane ou lit en bois clair à tête arrondie, même si la photo montre un lit double
+• table de chevet, commode et rangements d'enfant contemporains, placés au même endroit
+• linge de lit doux à motifs discrets, coussins ludiques (nuage, étoile), plaid léger
+• étagère murale avec des livres d'enfants et quelques jouets en bois, panier à jouets
+• tapis rond doux, coin lecture ou petit bureau d'enfant
+• guirlande lumineuse ou suspension ludique, lampe douce
+• illustrations douces au mur (animaux, nature), jamais personnelles
+• une plante si pertinent
 
 Palette :
-blanc cassé, crème, beige, sable, vert sauge très clair, bleu grisé discret, bois clair.
+sauge, bleu poudré, rose poudré, ocre doux, blanc cassé, crème, bois clair.
 
 Créer une ambiance :
 • douce
 • lumineuse
-• apaisante
-• évolutive et intemporelle
+• ludique sans excès
+• chaleureuse et apaisante
 
 Éviter absolument :
-• les couleurs vives et les motifs très marqués
-• les thèmes trop typés (personnages, licences)
-• l'accumulation de jouets ou d'objets
+• toute ressemblance avec une chambre d'adulte ou parentale
+• les personnages et licences (dessins animés, marques)
+• les couleurs criardes et l'accumulation de jouets
 • les rendus artificiels ou trop parfaits
 
 Lumière :
@@ -273,42 +275,43 @@ photoréaliste très réaliste, net, textures naturelles crédibles, adapté aux
 
   chambre_ado: `PRO HABITÉ — CHAMBRE ADOLESCENT — PROJECTION MODERNISÉE
 
-Créer un home staging lumineux, sobre et réaliste dans cette chambre d'adolescent habitée, en proposant une projection modernisée du mobilier et de la décoration : une chambre contemporaine et polyvalente (adolescent, jeune adulte, chambre d'amis), dans laquelle de futurs acquéreurs peuvent se projeter. Conserver exactement l'architecture, les volumes, les ouvertures, le sol, le plafond et l'angle de vue d'origine.
+Créer un home staging lumineux, chaleureux et réaliste dans cette chambre d'adolescent habitée, en proposant une projection modernisée du mobilier et de la décoration. La pièce doit être IMMÉDIATEMENT RECONNAISSABLE COMME UNE CHAMBRE D'ADOLESCENT, jamais comme une chambre parentale, même si la photo d'origine montre un lit double ou un mobilier d'adulte. Conserver exactement l'architecture, les volumes, les ouvertures, le sol, le plafond et l'angle de vue d'origine.
 
 Conserver impérativement sans modification :
 • l'architecture et les volumes réels de la pièce
 • les plafonds, sols et matériaux existants
-• les murs (seule leur couleur peut être rafraîchie par une peinture neutre : blanc cassé, beige, greige)
+• les murs (seule leur couleur peut être rafraîchie par une peinture neutre ou douce)
 • les fenêtres, portes et ouvertures
 • les perspectives et la lumière naturelle d'origine
 • l'emplacement et l'orientation du lit
 • les éléments intégrés et fixes : placards intégrés, radiateurs
 
 Désencombrer visuellement la pièce :
-• supprimer les affiches, posters, objets personnels, vêtements apparents et piles d'objets
+• supprimer les objets personnels, vêtements apparents et piles d'objets
 • retirer les petits meubles inutiles ou encombrants
-• dégager le bureau, les surfaces et les circulations
+• dégager les surfaces et les circulations
 
 Moderniser la chambre (projection modernisée) :
-• remplacer le lit, la table de chevet, le bureau, la chaise, la commode et les rangements mobiles par un mobilier contemporain, sobre et chaleureux, placé au même endroit et proportionné à l'espace
-• linge de lit harmonieux, quelques coussins sobres, un plaid
-• bureau mis en scène simplement : une lampe élégante, quelques livres, une boîte de rangement discrète
-• voilages blancs ou lin, tapis chaleureux
-• une plante, une décoration murale neutre et graphique
+• lit contemporain au même emplacement : lit simple, ou lit de 140 cm si la place le permet, tête de lit en tissu ou en bois
+• BUREAU D'ÉTUDE bien visible avec chaise de bureau, lampe de bureau et étagères de livres
+• table de chevet, commode et rangements contemporains, placés au même endroit
+• linge de lit harmonieux, coussins aux couleurs affirmées, plaid
+• décoration jeune et graphique : affiches graphiques neutres, tableau d'affichage, tapis graphique
+• un objet de loisir discret : casque audio, guitare ou skateboard mural
+• une plante, voilages
 
 Palette :
-blanc cassé, crème, beige, sable, gris chaud, bleu grisé, vert sauge, bois naturel.
+bleu canard, vert sapin, terracotta, gris anthracite, bois naturel, blanc cassé.
 
 Créer une ambiance :
+• jeune
 • lumineuse
-• sobre
 • chaleureuse
-• contemporaine et polyvalente
+• graphique et contemporaine
 
 Éviter absolument :
-• les couleurs trop vives et les motifs très marqués
-• les objets personnels visibles
-• l'accumulation d'objets
+• toute ressemblance avec une chambre parentale
+• les objets personnels visibles et l'accumulation d'objets
 • les rendus artificiels ou trop parfaits
 
 Lumière :
@@ -331,6 +334,7 @@ Rénover entièrement (projection rénovée) :
 • façades et poignées des meubles bas et hauts : finitions contemporaines (laqué mat, bois clair, teintes douces)
 • plan de travail : bois clair, quartz ou matière minérale claire
 • crédence : carrelage contemporain, zellige clair, ou crédence unie
+• évier, robinetterie et électroménager (plaques, four, hotte, réfrigérateur) remplacés par des modèles neufs et contemporains, au même emplacement
 • électroménager visible : moderne, intégré ou inox
 • robinetterie contemporaine
 • murs et plafond repeints, sol refait (carrelage ou parquet contemporain clair)
@@ -367,7 +371,8 @@ Conserver impérativement :
 Rénover entièrement (projection rénovée) :
 • revêtements muraux et sol : grands carreaux clairs, joints fins, ou zellige clair
 • meuble vasque contemporain à l'emplacement du lavabo existant
-• sanitaires et robinetterie actualisés (chromé, inox brossé ou laiton brossé discret)
+• baignoire, receveur de douche, WC, lavabo et bidet remplacés par des modèles neufs, BLANCS et contemporains, de même type et au même emplacement (une baignoire reste une baignoire, mais neuve et blanche) : aucun sanitaire coloré ou daté ne subsiste
+• robinetterie actualisée (chromé, inox brossé ou laiton brossé discret)
 • paroi vitrée sobre pour la douche ou la baignoire existante
 • miroir et éclairage actualisés
 • plafond repeint
